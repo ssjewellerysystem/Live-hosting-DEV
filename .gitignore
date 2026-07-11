@@ -1,0 +1,51 @@
+# Python virtual environment
+venv/
+venv64/
+ENV/
+env/
+.venv/
+__pycache__/
+*.pyc
+
+# Node dependencies and build output
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment variables
+.env
+.env.production
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor/OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Scratch directories
+scratch/
+
+# Git backup directory (contains large pack files)
+.git_backup/
+
+# BB duplicate directory (has its own .git)
+BB/
+
+README.md

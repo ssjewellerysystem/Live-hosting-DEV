@@ -252,7 +252,7 @@ export const Navbar = () => {
               {/* SSJewellery Logo and Brand Name Identity */}
               <Link to="/" className="flex items-center gap-[14px] flex-shrink-0 brand-typography-wrapper select-none group no-underline">
                 <img
-                  src="/logo.svg"
+                  src="/Navbar-logo.png"
                   alt="SSJewellery Logo"
                   className="h-[46px] md:h-[56px] lg:h-[65px] w-auto object-contain flex-shrink-0"
                 />

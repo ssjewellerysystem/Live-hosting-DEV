@@ -104,12 +104,12 @@ const ParallaxOccasionCard = ({ item, onExpand, index }) => {
   );
 };
 
-export const OccasionGallery = () => {
+export const OccasionGallery = ({ items: propItems }) => {
   const { language } = useTranslation();
   const [selectedItem, setSelectedItem] = useState(null);
 
   // Occasions Lookbook Data
-  const items = {
+  const defaultItems = {
     en: [
       {
         id: 1,
@@ -178,7 +178,9 @@ export const OccasionGallery = () => {
         tips: ["अनोखे लुक के लिए सोने के विभिन्न रंगों को मिलाएं।", "स्मूथ और सुरक्षित लॉक स्टाइल चुनें।", "कलाई घड़ी के साथ लेयरिंग के लिए बेहतरीन।"]
       }
     ]
-  }[language === 'hi' ? 'hi' : 'en'];
+  };
+
+  const items = propItems || defaultItems[language === 'hi' ? 'hi' : 'en'];
 
   return (
     <section className="relative w-full overflow-hidden py-16 bg-transparent transition-colors duration-300">

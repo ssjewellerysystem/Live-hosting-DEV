@@ -1050,5 +1050,149 @@ def run_report_manually_route():
         }), 500
 
 
+# ==========================================
+# SITE SETTINGS & CATEGORIES API ENDPOINTS
+# ==========================================
+
+@admin_bp.route('/settings', methods=['GET'])
+def get_site_settings():
+    from backend.models.settings import SiteSettingModel
+    try:
+        settings = SiteSettingModel.query.all()
+        result = {s.key: s.value for s in settings}
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"message": f"Failed to fetch site settings: {str(e)}"}), 500
+
+@admin_bp.route('/settings', methods=['POST'])
+@admin_required
+def update_site_settings():
+    from backend.models.settings import SiteSettingModel
+    from backend.utils.audit import log_admin_action
+    data = request.get_json() or {}
+    try:
+        for key, val in data.items():
+            setting = SiteSettingModel.query.filter_by(key=key).first()
+            if setting:
+                setting.value = str(val) if val is not None else None
+            else:
+                setting = SiteSettingModel(key=key, value=str(val) if val is not None else None)
+                db.session.add(setting)
+        db.session.commit()
+        log_admin_action("Update Site Settings", "Settings", "Updated homepage site configurations")
+        return jsonify({"message": "Settings updated successfully!", "success": True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to update settings: {str(e)}", "success": False}), 500
+
+@admin_bp.route('/categories', methods=['GET'])
+@admin_required
+def get_categories_admin():
+    from backend.models.category import Category
+    try:
+        categories = Category.query.all()
+        return jsonify([c.to_dict() for c in categories]), 200
+    except Exception as e:
+        return jsonify({"message": f"Failed to fetch categories: {str(e)}"}), 500
+
+@admin_bp.route('/categories', methods=['POST'])
+@admin_required
+def create_category_admin():
+    from backend.models.category import Category
+    from backend.utils.audit import log_admin_action
+    data = request.get_json() or {}
+    name = data.get("name")
+    name_en = data.get("name_en") or name
+    name_hi = data.get("name_hi") or name
+    image_url = data.get("image_url") or "/logo.svg"
+    
+    if not name:
+        return jsonify({"message": "Category name is required."}), 400
+        
+    try:
+        existing = Category.query.filter_by(name=name).first()
+        if existing:
+            return jsonify({"message": "Category already exists."}), 400
+            
+        category = Category(name=name, name_en=name_en, name_hi=name_hi, image_url=image_url)
+        db.session.add(category)
+        db.session.commit()
+        
+        # Clear category cache
+        from backend.utils.cache import categories_cache
+        categories_cache.delete('all_categories')
+        
+        log_admin_action("Create Category", "Category", f"Created category '{name}'")
+        return jsonify({"message": "Category created successfully!", "category": category.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to create category: {str(e)}"}), 500
+
+@admin_bp.route('/categories/<int:id>', methods=['PUT'])
+@admin_required
+def update_category_admin(id):
+    from backend.models.category import Category
+    from backend.utils.audit import log_admin_action
+    data = request.get_json() or {}
+    
+    try:
+        category = Category.query.get(id)
+        if not category:
+            return jsonify({"message": "Category not found."}), 404
+            
+        old_name = category.name
+        
+        if "name" in data:
+            category.name = data["name"]
+        if "name_en" in data:
+            category.name_en = data["name_en"]
+        if "name_hi" in data:
+            category.name_hi = data["name_hi"]
+        if "image_url" in data:
+            category.image_url = data["image_url"]
+            
+        db.session.commit()
+        
+        # Clear category cache
+        from backend.utils.cache import categories_cache
+        categories_cache.delete('all_categories')
+        
+        log_admin_action("Update Category", "Category", f"Updated category '{old_name}' (ID: {id})")
+        return jsonify({"message": "Category updated successfully!", "category": category.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to update category: {str(e)}"}), 500
+
+@admin_bp.route('/categories/<int:id>', methods=['DELETE'])
+@admin_required
+def delete_category_admin(id):
+    from backend.models.category import Category
+    from backend.utils.audit import log_admin_action
+    try:
+        category = Category.query.get(id)
+        if not category:
+            return jsonify({"message": "Category not found."}), 404
+            
+        name = category.name
+        
+        # Check if there are products in this category
+        if category.products and len(category.products) > 0:
+            return jsonify({"message": f"Cannot delete category '{name}' because it contains {len(category.products)} products."}), 400
+            
+        db.session.delete(category)
+        db.session.commit()
+        
+        # Clear category cache
+        from backend.utils.cache import categories_cache
+        categories_cache.delete('all_categories')
+        
+        log_admin_action("Delete Category", "Category", f"Deleted category '{name}' (ID: {id})")
+        return jsonify({"message": "Category deleted successfully!"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Failed to delete category: {str(e)}"}), 500
+
+
+
 
 

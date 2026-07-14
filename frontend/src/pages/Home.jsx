@@ -39,9 +39,9 @@ const BannerSkeleton = () => (
   <div className="relative h-[480px] lg:h-[680px] xl:h-[740px] min-h-[450px] overflow-hidden rounded-[16px] lg:rounded-[20px] bg-[#1B0B26] border border-[#D4A75F]/15 flex items-center justify-center">
     <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
     <img
-      src="/logo.svg"
+      src="/loading-logo.png"
       alt="SSJewellery"
-      className="h-24 w-auto opacity-60 object-contain relative z-20 animate-pulse"
+      className="h-32 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen"
     />
   </div>
 );
@@ -50,9 +50,9 @@ const MobileBannerSkeleton = () => (
   <div className="relative h-[390px] xs:h-[420px] sm:h-[440px] overflow-hidden rounded-[16px] bg-[#1B0B26] border border-[#D4A75F]/15 flex items-center justify-center">
     <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
     <img
-      src="/logo.svg"
+      src="/loading-logo.png"
       alt="SSJewellery"
-      className="h-16 w-auto opacity-60 object-contain relative z-20 animate-pulse"
+      className="h-24 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen"
     />
   </div>
 );
@@ -76,9 +76,9 @@ const CategorySkeleton = () => (
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-[#F2E8D9]/60 dark:border-slate-800/80 p-1 flex items-center justify-center overflow-hidden relative">
               <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
               <img
-                src="/logo.svg"
+                src="/loading-logo.png"
                 alt="Loading..."
-                className="w-8 h-auto opacity-40 object-contain relative z-20 animate-pulse"
+                className="w-10 h-auto opacity-50 object-contain relative z-20 animate-pulse dark:mix-blend-screen mix-blend-multiply dark:invert-0 invert"
               />
             </div>
             <div className="skeleton-premium h-3.5 w-16 rounded mt-3 animate-pulse" />
@@ -107,9 +107,9 @@ const MobileCategorySkeleton = () => (
             <div className="w-[68px] h-[68px] rounded-full border-2 border-[#F2E8D9]/60 dark:border-slate-800/80 p-1 flex items-center justify-center overflow-hidden relative">
               <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
               <img
-                src="/logo.svg"
+                src="/loading-logo.png"
                 alt="Loading..."
-                className="w-7 h-auto opacity-40 object-contain relative z-20 animate-pulse"
+                className="w-9 h-auto opacity-50 object-contain relative z-20 animate-pulse dark:mix-blend-screen mix-blend-multiply dark:invert-0 invert"
               />
             </div>
             <div className="skeleton-premium h-3 w-12 rounded mt-2.5 animate-pulse" />
@@ -353,7 +353,7 @@ const BannerSlider = React.memo(({
         <div className="hidden md:block relative w-full">
           <div className="relative overflow-hidden bg-[#1B0B26] flex items-center justify-center h-screen min-h-[600px]">
             <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
-            <img src="/logo.svg" alt="SSJewellery" className="h-20 w-auto opacity-60 object-contain relative z-20 animate-pulse" />
+            <img src="/loading-logo.png" alt="SSJewellery" className="h-28 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen" />
           </div>
         </div>
         {/* Mobile Loading Skeleton */}
@@ -742,10 +742,35 @@ const BannerSlider = React.memo(({
   );
 });
 
-const CategoryGrid = React.memo(({ activeCategory, loading, onCategoryClick }) => {
+const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCategoryClick }) => {
   const { language } = useContext(AuthContext);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/products/categories`);
+        if (isMounted) {
+          const mapped = (response.data || []).map(cat => ({
+            name: cat.name,
+            label: cat.name,
+            img: cat.image_url || "/logo.svg"
+          }));
+          setCategories(mapped);
+        }
+      } catch (err) {
+        console.error("Error fetching categories in CategoryGrid:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchCategories();
+    return () => { isMounted = false; };
+  }, []);
+
+  if (loading || parentLoading) {
     return (
       <>
         <CategorySkeleton />
@@ -753,14 +778,6 @@ const CategoryGrid = React.memo(({ activeCategory, loading, onCategoryClick }) =
       </>
     );
   }
-
-  const categories = [
-    { name: "Rings", label: "Rings", img: "/cat_rings.png" },
-    { name: "Necklaces", label: "Necklaces", img: "/cat_necklaces.png" },
-    { name: "Earrings", label: "Earrings", img: "/cat_earrings.png" },
-    { name: "Bracelets", label: "Bracelets", img: "/cat_bracelets.png" },
-    { name: "Bridal Collection", label: "Bridal Collection", img: "/cat_bridal.png" }
-  ];
 
   return (
     <>
@@ -913,6 +930,14 @@ const CategoryGrid = React.memo(({ activeCategory, loading, onCategoryClick }) =
     </>
   );
 });
+
+const parseJsonSafe = (str, fallback) => {
+  try {
+    return str ? JSON.parse(str) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
 
 export const Home = () => {
   const { language, isAdmin } = useContext(AuthContext);
@@ -1289,6 +1314,19 @@ export const Home = () => {
   const [bannerError, setBannerError] = useState(null);
   const [bannerSuccess, setBannerSuccess] = useState(null);
 
+  const [siteSettings, setSiteSettings] = useState({
+    owner_image: "/owner.png",
+    owner_name: "Shri Suresh Soni",
+    owner_title: "Founder & Master Craftsman",
+    owner_est: "Est. 1999 · Jaipur, India",
+    owner_bio_1: "With over 25 years of dedication to the ancient art of Indian jewellery...",
+    owner_bio_2: "A third-generation goldsmith trained in the royal ateliers...",
+    owner_quote: "Every jewel we craft carries a piece of our soul...",
+    video_showcase_url: "/golden-stage.mp4",
+    luxury_gallery_items: []
+  });
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
   // Auto scroll slides
   useEffect(() => {
     if (slides.length === 0 || bannersLoading) return;
@@ -1307,6 +1345,42 @@ export const Home = () => {
     if (slides.length === 0) return;
     setActiveSlide(prev => (prev + 1) % slides.length);
   }, [slides.length]);
+
+  const fetchSiteSettings = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/settings`);
+      if (response.data) {
+        let galleryItems = [];
+        if (response.data.luxury_gallery_items) {
+          try {
+            galleryItems = JSON.parse(response.data.luxury_gallery_items);
+          } catch (e) {
+            console.error("Error parsing luxury gallery items:", e);
+          }
+        }
+        setSiteSettings({
+          owner_image: response.data.owner_image || "/owner.png",
+          owner_name: response.data.owner_name || "Shri Suresh Soni",
+          owner_title: response.data.owner_title || "Founder & Master Craftsman",
+          owner_est: response.data.owner_est || "Est. 1999 · Jaipur, India",
+          owner_bio_1: response.data.owner_bio_1 || "",
+          owner_bio_2: response.data.owner_bio_2 || "",
+          owner_quote: response.data.owner_quote || "",
+          video_showcase_url: response.data.video_showcase_url || "/golden-stage.mp4",
+          luxury_gallery_items: galleryItems,
+          owner_stats: response.data.owner_stats,
+          owner_badges: response.data.owner_badges,
+          occasion_items_en: response.data.occasion_items_en,
+          occasion_items_hi: response.data.occasion_items_hi,
+          owners_list: response.data.owners_list
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching site settings:", err);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
 
   // Fetch active banners from backend
   useEffect(() => {
@@ -1331,8 +1405,8 @@ export const Home = () => {
               gradient: b.background_style || "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
               accent: "text-[#D4A75F]",
               btnText: b.button_text || "Shop Now",
-              btnLink: b.button_link || "/",
-              catFilter: b.category || "All",
+              btnLink: b.button_link || "/?category=Rings",
+              catFilter: b.category || "Rings",
               image_url: img
             };
           });
@@ -1384,6 +1458,7 @@ export const Home = () => {
       }
     };
     fetchActiveBanners();
+    fetchSiteSettings();
   }, [bannerRefreshTrigger]);
 
   const fetchAllBanners = async () => {
@@ -1408,7 +1483,7 @@ export const Home = () => {
     formData.append('image', file);
     try {
       const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
-      const response = await axios.post(`${API_BASE_URL}/admin/upload-banner-image`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/banners/upload`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -1806,14 +1881,47 @@ export const Home = () => {
 
 
 
-      {!activeSearch && !isAdmin && activeTab === 'products' && (
+      {!activeSearch && activeTab === 'products' && (
         <>
-          <LuxuryGallery />
-          <OccasionGallery />
+          <LuxuryGallery items={siteSettings.luxury_gallery_items} />
+          <OccasionGallery items={parseJsonSafe(language === 'hi' ? siteSettings.occasion_items_hi : siteSettings.occasion_items_en, null)} />
           <TrustShowcase />
           <GoldCalculator />
-          <VideoShowcase />
-          <OwnerShowcase />
+          <VideoShowcase url={siteSettings.video_showcase_url} />
+          {parseJsonSafe(siteSettings.owners_list, [
+            {
+              id: 1,
+              name: siteSettings.owner_name || "Shri Suresh Soni",
+              title: siteSettings.owner_title || "Founder & Master Craftsman",
+              est: siteSettings.owner_est || "Est. 1999 · Jaipur, India",
+              bio1: siteSettings.owner_bio_1 || "With over 25 years of dedication to the ancient art of Indian jewellery, Shri Suresh Soni has transformed SS Jewellery into a hallmark of excellence trusted by families across India.",
+              bio2: siteSettings.owner_bio_2 || "A third-generation goldsmith trained in the royal ateliers of Jaipur, he brings Kundan, Meenakari, and Jadau traditions into every handcrafted piece — blending timeless heritage with contemporary elegance.",
+              quote: siteSettings.owner_quote || "Every jewel we craft carries a piece of our soul — because true luxury is not just about gold, it is about the love and legacy it carries forever.",
+              image: siteSettings.owner_image || "/owner.png",
+              stats: parseJsonSafe(siteSettings.owner_stats, [
+                { label: 'Years of Craft', value: 25, suffix: '+' },
+                { label: 'Unique Designs', value: 1200, suffix: '+' },
+                { label: 'Happy Clients', value: 8500, suffix: '+' },
+                { label: 'Awards Won', value: 18, suffix: '' }
+              ]),
+              badges: parseJsonSafe(siteSettings.owner_badges, ['BIS Hallmark Certified', 'ISO 9001:2015', 'Rajasthan Ratna Awardee', 'GIA Member'])
+            }
+          ]).map((owner, idx) => (
+            <OwnerShowcase 
+              key={owner.id || idx}
+              image={owner.image}
+              name={owner.name}
+              title={owner.title}
+              est={owner.est}
+              bio1={owner.bio1}
+              bio2={owner.bio2}
+              quote={owner.quote}
+              stats={owner.stats}
+              badges={owner.badges}
+              showStatsAndBadges={idx === 0}
+              isReversed={idx % 2 !== 0}
+            />
+          ))}
         </>
       )}
 

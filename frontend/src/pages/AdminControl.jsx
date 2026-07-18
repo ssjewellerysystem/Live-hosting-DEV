@@ -2706,20 +2706,18 @@ export const AdminControl = () => {
               <div key={card.id || idx} className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-950/20 space-y-4">
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-850">
                   <span className="text-xs font-bold tracking-widest text-[#D4A75F] uppercase">Card #{idx + 1}</span>
-                  {(homepageSettings.luxury_gallery_items || []).length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm("Are you sure you want to delete this card?")) {
-                          const updated = (homepageSettings.luxury_gallery_items || []).filter((_, i) => i !== idx);
-                          setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
-                        }
-                      }}
-                      className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to delete this card?")) {
+                        const updated = (homepageSettings.luxury_gallery_items || []).filter((_, i) => i !== idx);
+                        setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
+                      }
+                    }}
+                    className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
 
                 <div className="relative w-full h-40 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-850">
@@ -2820,23 +2818,23 @@ export const AdminControl = () => {
           </div>
         </form>
 
-        {/* SECTION 5: OCCASION GALLERY LOOKBOOK */}
+        {/* SECTION 5: SHOP BY COLLECTION */}
         <form onSubmit={handleSaveHomepageSettings} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h4 className="text-lg font-bold text-slate-850 dark:text-slate-100">Occasion Gallery Lookbook</h4>
-              <p className="text-xs text-slate-400">Configure the styling cards displayed in the "Styling Curated for Every Occasion" section.</p>
+              <h4 className="text-lg font-bold text-slate-850 dark:text-slate-100">Shop by Collection Showcase</h4>
+              <p className="text-xs text-slate-400">Configure the collection cards displayed in the "Shop by Collection" horizontal scroll marquee section.</p>
             </div>
             
             <div className="flex items-center gap-3">
-              {/* Add Occasion Button */}
+              {/* Add Collection Button */}
               <button
                 type="button"
                 onClick={() => {
                   const newId = Date.now();
                   const newCardEn = {
                     id: newId,
-                    title: "New Occasion",
+                    title: "New Collection Card",
                     subtitle: "Elegance & Style",
                     image: "/cat_necklaces.png",
                     description: "Enter English description.",
@@ -2844,7 +2842,7 @@ export const AdminControl = () => {
                   };
                   const newCardHi = {
                     id: newId,
-                    title: "नया अवसर",
+                    title: "नया कलेक्शन",
                     subtitle: "लालित्य और शैली",
                     image: "/cat_necklaces.png",
                     description: "हिंदी विवरण दर्ज करें।",
@@ -2859,7 +2857,7 @@ export const AdminControl = () => {
                 className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/25 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>Add Occasion</span>
+                <span>Add Collection Card</span>
               </button>
 
               {/* Language Switcher */}
@@ -2873,7 +2871,7 @@ export const AdminControl = () => {
                       : 'text-slate-400 hover:text-slate-650'
                   }`}
                 >
-                  English Lookbook
+                  English Collections
                 </button>
                 <button
                   type="button"
@@ -2884,7 +2882,7 @@ export const AdminControl = () => {
                       : 'text-slate-400 hover:text-slate-650'
                   }`}
                 >
-                  Hindi Lookbook
+                  Hindi Collections
                 </button>
               </div>
             </div>
@@ -2894,33 +2892,31 @@ export const AdminControl = () => {
             {((activeOccasionLang === 'en' ? homepageSettings.occasion_items_en : homepageSettings.occasion_items_hi) || []).map((card, idx) => (
               <div key={card.id || idx} className="border border-slate-100 dark:border-slate-800 rounded-2xl p-5 bg-slate-50/50 dark:bg-slate-955/20 space-y-4">
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-850">
-                  <span className="text-xs font-black tracking-widest text-[#D4A75F] uppercase">Occasion Card #{idx + 1}</span>
-                  {((activeOccasionLang === 'en' ? homepageSettings.occasion_items_en : homepageSettings.occasion_items_hi) || []).length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm("Are you sure you want to delete this occasion?")) {
-                          const idToDelete = card.id;
-                          const updatedEn = (homepageSettings.occasion_items_en || []).filter(item => item.id !== idToDelete);
-                          const updatedHi = (homepageSettings.occasion_items_hi || []).filter(item => item.id !== idToDelete);
-                          setHomepageSettings(prev => ({
-                            ...prev,
-                            occasion_items_en: updatedEn,
-                            occasion_items_hi: updatedHi
-                          }));
-                        }
-                      }}
-                      className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-955/20 cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  <span className="text-xs font-black tracking-widest text-[#D4A75F] uppercase">Collection Card #{idx + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to delete this collection?")) {
+                        const idToDelete = card.id;
+                        const updatedEn = (homepageSettings.occasion_items_en || []).filter(item => item.id !== idToDelete);
+                        const updatedHi = (homepageSettings.occasion_items_hi || []).filter(item => item.id !== idToDelete);
+                        setHomepageSettings(prev => ({
+                          ...prev,
+                          occasion_items_en: updatedEn,
+                          occasion_items_hi: updatedHi
+                        }));
+                      }
+                    }}
+                    className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-955/20 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {/* Card Image */}
                   <div className="sm:col-span-1">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-450 mb-1.5">Occasion Photo</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-450 mb-1.5">Collection Photo</label>
                     <div className="relative w-full aspect-[9/12] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-850">
                       {card.image ? (
                         <>
@@ -2963,7 +2959,7 @@ export const AdminControl = () => {
                   {/* Card Details */}
                   <div className="sm:col-span-2 space-y-3">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-450 mb-1">Occasion Title</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-450 mb-1">Collection Title</label>
                       <input
                         type="text"
                         value={card.title || ''}
@@ -2973,12 +2969,12 @@ export const AdminControl = () => {
                           updated[idx].title = e.target.value;
                           setHomepageSettings({ ...homepageSettings, [field]: updated });
                         }}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-450 mb-1">Occasion Subtitle</label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-450 mb-1">Collection Subtitle</label>
                       <input
                         type="text"
                         value={card.subtitle || ''}
@@ -2988,7 +2984,7 @@ export const AdminControl = () => {
                           updated[idx].subtitle = e.target.value;
                           setHomepageSettings({ ...homepageSettings, [field]: updated });
                         }}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
@@ -3003,7 +2999,7 @@ export const AdminControl = () => {
                           updated[idx].description = e.target.value;
                           setHomepageSettings({ ...homepageSettings, [field]: updated });
                         }}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 resize-none"
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 resize-none"
                       />
                     </div>
                   </div>
@@ -3011,7 +3007,7 @@ export const AdminControl = () => {
 
                 {/* Styling Tips */}
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-850 space-y-2">
-                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Styling Tips (3 Tips)</span>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Bullet Details (e.g. details shown in popups)</span>
                   <div className="space-y-2">
                     {[0, 1, 2].map((tipIdx) => (
                       <div key={tipIdx} className="flex items-center gap-2">
@@ -3043,7 +3039,7 @@ export const AdminControl = () => {
               className="flex items-center gap-1.5 px-5 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
             >
               {homepageUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              <span>Save Occasion Lookbook</span>
+              <span>Save Collections Settings</span>
             </button>
           </div>
         </form>
@@ -4000,10 +3996,10 @@ export const AdminControl = () => {
                 </div>
 
                 {/* Nested Sub-tabs */}
-                <div className="flex space-x-1 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl mb-8 w-fit border border-slate-200/40 dark:border-slate-800">
+                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl mb-8 w-full max-w-full overflow-x-auto whitespace-nowrap border border-slate-200/40 dark:border-slate-800 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                   <button
                     onClick={() => setActiveConfigSubTab('banners')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl flex-shrink-0 transition-all ${
                       activeConfigSubTab === 'banners'
                         ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
                         : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
@@ -4014,10 +4010,10 @@ export const AdminControl = () => {
                   </button>
                   <button
                     onClick={() => setActiveConfigSubTab('faqs')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl flex-shrink-0 transition-all ${
                       activeConfigSubTab === 'faqs'
                         ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        : 'text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
                     }`}
                   >
                     <MessageSquare className="h-3.5 w-3.5" />
@@ -4025,10 +4021,10 @@ export const AdminControl = () => {
                   </button>
                   <button
                     onClick={() => setActiveConfigSubTab('support_links')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl flex-shrink-0 transition-all ${
                       activeConfigSubTab === 'support_links'
                         ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        : 'text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
                     }`}
                   >
                     <LinkIcon className="h-3.5 w-3.5" />
@@ -4036,10 +4032,10 @@ export const AdminControl = () => {
                   </button>
                   <button
                     onClick={() => setActiveConfigSubTab('reports')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl flex-shrink-0 transition-all ${
                       activeConfigSubTab === 'reports'
                         ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        : 'text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
                     }`}
                   >
                     <Settings className="h-3.5 w-3.5" />
@@ -4047,10 +4043,10 @@ export const AdminControl = () => {
                   </button>
                   <button
                     onClick={() => setActiveConfigSubTab('homepage')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl flex-shrink-0 transition-all ${
                       activeConfigSubTab === 'homepage'
                         ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        : 'text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
                     }`}
                   >
                     <Globe className="h-3.5 w-3.5" />

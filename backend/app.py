@@ -172,7 +172,68 @@ def seed_database():
             # ProductModel.query.delete() -- DISABLED to prevent automatic truncation of data.
             # db.session.commit() -- DISABLED to prevent automatic truncation of data.
             
-            default_products = []
+            default_products = [
+                {
+                    "name": "Diamond Solitaire Promise Ring",
+                    "price": 45000.00,
+                    "discount": 15.0,
+                    "description": "An exquisite 18k yellow gold solitaire ring featuring a brilliant-cut 0.5 carat VVS1 diamond. Elegant, timeless, and crafted to perfection.",
+                    "images": ["https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&auto=format&fit=crop&q=60"],
+                    "stock": 10,
+                    "category": "Rings",
+                    "ratings": 4.8
+                },
+                {
+                    "name": "Royal Emerald Pendant Necklace",
+                    "price": 85000.00,
+                    "discount": 10.0,
+                    "description": "A majestic 22k gold chain suspending a deep green emerald pendant, surrounded by a halo of micro-pave diamonds. A symbol of royalty and grace.",
+                    "images": ["https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop&q=60"],
+                    "stock": 5,
+                    "category": "Necklaces",
+                    "ratings": 4.9
+                },
+                {
+                    "name": "Diamond Hoop Earrings",
+                    "price": 32000.00,
+                    "discount": 12.0,
+                    "description": "Crafted in 18k white gold, these sparkling hoop earrings are set with fine round diamonds, reflecting light beautifully with every movement.",
+                    "images": ["https://images.unsplash.com/photo-1630019852942-f89202989a59?w=800&auto=format&fit=crop&q=60"],
+                    "stock": 15,
+                    "category": "Earrings",
+                    "ratings": 4.7
+                },
+                {
+                    "name": "Golden Pearl Cuff Bracelet",
+                    "price": 27500.00,
+                    "discount": 8.0,
+                    "description": "An elegant, adjustable gold cuff bracelet embellished with two luminous South Sea golden pearls. Perfectly blends modern style with classic luxury.",
+                    "images": ["https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop&q=60"],
+                    "stock": 12,
+                    "category": "Bracelets",
+                    "ratings": 4.6
+                },
+                {
+                    "name": "Traditional Gold Filigree Bangles",
+                    "price": 95000.00,
+                    "discount": 5.0,
+                    "description": "Exquisite pair of 22k gold bangles featuring detailed handcrafted filigree work. A traditional Indian design celebrating heritage craftsmanship.",
+                    "images": ["https://images.unsplash.com/photo-1611085583191-a3b1a8a2954e?w=800&auto=format&fit=crop&q=60"],
+                    "stock": 8,
+                    "category": "Bangles",
+                    "ratings": 4.9
+                },
+                {
+                    "name": "Majestic Bridal Kundan Choker Set",
+                    "price": 250000.00,
+                    "discount": 20.0,
+                    "description": "A breathtaking bridal choker set featuring intricate Kundan settings, uncut diamonds (Polki), and cascading emerald beads. Includes matching heavy earrings.",
+                    "images": ["https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=800&auto=format&fit=crop&q=60"],
+                    "stock": 3,
+                    "category": "Bridal Collection",
+                    "ratings": 5.0
+                }
+            ]
             for p in default_products:
                 ProductModel.create_product(p)
             print("[SEED] Successfully seeded luxury jewelry products.")
@@ -292,7 +353,6 @@ def seed_database():
         print("[SEED] Error seeding database:", e)
 
 # Run initialization inside app context if db tables are initialized
-# Run initialization inside app context if db tables are initialized
 with app.app_context():
     db.create_all()
     seed_database()
@@ -305,4 +365,4 @@ with app.app_context():
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)

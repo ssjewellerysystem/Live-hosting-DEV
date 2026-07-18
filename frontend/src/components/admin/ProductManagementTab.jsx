@@ -1,5 +1,4 @@
-import React from 'react';
-import { Edit2, Package, ShoppingBag, BarChart3 } from 'lucide-react';
+import { Edit2, Package, ShoppingBag, BarChart3, Trash2 } from 'lucide-react';
 
 export const ProductManagementTab = ({
   products,
@@ -10,7 +9,8 @@ export const ProductManagementTab = ({
   setIsEditImagesOpen,
   handleOpenStockModal,
   handleOpenOrdersModal,
-  handleOpenAnalyticsModal
+  handleOpenAnalyticsModal,
+  onDeleteProduct
 }) => {
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
@@ -46,7 +46,16 @@ export const ProductManagementTab = ({
           };
 
           return (
-            <div key={p._id} className="border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/20 rounded-2xl p-4.5 flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+            <div key={p._id} className="relative border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/20 rounded-2xl p-4.5 flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+              {/* Delete Button */}
+              <button
+                onClick={() => onDeleteProduct(p)}
+                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-full shadow-md hover:scale-105 transition-all duration-200 cursor-pointer z-20"
+                title="Delete Product"
+                aria-label="Delete Product"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
               <div>
                 {/* Product Image and Category */}
                 <div className="flex gap-4 mb-3">

@@ -10,6 +10,7 @@ import {
 import { AuthContext, API_BASE_URL, SERVER_BASE_URL } from '../context/AuthContext';
 import { formatPrice } from '../utils/priceFormatter';
 import { translateCategory } from '../utils/categoryTranslations';
+import { CollectionManagementTab } from '../components/admin/CollectionManagementTab';
 
 const ACTION_TYPES = [
   "Product Added",
@@ -92,6 +93,7 @@ export const AdminControl = () => {
   const [messages, setMessages] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [productToDelete, setProductToDelete] = useState(null);
   
   // Site Configuration states
   const [activeConfigSubTab, setActiveConfigSubTab] = useState('banners');
@@ -2172,15 +2174,15 @@ export const AdminControl = () => {
 
   // Delete Product
   const handleDeleteProduct = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
-
     try {
       await axios.delete(`${API_BASE_URL}/products/${id}`);
+      setToast({ show: true, message: 'Product deleted successfully.', type: 'success' });
+      setProductToDelete(null);
       fetchProducts();
       fetchStats();
     } catch (err) {
       console.error(err);
-      alert("Failed to delete product.");
+      setToast({ show: true, message: 'Failed to delete product.', type: 'error' });
     }
   };
 
@@ -3155,6 +3157,16 @@ export const AdminControl = () => {
                 Product Management
               </button>
               <button
+                onClick={() => handleTabChange('collections')}
+                className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${
+                  activeTab === 'collections'
+                    ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
+                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                }`}
+              >
+                Collection Management
+              </button>
+              <button
                 onClick={() => handleTabChange('users')}
                 className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${
                   activeTab === 'users'
@@ -3771,7 +3783,16 @@ export const AdminControl = () => {
                       };
 
                       return (
-                        <div key={p._id} className="border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/20 rounded-xl md:rounded-2xl p-3 md:p-4.5 flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+                        <div key={p._id} className="relative border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/20 rounded-xl md:rounded-2xl p-3 md:p-4.5 flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => setProductToDelete(p)}
+                            className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-full shadow-md hover:scale-105 transition-all duration-200 cursor-pointer z-20"
+                            title="Delete Product"
+                            aria-label="Delete Product"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                           <div>
                             {/* Product Image and Category */}
                             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-3">
@@ -4307,6 +4328,11 @@ export const AdminControl = () => {
                 )}
 
               </div>
+            )}
+
+            {/* TAB CONTENT: COLLECTION MANAGEMENT */}
+            {activeTab === 'collections' && (
+              <CollectionManagementTab />
             )}
 
             {/* TAB CONTENT: USERS MANAGEMENT */}
@@ -5405,6 +5431,36 @@ export const AdminControl = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {productToDelete && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100 mb-2">
+              Delete Product?
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+              Are you sure you want to permanently delete this product?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-250 rounded-xl font-bold transition-all text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteProduct(productToDelete._id || productToDelete.id)}
+                className="flex-1 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-xl font-bold transition-all text-xs cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -89,6 +89,23 @@ def run_updates():
             db.session.rollback()
             print("image_url column might already exist or failed:", e)
 
+        # Alter collections table
+        for col_name, col_type in [
+            ("desktop_banner", "VARCHAR(500)"),
+            ("mobile_banner", "VARCHAR(500)"),
+            ("preview_image", "VARCHAR(500)"),
+            ("highlights", "TEXT"),
+            ("rules", "TEXT"),
+            ("show_on_homepage", "BOOLEAN")
+        ]:
+            try:
+                db.session.execute(db.text(f"ALTER TABLE collections ADD COLUMN {col_name} {col_type} DEFAULT NULL"))
+                db.session.commit()
+                print(f"Successfully added {col_name} column to collections.")
+            except Exception as e:
+                db.session.rollback()
+                print(f"{col_name} column might already exist or failed:", e)
+
         # Backpopulate translations and images for existing categories
         try:
             translations = {

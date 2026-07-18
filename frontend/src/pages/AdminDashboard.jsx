@@ -12,6 +12,7 @@ import { translateCategory } from '../utils/categoryTranslations';
 
 const AnalyticsTab = lazy(() => import('../components/admin/AnalyticsTab').then(m => ({ default: m.AnalyticsTab })));
 const ProductManagementTab = lazy(() => import('../components/admin/ProductManagementTab').then(m => ({ default: m.ProductManagementTab })));
+const CollectionManagementTab = lazy(() => import('../components/admin/CollectionManagementTab').then(m => ({ default: m.CollectionManagementTab })));
 const OrderManagementTab = lazy(() => import('../components/admin/OrderManagementTab').then(m => ({ default: m.OrderManagementTab })));
 const UserManagementTab = lazy(() => import('../components/admin/UserManagementTab').then(m => ({ default: m.UserManagementTab })));
 const SupportTicketsTab = lazy(() => import('../components/admin/SupportTicketsTab').then(m => ({ default: m.SupportTicketsTab })));
@@ -198,6 +199,7 @@ export const AdminDashboard = () => {
   
   const [selectedAnalyticsProduct, setSelectedAnalyticsProduct] = useState(null);
   const [productAnalyticsData, setProductAnalyticsData] = useState(null);
+  const [productToDelete, setProductToDelete] = useState(null);
   
   const [overviewAnalytics, setOverviewAnalytics] = useState(null);
 
@@ -1189,15 +1191,15 @@ export const AdminDashboard = () => {
 
   // Delete Product
   const handleDeleteProduct = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
-
     try {
       await axios.delete(`${API_BASE_URL}/products/${id}`);
+      showToast("Product deleted successfully.", "success");
+      setProductToDelete(null);
       fetchProducts();
       fetchStats();
     } catch (err) {
       console.error(err);
-      alert("Failed to delete product.");
+      showToast(err.response?.data?.message || "Failed to delete product.", "error");
     }
   };
 
@@ -1328,6 +1330,16 @@ export const AdminDashboard = () => {
                 Products
               </button>
               <button
+                onClick={() => handleTabChange('collections')}
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all ${
+                  activeTab === 'collections'
+                    ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
+                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                }`}
+              >
+                Collection Management
+              </button>
+              <button
                 onClick={() => handleTabChange('orders')}
                 className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all ${
                   activeTab === 'orders'
@@ -1420,7 +1432,7 @@ export const AdminDashboard = () => {
                 />
               )}
 
-              {activeTab === 'products' && (
+               {activeTab === 'products' && (
                 <ProductManagementTab
                   products={products}
                   formatPrice={formatPrice}
@@ -1431,7 +1443,12 @@ export const AdminDashboard = () => {
                   handleOpenStockModal={handleOpenStockModal}
                   handleOpenOrdersModal={handleOpenOrdersModal}
                   handleOpenAnalyticsModal={handleOpenAnalyticsModal}
+                  onDeleteProduct={setProductToDelete}
                 />
+              )}
+
+              {activeTab === 'collections' && (
+                <CollectionManagementTab />
               )}
 
               {(activeTab === 'orders' || activeTab === 'buy-requests') && (
@@ -2580,6 +2597,38 @@ export const AdminDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {productToDelete && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100 mb-2">
+              Delete Product?
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+              Are you sure you want to permanently delete this product?
+            </p>
+            <p className="text-[11px] text-rose-500 dark:text-rose-455 font-bold mb-6">
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-250 rounded-xl font-bold transition-all text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteProduct(productToDelete._id || productToDelete.id)}
+                className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold transition-all text-xs cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

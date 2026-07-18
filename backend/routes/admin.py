@@ -14,46 +14,58 @@ from sqlalchemy import func
 admin_bp = Blueprint('admin', __name__)
 
 JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_SSJewellery_key_123")
-ADMIN_ID = os.getenv("ADMIN_ID", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 @admin_bp.route('/login', methods=['POST'])
 def admin_login():
     data = request.get_json() or {}
-    admin_id = data.get("admin_id")
+    username = data.get("username") or data.get("admin_id")
     password = data.get("password")
     
-    if not admin_id or not password:
-        return jsonify({"message": "Please enter both Admin ID and Password."}), 400
+    if not username or not password:
+        return jsonify({"message": "Please enter both Username and Password."}), 400
         
-    if (admin_id == ADMIN_ID or admin_id == "admin@SSJewellery.com") and password == ADMIN_PASSWORD:
+    from backend.models.admin import AdminModel
+    from backend.utils.audit import log_admin_action
+    
+    admin = AdminModel.query.filter_by(username=username).first()
+    
+    if admin and admin.verify_password(password):
         # Generate JWT Token for Admin
         payload = {
-            "user_id": "admin_user",
+            "admin_id": str(admin.id),
+            "user_id": str(admin.id),
             "is_admin": True,
+            "username": admin.username,
             "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
         }
         token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
         
         # Audit Log
-        from backend.utils.audit import log_admin_action
         log_admin_action("Admin Login", "Admin Authentication", "Admin login successful")
         
         return jsonify({
             "message": "Admin login successful!",
             "token": token,
+            "admin_id": str(admin.id),
+            "username": admin.username,
+            "role": "admin",
+            "permissions": ["all"],
             "user": {
-                "name": "Administrator",
-                "email": "admin@SSJewellery.com",
+                "id": str(admin.id),
+                "_id": str(admin.id),
+                "name": admin.username,
+                "username": admin.username,
+                "email": f"{admin.username}@SSJewellery.com",
                 "is_admin": True,
-                "role": "admin"
+                "role": "admin",
+                "permissions": ["all"]
             }
         }), 200
     else:
         # Audit Log for failed attempt
-        from backend.utils.audit import log_admin_action
-        log_admin_action("Admin Login", "Admin Authentication", f"Failed admin login attempt (ID: {admin_id})", status="Failed")
-        return jsonify({"message": "Invalid Admin credentials. Check your configured .env file."}), 401
+        log_admin_action("Admin Login", "Admin Authentication", f"Failed admin login attempt (Username: {username})", status="Failed")
+        return jsonify({"message": "Invalid Username or Password."}), 401
+
 
 @admin_bp.route('/stats', methods=['GET'])
 @admin_required

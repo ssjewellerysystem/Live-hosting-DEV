@@ -503,18 +503,43 @@ class ProductModel(db.Model):
             db.session.rollback()
             print("Failed to update product:", e)
             return None
-
     @staticmethod
     def delete_product(product_id):
         try:
             prod_id = int(product_id)
             product = ProductModel.query.with_for_update().get(prod_id)
             if product:
+                # 1. ProductImageModel
+                ProductImageModel.query.filter_by(product_id=prod_id).delete()
+                # 2. ProductVariantModel
+                ProductVariantModel.query.filter_by(product_id=prod_id).delete()
+                # 3. CartItem
+                from backend.models.user import CartItem
+                CartItem.query.filter_by(product_id=prod_id).delete()
+                # 4. Wishlist
+                from backend.models.user import Wishlist
+                Wishlist.query.filter_by(product_id=prod_id).delete()
+                # 5. ReviewModel
+                from backend.models.review import ReviewModel
+                ReviewModel.query.filter_by(product_id=prod_id).delete()
+                # 6. StockHistoryModel
+                StockHistoryModel.query.filter_by(product_id=prod_id).delete()
+                # 7. ProductAuditLogModel
+                ProductAuditLogModel.query.filter_by(product_id=prod_id).delete()
+                # 8. BuyRequestModel
+                BuyRequestModel.query.filter_by(product_id=prod_id).delete()
+                
+                # 9. Set OrderItem product_id to NULL
+                from backend.models.order import OrderItem
+                OrderItem.query.filter_by(product_id=prod_id).update({OrderItem.product_id: None})
+                
                 db.session.delete(product)
                 db.session.commit()
                 return True
             return False
-        except Exception:
+        except Exception as e:
+            db.session.rollback()
+            print("Error deleting product:", e)
             return False
 
     @staticmethod

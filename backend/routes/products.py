@@ -45,8 +45,8 @@ def get_admin_name_from_request():
         import jwt
         from backend.models.user import UserModel
         data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        if data.get("user_id") == "admin_user" and data.get("is_admin"):
-            return "Administrator"
+        if data.get("is_admin"):
+            return data.get("username") or "Administrator"
         else:
             user = UserModel.find_by_id(data.get("user_id"))
             if user:

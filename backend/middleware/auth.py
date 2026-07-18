@@ -22,18 +22,32 @@ def token_required(f):
         try:
             # Decode token
             data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            if data.get("user_id") == "admin_user" and data.get("is_admin"):
+            is_admin = data.get("is_admin", False)
+            if is_admin:
+                admin_id = data.get("admin_id") or data.get("user_id")
+                from backend.models.admin import AdminModel
+                admin = None
+                if admin_id:
+                    admin = AdminModel.query.get(int(admin_id)) if str(admin_id).isdigit() else AdminModel.query.filter_by(username=admin_id).first()
+                if not admin:
+                    return jsonify({"message": "User not found or disabled!"}), 401
                 current_user = {
-                    "_id": "admin_user",
-                    "name": "Administrator",
-                    "email": "admin@SSJewellery.com",
-                    "is_admin": True
+                    "_id": str(admin.id),
+                    "id": str(admin.id),
+                    "name": admin.username,
+                    "email": f"{admin.username}@SSJewellery.com",
+                    "is_admin": True,
+                    "role": "admin"
                 }
             else:
                 current_user = UserModel.find_by_id(data['user_id'])
+            
             if not current_user:
                 return jsonify({"message": "User not found or disabled!"}), 401
-            if current_user.get("is_blocked"):
+            
+            # Check is_blocked status
+            is_blocked = current_user.get("is_blocked", False) if isinstance(current_user, dict) else getattr(current_user, 'is_blocked', False)
+            if is_blocked:
                 return jsonify({"message": "Your account has been suspended by the administrator."}), 403
         except jwt.ExpiredSignatureError:
             return jsonify({"message": "Token has expired! Please login again."}), 401
@@ -60,12 +74,22 @@ def admin_required(f):
             
         try:
             data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            if data.get("is_admin", False) is True:
-                # Valid token containing admin flag bypasses ObjectId lookup
-                return f(*args, **kwargs)
+            is_admin = data.get("is_admin", False)
+            if not is_admin:
+                return jsonify({"message": "Access denied! Admin privileges required."}), 403
+            
+            admin_id = data.get("admin_id") or data.get("user_id")
+            if not admin_id:
+                return jsonify({"message": "Access denied! Invalid authentication token."}), 403
+            
+            from backend.models.admin import AdminModel
+            admin = None
+            if str(admin_id).isdigit():
+                admin = AdminModel.query.get(int(admin_id))
+            else:
+                admin = AdminModel.query.filter_by(username=admin_id).first()
                 
-            current_user = UserModel.find_by_id(data['user_id'])
-            if not current_user or not current_user.get("is_admin", False):
+            if not admin:
                 return jsonify({"message": "Access denied! Admin privileges required."}), 403
         except Exception as e:
             return jsonify({"message": "Access denied! Invalid authentication token."}), 403
@@ -73,3 +97,4 @@ def admin_required(f):
         return f(*args, **kwargs)
         
     return decorated
+

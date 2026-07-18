@@ -39,6 +39,7 @@ from backend.routes.admin import admin_bp
 from backend.routes.support import support_bp
 from backend.routes.coupons import coupons_bp
 from backend.routes.banners import banners_bp
+from backend.routes.collections import collections_bp
 
 app = Flask(__name__)
 # Load configuration
@@ -60,6 +61,7 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(support_bp, url_prefix='/api/support')
 app.register_blueprint(coupons_bp, url_prefix='/api/coupons')
 app.register_blueprint(banners_bp, url_prefix='/api/banners')
+app.register_blueprint(collections_bp, url_prefix='/api/collections')
 
 from flask import request
 from backend.utils.helpers import generate_otp, verify_otp, is_valid_email
@@ -216,78 +218,8 @@ def seed_database():
         else:
             print("[SEED] Coupons already exist. Skipping seed.")
             
-        # Seed default banners if empty
-        from backend.models.banner import BannerModel
-        # Check if there are any old categories in banners
-        has_old_banners = False
-        old_banner_categories = ["Electronics", "Fashion", "Grocery", "Books", "Home & Kitchen", "Home Decor"]
-        for old_cat in old_banner_categories:
-            if BannerModel.query.filter_by(category=old_cat).count() > 0:
-                has_old_banners = True
-                break
-        if BannerModel.query.filter(BannerModel.title.like("%BharatBasket%")).count() > 0 or BannerModel.query.filter(BannerModel.title.like("%SSJewelry%")).count() > 0:
-            has_old_banners = True
-            
-        if BannerModel.query.count() == 0:
-            print("[SEED] Seeding default banners into MySQL...")
-            # BannerModel.query.delete() -- DISABLED to prevent automatic truncation of data.
-            # db.session.commit() -- DISABLED to prevent automatic truncation of data.
-            default_banners = [
-                {
-                    "title": "The Solitaire Diamond Collection",
-                    "subtitle": "Eternal Brilliance, Handcrafted Elegance",
-                    "description": "Explore our signature 18k yellow gold and white gold diamond solitaire rings. Perfect for weddings, proposals, and lifetime memories.",
-                    "button_text": "Shop Solitaires",
-                    "button_link": "/?category=Rings",
-                    "image_url": "",
-                    "background_style": "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
-                    "category": "Rings",
-                    "display_order": 1,
-                    "is_active": True
-                },
-                {
-                    "title": "The Royal Empress Collection",
-                    "subtitle": "Ornate Emerald & Pearl Artistry",
-                    "description": "Adorn yourself with masterfully crafted necklaces, chokers, and bridal neckwear set in solid 22k gold and premium gemstones.",
-                    "button_text": "Shop Necklaces",
-                    "button_link": "/?category=Necklaces",
-                    "image_url": "",
-                    "background_style": "from-[#3F1D5A] via-[#5C2E7E] to-[#3F1D5A]",
-                    "category": "Necklaces",
-                    "display_order": 2,
-                    "is_active": True
-                },
-                {
-                    "title": "Imperial Bridal Heirlooms",
-                    "subtitle": "Maang Tikkas, Polki Sets & Rubies",
-                    "description": "Celebrate your grand day with timeless heirloom bridal sets, meticulously set with uncut Polki diamonds and fine rubies.",
-                    "button_text": "Explore Bridal Set",
-                    "button_link": "/?category=Bridal%20Collection",
-                    "image_url": "",
-                    "background_style": "from-[#1B0B26] via-[#3F1D5A] to-[#1B0B26]",
-                    "category": "Bridal Collection",
-                    "display_order": 3,
-                    "is_active": True
-                }
-            ]
-            for b_data in default_banners:
-                b = BannerModel(
-                    title=b_data["title"],
-                    subtitle=b_data["subtitle"],
-                    description=b_data["description"],
-                    button_text=b_data["button_text"],
-                    button_link=b_data["button_link"],
-                    image_url=b_data["image_url"],
-                    background_style=b_data["background_style"],
-                    category=b_data["category"],
-                    display_order=b_data["display_order"],
-                    is_active=b_data["is_active"]
-                )
-                db.session.add(b)
-            db.session.commit()
-            print("[SEED] Successfully seeded banners.")
-        else:
-            print("[SEED] Banners already exist. Skipping seed.")
+        # Banner seeding has been completely removed to avoid automatic creation of default banners.
+        pass
     except Exception as e:
         print("[SEED] Error seeding database:", e)
 

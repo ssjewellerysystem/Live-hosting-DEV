@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { ShieldAlert } from 'lucide-react';
 
 export const AuthContext = createContext();
 
@@ -21,6 +22,25 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loginType, setLoginType] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState("The website is temporarily under maintenance. Please try again later.");
+  const [showMaintenanceWarning, setShowMaintenanceWarning] = useState(false);
+
+  const checkMaintenanceStatus = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/admin/maintenance/status`);
+      setMaintenanceMode(res.data.maintenance_mode);
+      setMaintenanceMessage(res.data.maintenance_message || "The website is temporarily under maintenance. Please try again later.");
+    } catch (err) {
+      console.error("Failed to check maintenance status", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkMaintenanceStatus();
+    const interval = setInterval(checkMaintenanceStatus, 30000);
+    return () => clearInterval(interval);
+  }, [checkMaintenanceStatus]);
   const [language, setLanguage] = useState(() => {
     return localStorage.getItem('bb_lang') || 'en';
   });
@@ -267,8 +287,33 @@ export const AuthProvider = ({ children }) => {
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, token, login, userLogin, microsoftLogin, oauthLogin, checkoutLogin, adminLogin, logout, updateUser, loading, isAdmin, isAuthenticated, language, changeLanguage, savePreferredLanguage }}>
+    <AuthContext.Provider value={{ user, token, login, userLogin, microsoftLogin, oauthLogin, checkoutLogin, adminLogin, logout, updateUser, loading, isAdmin, isAuthenticated, language, changeLanguage, savePreferredLanguage, maintenanceMode, maintenanceMessage, checkMaintenanceStatus, showMaintenanceWarning, setShowMaintenanceWarning }}>
       {!loading && children}
+      {showMaintenanceWarning && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 transform scale-100 transition-all duration-300 text-center">
+            <div className="flex flex-col items-center mb-4">
+              <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500 mb-3">
+                <ShieldAlert className="h-8 w-8" />
+              </div>
+              <h3 className="text-lg font-bold tracking-tight">Website Under Maintenance</h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed font-semibold">
+              {maintenanceMessage || "We are performing scheduled maintenance. Ordering is temporarily unavailable. Please try again shortly."}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowMaintenanceWarning(false);
+                window.location.href = '/';
+              }}
+              className="w-full py-2.5 bg-[#D4A75F] hover:bg-[#c39650] text-white rounded-xl font-bold transition-all text-xs cursor-pointer shadow-[0_4px_12px_rgba(212,167,95,0.25)]"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };

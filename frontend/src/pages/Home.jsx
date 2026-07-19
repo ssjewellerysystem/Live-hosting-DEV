@@ -39,9 +39,9 @@ const BannerSkeleton = () => (
   <div className="relative h-[480px] lg:h-[680px] xl:h-[740px] min-h-[450px] overflow-hidden rounded-[16px] lg:rounded-[20px] bg-[#1B0B26] border border-[#D4A75F]/15 flex items-center justify-center">
     <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
     <img
-      src="/loading-logo.png"
+      src="/logo.svg"
       alt="SSJewellery"
-      className="h-32 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen"
+      className="h-24 w-auto opacity-60 object-contain relative z-20 animate-pulse"
     />
   </div>
 );
@@ -50,9 +50,9 @@ const MobileBannerSkeleton = () => (
   <div className="relative h-[390px] xs:h-[420px] sm:h-[440px] overflow-hidden rounded-[16px] bg-[#1B0B26] border border-[#D4A75F]/15 flex items-center justify-center">
     <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
     <img
-      src="/loading-logo.png"
+      src="/logo.svg"
       alt="SSJewellery"
-      className="h-24 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen"
+      className="h-16 w-auto opacity-60 object-contain relative z-20 animate-pulse"
     />
   </div>
 );
@@ -76,9 +76,9 @@ const CategorySkeleton = () => (
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-[#F2E8D9]/60 dark:border-slate-800/80 p-1 flex items-center justify-center overflow-hidden relative">
               <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
               <img
-                src="/loading-logo.png"
+                src="/logo.svg"
                 alt="Loading..."
-                className="w-10 h-auto opacity-50 object-contain relative z-20 animate-pulse dark:mix-blend-screen mix-blend-multiply dark:invert-0 invert"
+                className="w-8 h-auto opacity-40 object-contain relative z-20 animate-pulse"
               />
             </div>
             <div className="skeleton-premium h-3.5 w-16 rounded mt-3 animate-pulse" />
@@ -107,9 +107,9 @@ const MobileCategorySkeleton = () => (
             <div className="w-[68px] h-[68px] rounded-full border-2 border-[#F2E8D9]/60 dark:border-slate-800/80 p-1 flex items-center justify-center overflow-hidden relative">
               <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
               <img
-                src="/loading-logo.png"
+                src="/logo.svg"
                 alt="Loading..."
-                className="w-9 h-auto opacity-50 object-contain relative z-20 animate-pulse dark:mix-blend-screen mix-blend-multiply dark:invert-0 invert"
+                className="w-7 h-auto opacity-40 object-contain relative z-20 animate-pulse"
               />
             </div>
             <div className="skeleton-premium h-3 w-12 rounded mt-2.5 animate-pulse" />
@@ -353,7 +353,7 @@ const BannerSlider = React.memo(({
         <div className="hidden md:block relative w-full">
           <div className="relative overflow-hidden bg-[#1B0B26] flex items-center justify-center h-screen min-h-[600px]">
             <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
-            <img src="/loading-logo.png" alt="SSJewellery" className="h-28 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen" />
+            <img src="/logo.svg" alt="SSJewellery" className="h-20 w-auto opacity-60 object-contain relative z-20 animate-pulse" />
           </div>
         </div>
         {/* Mobile Loading Skeleton */}
@@ -361,6 +361,20 @@ const BannerSlider = React.memo(({
           <MobileBannerSkeleton />
         </div>
       </>
+    );
+  }
+
+  if (slides.length === 0) {
+    return (
+      <div className="w-[94vw] md:w-full max-w-7xl mx-auto my-6 md:my-10 px-4">
+        <div className="relative overflow-hidden bg-slate-900 border border-[#D4A75F]/15 rounded-3xl p-10 min-h-[300px] flex items-center justify-center text-center shadow-2xl">
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#1B0B26]/30 via-[#3F1D5A]/10 to-transparent pointer-events-none" />
+          <div className="space-y-4 relative z-10">
+            <p className="text-2xl font-serif font-bold text-[#D4A75F] tracking-wider uppercase">No banners available</p>
+            <p className="text-sm text-slate-400 max-w-md mx-auto">Please add active banners from the admin dashboard to display them on the homepage.</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -742,35 +756,10 @@ const BannerSlider = React.memo(({
   );
 });
 
-const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCategoryClick }) => {
+const CategoryGrid = React.memo(({ activeCategory, loading, onCategoryClick }) => {
   const { language } = useContext(AuthContext);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchCategories = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/products/categories`);
-        if (isMounted) {
-          const mapped = (response.data || []).map(cat => ({
-            name: cat.name,
-            label: cat.name,
-            img: cat.image_url || "/logo.svg"
-          }));
-          setCategories(mapped);
-        }
-      } catch (err) {
-        console.error("Error fetching categories in CategoryGrid:", err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    fetchCategories();
-    return () => { isMounted = false; };
-  }, []);
-
-  if (loading || parentLoading) {
+  if (loading) {
     return (
       <>
         <CategorySkeleton />
@@ -778,6 +767,14 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
       </>
     );
   }
+
+  const categories = [
+    { name: "Rings", label: "Rings", img: "/cat_rings.png" },
+    { name: "Necklaces", label: "Necklaces", img: "/cat_necklaces.png" },
+    { name: "Earrings", label: "Earrings", img: "/cat_earrings.png" },
+    { name: "Bracelets", label: "Bracelets", img: "/cat_bracelets.png" },
+    { name: "Bridal Collection", label: "Bridal Collection", img: "/cat_bridal.png" }
+  ];
 
   return (
     <>
@@ -931,14 +928,6 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
   );
 });
 
-const parseJsonSafe = (str, fallback) => {
-  try {
-    return str ? JSON.parse(str) : fallback;
-  } catch (e) {
-    return fallback;
-  }
-};
-
 export const Home = () => {
   const { language, isAdmin } = useContext(AuthContext);
 
@@ -953,6 +942,8 @@ export const Home = () => {
   const [error, setError] = useState(null);
   const [selectedAdminProductId, setSelectedAdminProductId] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [collectionsList, setCollectionsList] = useState([]);
+  const [collectionsLoading, setCollectionsLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState('products');
   const [usersComplete, setUsersComplete] = useState([]);
@@ -1254,43 +1245,7 @@ export const Home = () => {
     }, 100);
   }, [searchParams, setSearchParams]);
 
-  // Banner Management States
-  const [slides, setSlides] = useState([
-    {
-      title: "The Solitaire Diamond Collection",
-      subtitle: "Eternal Brilliance, Handcrafted Elegance",
-      desc: "Explore our signature 18k yellow gold and white gold diamond solitaire rings. Perfect for weddings, proposals, and lifetime memories.",
-      badge: "Rings Special",
-      gradient: "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
-      accent: "text-[#D4A75F]",
-      btnText: "Shop Solitaires",
-      btnLink: "/?category=Rings",
-      catFilter: "Rings",
-      image_url: "/luxury_solitaire_ring.png"
-    },
-    {
-      title: "The Royal Empress Collection",
-      subtitle: "Ornate Emerald & Pearl Artistry",
-      desc: "Adorn yourself with masterfully crafted necklaces, chokers, and bridal neckwear set in solid 22k gold and premium gemstones.",
-      badge: "Necklaces Special",
-      gradient: "from-[#3F1D5A] via-[#5C2E7E] to-[#3F1D5A]",
-      accent: "text-[#D4A75F]",
-      btnText: "Shop Necklaces",
-      catFilter: "Necklaces",
-      image_url: "/luxury_emerald_necklace.png"
-    },
-    {
-      title: "Imperial Bridal Heirlooms",
-      subtitle: "Maang Tikkas, Polki Sets & Rubies",
-      desc: "Celebrate your grand day with timeless heirloom bridal sets, meticulously set with uncut Polki diamonds and fine rubies.",
-      badge: "Bridal Special",
-      gradient: "from-[#1B0B26] via-[#3F1D5A] to-[#1B0B26]",
-      accent: "text-[#D4A75F]",
-      btnText: "Explore Bridal Set",
-      catFilter: "Bridal Collection",
-      image_url: "/luxury_bridal_set.png"
-    }
-  ]);
+  const [slides, setSlides] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
   const [bannersLoading, setBannersLoading] = useState(true);
   const [bannerRefreshTrigger, setBannerRefreshTrigger] = useState(0);
@@ -1314,19 +1269,6 @@ export const Home = () => {
   const [bannerError, setBannerError] = useState(null);
   const [bannerSuccess, setBannerSuccess] = useState(null);
 
-  const [siteSettings, setSiteSettings] = useState({
-    owner_image: "/owner.png",
-    owner_name: "Shri Suresh Soni",
-    owner_title: "Founder & Master Craftsman",
-    owner_est: "Est. 1999 · Jaipur, India",
-    owner_bio_1: "With over 25 years of dedication to the ancient art of Indian jewellery...",
-    owner_bio_2: "A third-generation goldsmith trained in the royal ateliers...",
-    owner_quote: "Every jewel we craft carries a piece of our soul...",
-    video_showcase_url: "/golden-stage.mp4",
-    luxury_gallery_items: []
-  });
-  const [settingsLoading, setSettingsLoading] = useState(true);
-
   // Auto scroll slides
   useEffect(() => {
     if (slides.length === 0 || bannersLoading) return;
@@ -1346,42 +1288,6 @@ export const Home = () => {
     setActiveSlide(prev => (prev + 1) % slides.length);
   }, [slides.length]);
 
-  const fetchSiteSettings = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/admin/settings`);
-      if (response.data) {
-        let galleryItems = [];
-        if (response.data.luxury_gallery_items) {
-          try {
-            galleryItems = JSON.parse(response.data.luxury_gallery_items);
-          } catch (e) {
-            console.error("Error parsing luxury gallery items:", e);
-          }
-        }
-        setSiteSettings({
-          owner_image: response.data.owner_image || "/owner.png",
-          owner_name: response.data.owner_name || "Shri Suresh Soni",
-          owner_title: response.data.owner_title || "Founder & Master Craftsman",
-          owner_est: response.data.owner_est || "Est. 1999 · Jaipur, India",
-          owner_bio_1: response.data.owner_bio_1 || "",
-          owner_bio_2: response.data.owner_bio_2 || "",
-          owner_quote: response.data.owner_quote || "",
-          video_showcase_url: response.data.video_showcase_url || "/golden-stage.mp4",
-          luxury_gallery_items: galleryItems,
-          owner_stats: response.data.owner_stats,
-          owner_badges: response.data.owner_badges,
-          occasion_items_en: response.data.occasion_items_en,
-          occasion_items_hi: response.data.occasion_items_hi,
-          owners_list: response.data.owners_list
-        });
-      }
-    } catch (err) {
-      console.error("Error fetching site settings:", err);
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
   // Fetch active banners from backend
   useEffect(() => {
     const fetchActiveBanners = async () => {
@@ -1389,76 +1295,43 @@ export const Home = () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/banners`);
         if (response.data && response.data.length > 0) {
-          const mapped = response.data.map(b => {
-            let img = b.image_url;
-            if (!img) {
-              if (b.title.includes("Solitaire") || b.category === "Rings") img = "/luxury_solitaire_ring.png";
-              else if (b.title.includes("Empress") || b.category === "Necklaces") img = "/luxury_emerald_necklace.png";
-              else if (b.title.includes("Bridal") || b.category === "Bridal Collection") img = "/luxury_bridal_set.png";
-            }
-            return {
-              id: b.id,
-              title: b.title,
-              subtitle: b.subtitle,
-              desc: b.description,
-              badge: b.category || "Offer",
-              gradient: b.background_style || "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
-              accent: "text-[#D4A75F]",
-              btnText: b.button_text || "Shop Now",
-              btnLink: b.button_link || "/?category=Rings",
-              catFilter: b.category || "Rings",
-              image_url: img
-            };
-          });
+          // Filter only active banners
+          let activeBanners = response.data.filter(b => b.is_active === true);
+          // Sort by display_order (ascending)
+          activeBanners.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+          const mapped = activeBanners.map(b => ({
+            id: b.id,
+            title: b.title,
+            subtitle: b.subtitle,
+            desc: b.description,
+            description: b.description,
+            badge: b.badge || b.category || "Offer",
+            gradient: b.background_style || "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
+            background_style: b.background_style,
+            accent: "text-[#D4A75F]",
+            btnText: b.button_text || "Shop Now",
+            button_text: b.button_text,
+            btnLink: b.button_link || `/?category=${b.category || "All"}`,
+            button_link: b.button_link,
+            catFilter: b.category || "All",
+            category: b.category,
+            image_url: b.image_url,
+            display_order: b.display_order,
+            is_active: b.is_active
+          }));
           setSlides(mapped);
         } else {
-          setSlides([
-            {
-              title: "The Solitaire Diamond Collection",
-              subtitle: "Eternal Brilliance, Handcrafted Elegance",
-              desc: "Explore our signature 18k yellow gold and white gold diamond solitaire rings. Perfect for weddings, proposals, and lifetime memories.",
-              badge: "Rings Special",
-              gradient: "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
-              accent: "text-[#D4A75F]",
-              btnText: "Shop Solitaires",
-              btnLink: "/?category=Rings",
-              catFilter: "Rings",
-              image_url: "/luxury_solitaire_ring.png"
-            },
-            {
-              title: "The Royal Empress Collection",
-              subtitle: "Ornate Emerald & Pearl Artistry",
-              desc: "Adorn yourself with masterfully crafted necklaces, chokers, and bridal neckwear set in solid 22k gold and premium gemstones.",
-              badge: "Necklaces Special",
-              gradient: "from-[#3F1D5A] via-[#5C2E7E] to-[#3F1D5A]",
-              accent: "text-[#D4A75F]",
-              btnText: "Shop Necklaces",
-              btnLink: "/?category=Necklaces",
-              catFilter: "Necklaces",
-              image_url: "/luxury_emerald_necklace.png"
-            },
-            {
-              title: "Imperial Bridal Heirlooms",
-              subtitle: "Maang Tikkas, Polki Sets & Rubies",
-              desc: "Celebrate your grand day with timeless heirloom bridal sets, meticulously set with uncut Polki diamonds and fine rubies.",
-              badge: "Bridal Special",
-              gradient: "from-[#1B0B26] via-[#3F1D5A] to-[#1B0B26]",
-              accent: "text-[#D4A75F]",
-              btnText: "Explore Bridal Set",
-              btnLink: "/?category=Bridal Collection",
-              catFilter: "Bridal Collection",
-              image_url: "/luxury_bridal_set.png"
-            }
-          ]);
+          setSlides([]);
         }
       } catch (err) {
         console.error("Error fetching active banners from backend:", err);
+        setSlides([]);
       } finally {
         setBannersLoading(false);
       }
     };
     fetchActiveBanners();
-    fetchSiteSettings();
   }, [bannerRefreshTrigger]);
 
   const fetchAllBanners = async () => {
@@ -1483,7 +1356,7 @@ export const Home = () => {
     formData.append('image', file);
     try {
       const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
-      const response = await axios.post(`${API_BASE_URL}/banners/upload`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/admin/upload-banner-image`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -1628,6 +1501,21 @@ export const Home = () => {
     fetchProducts();
   }, [activeCategory, activeSearch, language, refreshTrigger]);
 
+  useEffect(() => {
+    const fetchCollectionsList = async () => {
+      setCollectionsLoading(true);
+      try {
+        const res = await axios.get(`${API_BASE_URL}/collections`);
+        setCollectionsList(res.data);
+      } catch (err) {
+        console.error("Error fetching homepage collections:", err);
+      } finally {
+        setCollectionsLoading(false);
+      }
+    };
+    fetchCollectionsList();
+  }, [refreshTrigger]);
+
   const isAdminAddressEmpty = !addUserForm.address?.trim() && !addUserForm.city?.trim() && !addUserForm.state?.trim() && !addUserForm.pincode?.trim();
   const isAdminPincodeInvalid = isAdminAddressEmpty ? false : addUserForm.pincode?.trim().length !== 6;
 
@@ -1657,6 +1545,44 @@ export const Home = () => {
           loading={loading} 
           onCategoryClick={handleCategoryClick}
         />
+      )}
+
+      {/* Dynamic Collections Section */}
+      {!activeSearch && activeCategory === 'All' && collectionsList.length > 0 && (
+        <div className="w-full max-w-[97%] mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-16">
+          {collectionsList.map(collection => {
+            if (!collection.products || collection.products.length === 0) return null;
+            return (
+              <div key={collection.id} className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-[#D4A75F]/20 pb-4">
+                  <div>
+                    <span className="text-[10px] font-black text-[#D4A75F] uppercase tracking-widest block">
+                      Curated Collection
+                    </span>
+                    <h3 className="text-2xl font-serif font-black text-[#3F1D5A] dark:text-[#D4A75F] mt-1">
+                      {collection.name}
+                    </h3>
+                    {collection.description && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                        {collection.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="product-grid">
+                  {collection.products.map(product => (
+                    <ProductCard
+                      key={product.id || product._id}
+                      product={product}
+                      onAdminAction={(productId) => setSelectedAdminProductId(productId)}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
 
@@ -1881,47 +1807,14 @@ export const Home = () => {
 
 
 
-      {!activeSearch && activeTab === 'products' && (
+      {!activeSearch && !isAdmin && activeTab === 'products' && (
         <>
-          <LuxuryGallery items={siteSettings.luxury_gallery_items} />
-          <OccasionGallery items={parseJsonSafe(language === 'hi' ? siteSettings.occasion_items_hi : siteSettings.occasion_items_en, null)} />
+          <LuxuryGallery />
+          <OccasionGallery />
           <TrustShowcase />
           <GoldCalculator />
-          <VideoShowcase url={siteSettings.video_showcase_url} />
-          {parseJsonSafe(siteSettings.owners_list, [
-            {
-              id: 1,
-              name: siteSettings.owner_name || "Shri Suresh Soni",
-              title: siteSettings.owner_title || "Founder & Master Craftsman",
-              est: siteSettings.owner_est || "Est. 1999 · Jaipur, India",
-              bio1: siteSettings.owner_bio_1 || "With over 25 years of dedication to the ancient art of Indian jewellery, Shri Suresh Soni has transformed SS Jewellery into a hallmark of excellence trusted by families across India.",
-              bio2: siteSettings.owner_bio_2 || "A third-generation goldsmith trained in the royal ateliers of Jaipur, he brings Kundan, Meenakari, and Jadau traditions into every handcrafted piece — blending timeless heritage with contemporary elegance.",
-              quote: siteSettings.owner_quote || "Every jewel we craft carries a piece of our soul — because true luxury is not just about gold, it is about the love and legacy it carries forever.",
-              image: siteSettings.owner_image || "/owner.png",
-              stats: parseJsonSafe(siteSettings.owner_stats, [
-                { label: 'Years of Craft', value: 25, suffix: '+' },
-                { label: 'Unique Designs', value: 1200, suffix: '+' },
-                { label: 'Happy Clients', value: 8500, suffix: '+' },
-                { label: 'Awards Won', value: 18, suffix: '' }
-              ]),
-              badges: parseJsonSafe(siteSettings.owner_badges, ['BIS Hallmark Certified', 'ISO 9001:2015', 'Rajasthan Ratna Awardee', 'GIA Member'])
-            }
-          ]).map((owner, idx) => (
-            <OwnerShowcase 
-              key={owner.id || idx}
-              image={owner.image}
-              name={owner.name}
-              title={owner.title}
-              est={owner.est}
-              bio1={owner.bio1}
-              bio2={owner.bio2}
-              quote={owner.quote}
-              stats={owner.stats}
-              badges={owner.badges}
-              showStatsAndBadges={idx === 0}
-              isReversed={idx % 2 !== 0}
-            />
-          ))}
+          <VideoShowcase />
+          <OwnerShowcase />
         </>
       )}
 

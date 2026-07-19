@@ -42,6 +42,14 @@ def run_updates():
             print("show_on_homepage column might already exist or failed:", e)
 
         try:
+            db.session.execute(db.text("ALTER TABLE products ADD COLUMN collection_id INTEGER REFERENCES collections(id) ON DELETE SET NULL"))
+            db.session.commit()
+            print("Successfully added collection_id column to products.")
+        except Exception as e:
+            db.session.rollback()
+            print("collection_id column might already exist or failed:", e)
+
+        try:
             db.session.execute(db.text("ALTER TABLE users ADD COLUMN last_login DATETIME DEFAULT NULL"))
             db.session.commit()
             print("Successfully added last_login column to users.")
@@ -89,6 +97,23 @@ def run_updates():
             db.session.rollback()
             print("image_url column might already exist or failed:", e)
 
+        # Alter collections table
+        for col_name, col_type in [
+            ("desktop_banner", "VARCHAR(500)"),
+            ("mobile_banner", "VARCHAR(500)"),
+            ("preview_image", "VARCHAR(500)"),
+            ("highlights", "TEXT"),
+            ("rules", "TEXT"),
+            ("show_on_homepage", "BOOLEAN")
+        ]:
+            try:
+                db.session.execute(db.text(f"ALTER TABLE collections ADD COLUMN {col_name} {col_type} DEFAULT NULL"))
+                db.session.commit()
+                print(f"Successfully added {col_name} column to collections.")
+            except Exception as e:
+                db.session.rollback()
+                print(f"{col_name} column might already exist or failed:", e)
+
         # Backpopulate translations and images for existing categories
         try:
             translations = {
@@ -135,6 +160,10 @@ def run_updates():
         try:
             import json
             default_settings = {
+                "maintenance_mode": "false",
+                "maintenance_message": "The website is temporarily under maintenance. Please try again later.",
+                "maintenance_enabled_by_admin": "",
+                "maintenance_enabled_at": "",
                 "owner_image": "/owner.png",
                 "owner_name": "Shri Suresh Soni",
                 "owner_title": "Founder & Master Craftsman",

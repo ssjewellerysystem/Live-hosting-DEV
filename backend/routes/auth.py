@@ -30,99 +30,123 @@ def login():
     password = data.get("password") or data.get("mobile")
     
     if not email or not password:
-        return jsonify({"message": "Please provide both email/mobile and password."}), 400
-        
-    if (email == 'admin' or email == 'admin@SSJewellery.com') and password == 'admin123':
-        from backend.utils.audit import log_admin_action
-        log_admin_action("Admin Login", "Admin Authentication", "Admin login successful")
-        try:
-            from backend.models.admin import add_admin_notification
-            add_admin_notification(
-                title="Admin Login",
-                message="Administrator has logged in successfully.",
-                type="admin_login"
-            )
-        except Exception as ex:
-            print(f"Error adding admin login notification: {ex}")
-        payload = {
-            "user_id": "admin_user",
-            "is_admin": True,
-            "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
-        }
-        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-        return jsonify({
-            "message": "Admin login successful!",
-            "token": token,
-            "user": {
-                "id": "admin_user",
-                "name": "Administrator",
-                "email": "admin@SSJewellery.com",
-                "mobile": "N/A",
-                "is_admin": True,
-                "role": "admin"
-            }
-        }), 200
+        return jsonify({"message": "Please provide both email/mobile/username and password."}), 400
 
-    import re
-    is_email = is_valid_email(email)
-    is_mobile = re.match(r'^\+?[0-9]{7,15}$', str(email).strip()) is not None
-    
-    if not is_email and not is_mobile:
-        return jsonify({"message": "Invalid email or mobile number."}), 400
-        
+    input_val = str(email).strip()
+
+    # STEP 1: First check the admins table
+    from backend.models.admin import AdminModel
+    import jwt
+    import datetime
+    import pytz
+    from backend.routes.admin import JWT_SECRET
+    from backend.utils.audit import log_admin_action
+
+    # Check if 'email' attribute exists in AdminModel
+    has_email_col = hasattr(AdminModel, 'email')
+    if has_email_col:
+        admin_obj = AdminModel.query.filter(
+            (AdminModel.username == input_val) | (AdminModel.email == input_val)
+        ).first()
+    else:
+        # Fallback if no email column: check username, or if input is an email, check with the prefix
+        admin_obj = AdminModel.query.filter(AdminModel.username == input_val).first()
+        if not admin_obj and "@" in input_val:
+            prefix = input_val.split("@")[0]
+            admin_obj = AdminModel.query.filter(AdminModel.username == prefix).first()
+
+    if admin_obj:
+        if admin_obj.verify_password(password):
+            payload = {
+                "admin_id": str(admin_obj.id),
+                "user_id": str(admin_obj.id),
+                "is_admin": True,
+                "username": admin_obj.username,
+                "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
+            }
+            token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+            
+            log_admin_action("Admin Login", "Admin Authentication", "Admin login successful via unified route")
+            
+            return jsonify({
+                "message": "Admin login successful!",
+                "token": token,
+                "admin_id": str(admin_obj.id),
+                "username": admin_obj.username,
+                "role": "admin",
+                "permissions": ["all"],
+                "user": {
+                    "id": str(admin_obj.id),
+                    "_id": str(admin_obj.id),
+                    "name": admin_obj.username,
+                    "username": admin_obj.username,
+                    "email": getattr(admin_obj, 'email', f"{admin_obj.username}@SSJewellery.com"),
+                    "is_admin": True,
+                    "role": "admin",
+                    "permissions": ["all"]
+                }
+            }), 200
+        else:
+            log_admin_action("Admin Login", "Admin Authentication", f"Failed admin login attempt (Username/Email: {email})", status="Failed")
+            return jsonify({"message": "Invalid username/email/mobile or password."}), 401
+
+    # STEP 2: If no matching admin exists, check the users table
     try:
         user_obj = UserModel.query.filter(
-            (UserModel.email == email) | (UserModel.phone == email)
+            (UserModel.email == input_val) | (UserModel.phone == input_val)
         ).with_for_update().first()
         
-        if not user_obj:
-            return jsonify({"message": "Account not found. Please register first."}), 404
+        if user_obj:
+            if UserModel.verify_password(user_obj.password, password):
+                if user_obj.is_blocked:
+                    return jsonify({"message": "Your account has been suspended by the administrator."}), 403
+                    
+                if not user_obj.email_verified:
+                    return jsonify({"message": "Please verify your email before logging in."}), 403
+                    
+                is_first_login = bool(user_obj.first_login)
+                user_obj.last_login = get_ist_time()
+                db.session.commit()
+                
+                user = user_obj.to_dict()
+                
+                # Generate JWT Token
+                payload = {
+                    "user_id": user["_id"],
+                    "is_admin": user.get("is_admin", False),
+                    "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
+                }
+                
+                token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+                
+                return jsonify({
+                    "message": "Login successful!",
+                    "token": token,
+                    "user": {
+                        "id": user["_id"],
+                        "name": user["name"],
+                        "email": user["email"],
+                        "mobile": user["mobile"],
+                        "address": user.get("address", {}),
+                        "cart": user.get("cart", []),
+                        "wishlist": user.get("wishlist", []),
+                        "is_admin": user.get("is_admin", False),
+                        "role": "admin" if user.get("is_admin", False) else "customer",
+                        "preferred_language": user.get("preferred_language"),
+                        "first_login": is_first_login
+                    }
+                }), 200
+            else:
+                db.session.rollback()
+                return jsonify({"message": "Invalid username/email/mobile or password."}), 401
+        else:
+            db.session.rollback()
+            return jsonify({"message": "Invalid username/email/mobile or password."}), 401
             
-        if user_obj.is_blocked:
-            return jsonify({"message": "Your account has been suspended by the administrator."}), 403
-            
-        if not UserModel.verify_password(user_obj.password, password):
-            return jsonify({"message": "Incorrect password. Please try again."}), 401
-            
-        if not user_obj.email_verified:
-            return jsonify({"message": "Please verify your email before logging in."}), 403
-            
-        is_first_login = bool(user_obj.first_login)
-        user_obj.last_login = get_ist_time()
-        db.session.commit()
     except Exception as e:
         db.session.rollback()
         print("Login database transaction failed:", e)
         return jsonify({"message": "An error occurred during login."}), 500
-        
-    user = user_obj.to_dict()
-    
-    # Generate JWT Token
-    payload = {
-        "user_id": user["_id"],
-        "is_admin": user.get("is_admin", False),
-        "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
-    }
-    
-    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-    
-    return jsonify({
-        "message": "Login successful!",
-        "token": token,
-        "user": {
-            "id": user["_id"],
-            "name": user["name"],
-            "email": user["email"],
-            "mobile": user["mobile"],
-            "address": user.get("address", {}),
-            "cart": user.get("cart", []),
-            "wishlist": user.get("wishlist", []),
-            "is_admin": user.get("is_admin", False),
-            "role": "admin" if user.get("is_admin", False) else "customer",
-            "preferred_language": user.get("preferred_language"),
-            "first_login": is_first_login
-        }
-    }), 200
 
 @auth_bp.route('/send-otp', methods=['POST'])
 def send_otp_route():
@@ -397,84 +421,121 @@ def user_login_route():
     mobile = data.get("mobile")
     
     if not name or not mobile:
-        return jsonify({"message": "Please provide both email/mobile and password."}), 400
-        
-    if (name == 'admin' or name == 'admin@SSJewellery.com') and mobile == 'admin123':
-        from backend.utils.audit import log_admin_action
-        log_admin_action("Admin Login", "Admin Authentication", "Admin login successful")
-        payload = {
-            "user_id": "admin_user",
-            "is_admin": True,
-            "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
-        }
-        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-        return jsonify({
-            "message": "Admin login successful!",
-            "token": token,
-            "user": {
-                "id": "admin_user",
-                "name": "Administrator",
-                "email": "admin@SSJewellery.com",
-                "mobile": "N/A",
+        return jsonify({"message": "Please provide both email/mobile/username and password."}), 400
+
+    input_val = str(name).strip()
+
+    # STEP 1: First check the admins table
+    from backend.models.admin import AdminModel
+    import jwt
+    import datetime
+    import pytz
+    from backend.routes.admin import JWT_SECRET
+    from backend.utils.audit import log_admin_action
+
+    # Check if 'email' attribute exists in AdminModel
+    has_email_col = hasattr(AdminModel, 'email')
+    if has_email_col:
+        admin_obj = AdminModel.query.filter(
+            (AdminModel.username == input_val) | (AdminModel.email == input_val)
+        ).first()
+    else:
+        # Fallback if no email column: check username, or if input is an email, check with the prefix
+        admin_obj = AdminModel.query.filter(AdminModel.username == input_val).first()
+        if not admin_obj and "@" in input_val:
+            prefix = input_val.split("@")[0]
+            admin_obj = AdminModel.query.filter(AdminModel.username == prefix).first()
+
+    if admin_obj:
+        if admin_obj.verify_password(mobile):
+            payload = {
+                "admin_id": str(admin_obj.id),
+                "user_id": str(admin_obj.id),
                 "is_admin": True,
-                "role": "admin"
+                "username": admin_obj.username,
+                "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
             }
-        }), 200
+            token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+            
+            log_admin_action("Admin Login", "Admin Authentication", "Admin login successful via user-login route")
+            
+            return jsonify({
+                "message": "Admin login successful!",
+                "token": token,
+                "admin_id": str(admin_obj.id),
+                "username": admin_obj.username,
+                "role": "admin",
+                "permissions": ["all"],
+                "user": {
+                    "id": str(admin_obj.id),
+                    "_id": str(admin_obj.id),
+                    "name": admin_obj.username,
+                    "username": admin_obj.username,
+                    "email": getattr(admin_obj, 'email', f"{admin_obj.username}@SSJewellery.com"),
+                    "is_admin": True,
+                    "role": "admin",
+                    "permissions": ["all"]
+                }
+            }), 200
+        else:
+            log_admin_action("Admin Login", "Admin Authentication", f"Failed admin login attempt (Username/Email: {name})", status="Failed")
+            return jsonify({"message": "Invalid username/email/mobile or password."}), 401
 
-    import re
-    is_email = is_valid_email(name)
-    is_mobile = re.match(r'^\+?[0-9]{7,15}$', str(name).strip()) is not None
-    
-    if not is_email and not is_mobile:
-        return jsonify({"message": "Invalid email or mobile number."}), 400
+    # STEP 2: If no matching admin exists, check the users table
+    try:
+        user_obj = UserModel.query.filter(
+            (UserModel.email == input_val) | (UserModel.phone == input_val)
+        ).first()
         
-    user_obj = UserModel.query.filter(
-        (UserModel.email == name) | (UserModel.phone == name)
-    ).first()
-    
-    if not user_obj:
-        return jsonify({"message": "Account not found. Please register first."}), 404
-        
-    if user_obj.is_blocked:
-        return jsonify({"message": "Your account has been suspended by the administrator."}), 403
-        
-    if not UserModel.verify_password(user_obj.password, mobile):
-        return jsonify({"message": "Incorrect password. Please try again."}), 401
-        
-    if not user_obj.email_verified:
-        return jsonify({"message": "Please verify your email before logging in."}), 403
-        
-    is_first_login = bool(user_obj.first_login)
-    user_obj.last_login = get_ist_time()
-    db.session.commit()
-    user = user_obj.to_dict()
-
-    # Generate JWT Token
-    payload = {
-        "user_id": user["_id"],
-        "is_admin": user.get("is_admin", False),
-        "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
-    }
-    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-    
-    return jsonify({
-        "message": "Login successful!",
-        "token": token,
-        "user": {
-            "id": user["_id"],
-            "name": user["name"],
-            "email": user.get("email", ""),
-            "mobile": user["mobile"],
-            "address": user.get("address", {}),
-            "cart": user.get("cart", []),
-            "wishlist": user.get("wishlist", []),
-            "saved_for_later": user.get("saved_for_later", []),
-            "is_admin": user.get("is_admin", False),
-            "role": "admin" if user.get("is_admin", False) else "customer",
-            "preferred_language": user.get("preferred_language"),
-            "first_login": is_first_login
-        }
-    }), 200
+        if user_obj:
+            if UserModel.verify_password(user_obj.password, mobile):
+                if user_obj.is_blocked:
+                    return jsonify({"message": "Your account has been suspended by the administrator."}), 403
+                    
+                if not user_obj.email_verified:
+                    return jsonify({"message": "Please verify your email before logging in."}), 403
+                    
+                is_first_login = bool(user_obj.first_login)
+                user_obj.last_login = get_ist_time()
+                db.session.commit()
+                
+                user = user_obj.to_dict()
+                
+                # Generate JWT Token
+                payload = {
+                    "user_id": user["_id"],
+                    "is_admin": user.get("is_admin", False),
+                    "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
+                }
+                
+                token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+                
+                return jsonify({
+                    "message": "Login successful!",
+                    "token": token,
+                    "user": {
+                        "id": user["_id"],
+                        "name": user["name"],
+                        "email": user.get("email", ""),
+                        "mobile": user["mobile"],
+                        "address": user.get("address", {}),
+                        "cart": user.get("cart", []),
+                        "wishlist": user.get("wishlist", []),
+                        "saved_for_later": user.get("saved_for_later", []),
+                        "is_admin": user.get("is_admin", False),
+                        "role": "admin" if user.get("is_admin", False) else "customer",
+                        "preferred_language": user.get("preferred_language"),
+                        "first_login": is_first_login
+                    }
+                }), 200
+            else:
+                return jsonify({"message": "Invalid username/email/mobile or password."}), 401
+        else:
+            return jsonify({"message": "Invalid username/email/mobile or password."}), 401
+            
+    except Exception as e:
+        print("Login database check failed:", e)
+        return jsonify({"message": "An error occurred during login."}), 500
 
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
@@ -1942,14 +2003,14 @@ def update_preferred_language(current_user):
     if not pref_lang or pref_lang not in ['en', 'hi']:
         return jsonify({"message": "Invalid language preference"}), 400
     
-    if current_user.get("_id") == "admin_user":
+    if current_user.get("is_admin"):
         return jsonify({
             "message": "Language preference saved successfully",
             "user": {
-                "id": "admin_user",
-                "_id": "admin_user",
-                "name": "Administrator",
-                "email": "admin@SSJewellery.com",
+                "id": current_user.get("_id"),
+                "_id": current_user.get("_id"),
+                "name": current_user.get("name"),
+                "email": current_user.get("email"),
                 "is_admin": True,
                 "preferred_language": pref_lang
             }

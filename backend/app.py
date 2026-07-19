@@ -39,13 +39,19 @@ from backend.routes.admin import admin_bp
 from backend.routes.support import support_bp
 from backend.routes.coupons import coupons_bp
 from backend.routes.banners import banners_bp
+from backend.routes.collections import collections_bp
 
 app = Flask(__name__)
 # Load configuration
 app.config.from_object(Config)
 
 # Enable CORS for frontend requests
-CORS(app)
+CORS(app, resources={r"/*": {
+    "origins": ["http://localhost:5173"],
+    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    "allow_headers": ["Authorization", "Content-Type", "Accept"],
+    "supports_credentials": True
+}})
 
 # Initialize extensions
 db.init_app(app)
@@ -60,6 +66,7 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(support_bp, url_prefix='/api/support')
 app.register_blueprint(coupons_bp, url_prefix='/api/coupons')
 app.register_blueprint(banners_bp, url_prefix='/api/banners')
+app.register_blueprint(collections_bp, url_prefix='/api/collections')
 
 from flask import request
 from backend.utils.helpers import generate_otp, verify_otp, is_valid_email
@@ -172,68 +179,7 @@ def seed_database():
             # ProductModel.query.delete() -- DISABLED to prevent automatic truncation of data.
             # db.session.commit() -- DISABLED to prevent automatic truncation of data.
             
-            default_products = [
-                {
-                    "name": "Diamond Solitaire Promise Ring",
-                    "price": 45000.00,
-                    "discount": 15.0,
-                    "description": "An exquisite 18k yellow gold solitaire ring featuring a brilliant-cut 0.5 carat VVS1 diamond. Elegant, timeless, and crafted to perfection.",
-                    "images": ["https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&auto=format&fit=crop&q=60"],
-                    "stock": 10,
-                    "category": "Rings",
-                    "ratings": 4.8
-                },
-                {
-                    "name": "Royal Emerald Pendant Necklace",
-                    "price": 85000.00,
-                    "discount": 10.0,
-                    "description": "A majestic 22k gold chain suspending a deep green emerald pendant, surrounded by a halo of micro-pave diamonds. A symbol of royalty and grace.",
-                    "images": ["https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop&q=60"],
-                    "stock": 5,
-                    "category": "Necklaces",
-                    "ratings": 4.9
-                },
-                {
-                    "name": "Diamond Hoop Earrings",
-                    "price": 32000.00,
-                    "discount": 12.0,
-                    "description": "Crafted in 18k white gold, these sparkling hoop earrings are set with fine round diamonds, reflecting light beautifully with every movement.",
-                    "images": ["https://images.unsplash.com/photo-1630019852942-f89202989a59?w=800&auto=format&fit=crop&q=60"],
-                    "stock": 15,
-                    "category": "Earrings",
-                    "ratings": 4.7
-                },
-                {
-                    "name": "Golden Pearl Cuff Bracelet",
-                    "price": 27500.00,
-                    "discount": 8.0,
-                    "description": "An elegant, adjustable gold cuff bracelet embellished with two luminous South Sea golden pearls. Perfectly blends modern style with classic luxury.",
-                    "images": ["https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop&q=60"],
-                    "stock": 12,
-                    "category": "Bracelets",
-                    "ratings": 4.6
-                },
-                {
-                    "name": "Traditional Gold Filigree Bangles",
-                    "price": 95000.00,
-                    "discount": 5.0,
-                    "description": "Exquisite pair of 22k gold bangles featuring detailed handcrafted filigree work. A traditional Indian design celebrating heritage craftsmanship.",
-                    "images": ["https://images.unsplash.com/photo-1611085583191-a3b1a8a2954e?w=800&auto=format&fit=crop&q=60"],
-                    "stock": 8,
-                    "category": "Bangles",
-                    "ratings": 4.9
-                },
-                {
-                    "name": "Majestic Bridal Kundan Choker Set",
-                    "price": 250000.00,
-                    "discount": 20.0,
-                    "description": "A breathtaking bridal choker set featuring intricate Kundan settings, uncut diamonds (Polki), and cascading emerald beads. Includes matching heavy earrings.",
-                    "images": ["https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=800&auto=format&fit=crop&q=60"],
-                    "stock": 3,
-                    "category": "Bridal Collection",
-                    "ratings": 5.0
-                }
-            ]
+            default_products = []
             for p in default_products:
                 ProductModel.create_product(p)
             print("[SEED] Successfully seeded luxury jewelry products.")
@@ -277,81 +223,12 @@ def seed_database():
         else:
             print("[SEED] Coupons already exist. Skipping seed.")
             
-        # Seed default banners if empty
-        from backend.models.banner import BannerModel
-        # Check if there are any old categories in banners
-        has_old_banners = False
-        old_banner_categories = ["Electronics", "Fashion", "Grocery", "Books", "Home & Kitchen", "Home Decor"]
-        for old_cat in old_banner_categories:
-            if BannerModel.query.filter_by(category=old_cat).count() > 0:
-                has_old_banners = True
-                break
-        if BannerModel.query.filter(BannerModel.title.like("%BharatBasket%")).count() > 0 or BannerModel.query.filter(BannerModel.title.like("%SSJewelry%")).count() > 0:
-            has_old_banners = True
-            
-        if BannerModel.query.count() == 0:
-            print("[SEED] Seeding default banners into MySQL...")
-            # BannerModel.query.delete() -- DISABLED to prevent automatic truncation of data.
-            # db.session.commit() -- DISABLED to prevent automatic truncation of data.
-            default_banners = [
-                {
-                    "title": "The Solitaire Diamond Collection",
-                    "subtitle": "Eternal Brilliance, Handcrafted Elegance",
-                    "description": "Explore our signature 18k yellow gold and white gold diamond solitaire rings. Perfect for weddings, proposals, and lifetime memories.",
-                    "button_text": "Shop Solitaires",
-                    "button_link": "/?category=Rings",
-                    "image_url": "",
-                    "background_style": "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
-                    "category": "Rings",
-                    "display_order": 1,
-                    "is_active": True
-                },
-                {
-                    "title": "The Royal Empress Collection",
-                    "subtitle": "Ornate Emerald & Pearl Artistry",
-                    "description": "Adorn yourself with masterfully crafted necklaces, chokers, and bridal neckwear set in solid 22k gold and premium gemstones.",
-                    "button_text": "Shop Necklaces",
-                    "button_link": "/?category=Necklaces",
-                    "image_url": "",
-                    "background_style": "from-[#3F1D5A] via-[#5C2E7E] to-[#3F1D5A]",
-                    "category": "Necklaces",
-                    "display_order": 2,
-                    "is_active": True
-                },
-                {
-                    "title": "Imperial Bridal Heirlooms",
-                    "subtitle": "Maang Tikkas, Polki Sets & Rubies",
-                    "description": "Celebrate your grand day with timeless heirloom bridal sets, meticulously set with uncut Polki diamonds and fine rubies.",
-                    "button_text": "Explore Bridal Set",
-                    "button_link": "/?category=Bridal%20Collection",
-                    "image_url": "",
-                    "background_style": "from-[#1B0B26] via-[#3F1D5A] to-[#1B0B26]",
-                    "category": "Bridal Collection",
-                    "display_order": 3,
-                    "is_active": True
-                }
-            ]
-            for b_data in default_banners:
-                b = BannerModel(
-                    title=b_data["title"],
-                    subtitle=b_data["subtitle"],
-                    description=b_data["description"],
-                    button_text=b_data["button_text"],
-                    button_link=b_data["button_link"],
-                    image_url=b_data["image_url"],
-                    background_style=b_data["background_style"],
-                    category=b_data["category"],
-                    display_order=b_data["display_order"],
-                    is_active=b_data["is_active"]
-                )
-                db.session.add(b)
-            db.session.commit()
-            print("[SEED] Successfully seeded banners.")
-        else:
-            print("[SEED] Banners already exist. Skipping seed.")
+        # Banner seeding has been completely removed to avoid automatic creation of default banners.
+        pass
     except Exception as e:
         print("[SEED] Error seeding database:", e)
 
+# Run initialization inside app context if db tables are initialized
 # Run initialization inside app context if db tables are initialized
 with app.app_context():
     db.create_all()
@@ -365,4 +242,4 @@ with app.app_context():
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)

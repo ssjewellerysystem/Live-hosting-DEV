@@ -57,7 +57,7 @@ export const GoldCalculator = () => {
       title: "Live Gold Price & Karat Calculator",
       subtitle: "Plan your purchase with estimated live market metal rates",
       goldPrice: "Live Gold Rate (per gram)",
-      weightLabel: "Jewelry Metal Weight",
+      weightLabel: "Jewellery Metal Weight",
       purityLabel: "Select Gold Purity",
       calculationSummary: "Estimated Price Breakdown",
       metalCost: "Metal Cost",
@@ -122,11 +122,10 @@ export const GoldCalculator = () => {
                   <button
                     key={purity}
                     onClick={() => setSelectedPurity(purity)}
-                    className={`py-3 px-1 rounded-xl text-xs sm:text-sm font-extrabold transition-all border cursor-pointer ${
-                      selectedPurity === purity
+                    className={`py-3 px-1 rounded-xl text-xs sm:text-sm font-extrabold transition-all border cursor-pointer ${selectedPurity === purity
                         ? 'bg-gradient-to-r from-[#D4A75F] to-[#BF934B] text-white border-transparent shadow-lg shadow-amber-500/10'
                         : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700'
-                    }`}
+                      }`}
                   >
                     {purity.toUpperCase()}
                   </button>
@@ -181,7 +180,7 @@ export const GoldCalculator = () => {
                   <span className="text-sm font-extrabold text-[#EFE7DB]">{selectedPurity.toUpperCase()} Gold</span>
                 </div>
               </div>
-              <motion.div 
+              <motion.div
                 key={calculations.pricePerGram}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -199,23 +198,23 @@ export const GoldCalculator = () => {
           <div className="lg:col-span-5 h-full">
             <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 flex flex-col h-full justify-between space-y-6">
               <div>
-                <h3 className="text-xs font-bold text-slate-350 uppercase tracking-wider border-b border-slate-800 pb-3 flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-[#D4A75F] dark:text-slate-350 uppercase tracking-wider border-b border-slate-800 pb-3 flex items-center gap-1.5">
                   <Info className="h-4 w-4 text-[#D4A75F]" />
                   {text.calculationSummary}
                 </h3>
 
-                <div className="mt-4 space-y-3.5 text-xs text-slate-400">
+                <div className="mt-4 space-y-3.5 text-xs text-white/90 dark:text-slate-400">
                   <div className="flex justify-between items-center">
                     <span>{text.metalCost} ({weight}g)</span>
-                    <span className="font-semibold text-slate-200">₹{formatPrice(calculations.metalCost)}</span>
+                    <span className="font-semibold text-white/90 dark:text-slate-200">₹{formatPrice(calculations.metalCost)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>{text.makingCharges}</span>
-                    <span className="font-semibold text-slate-200">₹{formatPrice(calculations.makingCharges)}</span>
+                    <span className="font-semibold text-white/90 dark:text-slate-200">₹{formatPrice(calculations.makingCharges)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>{text.gst}</span>
-                    <span className="font-semibold text-slate-200">₹{formatPrice(calculations.gst)}</span>
+                    <span className="font-semibold text-white/90 dark:text-slate-200">₹{formatPrice(calculations.gst)}</span>
                   </div>
                 </div>
               </div>
@@ -223,8 +222,8 @@ export const GoldCalculator = () => {
               {/* Total Summary */}
               <div className="space-y-4 pt-4 border-t border-slate-800">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-sm font-bold text-slate-200">{text.totalPrice}</span>
-                  <motion.span 
+                  <span className="text-sm font-bold text-white/90 dark:text-slate-200">{text.totalPrice}</span>
+                  <motion.span
                     key={calculations.grandTotal}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -234,7 +233,7 @@ export const GoldCalculator = () => {
                   </motion.span>
                 </div>
 
-                <p className="text-[10px] leading-relaxed text-slate-500 italic mt-2">
+                <p className="text-[10px] leading-relaxed text-[#CFCFCF] dark:text-slate-500 italic mt-2">
                   {text.helperNote}
                 </p>
               </div>

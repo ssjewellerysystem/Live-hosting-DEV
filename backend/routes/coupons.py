@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
 from backend.models.coupon import CouponModel
-from backend.middleware.auth import token_required
+from backend.middleware.auth import token_required, maintenance_block
 
 coupons_bp = Blueprint('coupons', __name__)
 
 @coupons_bp.route('/validate', methods=['POST'])
 @token_required
+@maintenance_block
 def validate_coupon(current_user):
     data = request.get_json() or {}
     code = data.get("code", "").strip().upper()

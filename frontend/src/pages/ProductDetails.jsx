@@ -281,7 +281,7 @@ export const ProductDetails = ({ productId }) => {
   const id = productId || paramId;
   const navigate = useNavigate();
   
-  const { user, token, language, isAdmin } = useContext(AuthContext);
+  const { user, token, language, isAdmin, maintenanceMode, setShowMaintenanceWarning } = useContext(AuthContext);
   const { addToCart, addToWishlist, removeFromWishlist, isInWishlist, triggerAuthModal } = useContext(CartContext);
 
   const translateText = (text) => {
@@ -905,6 +905,10 @@ export const ProductDetails = ({ productId }) => {
   };
 
   const handleBuyNow = () => {
+    if (maintenanceMode) {
+      setShowMaintenanceWarning(true);
+      return;
+    }
     if (!user) {
       triggerAuthModal('Please login before placing an order.', '/login');
       return;
@@ -956,6 +960,10 @@ export const ProductDetails = ({ productId }) => {
   };
 
   const handleOpenRequestBuyModal = () => {
+    if (maintenanceMode) {
+      setShowMaintenanceWarning(true);
+      return;
+    }
     if (!user) {
       triggerAuthModal('Please login to request to buy this product.', window.location.pathname);
       return;

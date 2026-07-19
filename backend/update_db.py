@@ -42,6 +42,14 @@ def run_updates():
             print("show_on_homepage column might already exist or failed:", e)
 
         try:
+            db.session.execute(db.text("ALTER TABLE products ADD COLUMN collection_id INTEGER REFERENCES collections(id) ON DELETE SET NULL"))
+            db.session.commit()
+            print("Successfully added collection_id column to products.")
+        except Exception as e:
+            db.session.rollback()
+            print("collection_id column might already exist or failed:", e)
+
+        try:
             db.session.execute(db.text("ALTER TABLE users ADD COLUMN last_login DATETIME DEFAULT NULL"))
             db.session.commit()
             print("Successfully added last_login column to users.")
@@ -89,57 +97,45 @@ def run_updates():
             db.session.rollback()
             print("image_url column might already exist or failed:", e)
 
+        # Alter collections table
+        for col_name, col_type in [
+            ("desktop_banner", "VARCHAR(500)"),
+            ("mobile_banner", "VARCHAR(500)"),
+            ("preview_image", "VARCHAR(500)"),
+            ("highlights", "TEXT"),
+            ("rules", "TEXT"),
+            ("show_on_homepage", "BOOLEAN")
+        ]:
+            try:
+                db.session.execute(db.text(f"ALTER TABLE collections ADD COLUMN {col_name} {col_type} DEFAULT NULL"))
+                db.session.commit()
+                print(f"Successfully added {col_name} column to collections.")
+            except Exception as e:
+                db.session.rollback()
+                print(f"{col_name} column might already exist or failed:", e)
+
         # Backpopulate translations and images for existing categories
         try:
             translations = {
-                # Products (8 items)
                 "Rings": {"en": "Rings", "hi": "अंगूठियाँ", "img": "/cat_rings.png"},
-                "Earrings": {"en": "Earrings", "hi": "झुमके", "img": "/cat_earrings.png"},
                 "Necklaces": {"en": "Necklaces", "hi": "हार", "img": "/cat_necklaces.png"},
-                "Pendants": {"en": "Pendants", "hi": "लटकन", "img": "/logo.svg"},
-                "Bracelets": {"en": "Bracelets", "hi": "ब्रेसलेट", "img": "/cat_bracelets.png"},
+                "Earrings": {"en": "Earrings", "hi": "झुमके", "img": "/cat_earrings.png"},
+                "Bracelets": {"en": "Bracelets", "hi": "कंगन", "img": "/cat_bracelets.png"},
                 "Bangles": {"en": "Bangles", "hi": "चूड़ियाँ", "img": "/cat_bracelets.png"},
-                "Chains": {"en": "Chains", "hi": "चैन", "img": "/logo.svg"},
-                "Anklets": {"en": "Anklets", "hi": "पायल", "img": "/logo.svg"},
-
-                # Collections (14 items)
-                "Bridal Collection": {"en": "Bridal Collection", "hi": "ब्राइडल कलेक्शन", "img": "/cat_bridal.png"},
-                "Wedding Collection": {"en": "Wedding Collection", "hi": "वेडिंग कलेक्शन", "img": "/cat_bridal.png"},
-                "Daily Wear": {"en": "Daily Wear", "hi": "डेली वियर", "img": "/cat_bracelets.png"},
-                "Office Wear": {"en": "Office Wear", "hi": "ऑफिस वियर", "img": "/cat_earrings.png"},
-                "Party Wear": {"en": "Party Wear", "hi": "पार्टी वियर", "img": "/cat_rings.png"},
-                "Traditional Collection": {"en": "Traditional Collection", "hi": "पारंपरिक कलेक्शन", "img": "/cat_necklaces.png"},
-                "Temple Jewelry": {"en": "Temple Jewelry", "hi": "टेम्पल ज्वेलरी", "img": "/cat_necklaces.png"},
-                "Diamond Collection": {"en": "Diamond Collection", "hi": "डायमंड कलेक्शन", "img": "/luxury_solitaire_ring.png"},
-                "Gold Collection": {"en": "Gold Collection", "hi": "गोल्ड कलेक्शन", "img": "/logo.svg"},
-                "Silver Collection": {"en": "Silver Collection", "hi": "सिल्वर कलेक्शन", "img": "/logo.svg"},
-                "Men's Collection": {"en": "Men's Collection", "hi": "मेंस कलेक्शन", "img": "/logo.svg"},
-                "Couple Collection": {"en": "Couple Collection", "hi": "कपल कलेक्शन", "img": "/logo.svg"},
-                "Festive Collection": {"en": "Festive Collection", "hi": "फेस्टिव कलेक्शन", "img": "/logo.svg"},
-                "Luxury Collection": {"en": "Luxury Collection", "hi": "लक्जरी कलेक्शन", "img": "/luxury_emerald_necklace.png"}
+                "Bridal Collection": {"en": "Bridal Collection", "hi": "ब्राइडल कलेक्शन", "img": "/cat_bridal.png"}
             }
             for name, trans in translations.items():
-                existing = db.session.execute(
-                    db.text("SELECT id FROM categories WHERE name = :name"),
-                    {"name": name}
-                ).fetchone()
-                if existing:
-                    db.session.execute(
-                        db.text("UPDATE categories SET name_en = :en, name_hi = :hi, image_url = :img WHERE name = :name"),
-                        {"en": trans["en"], "hi": trans["hi"], "img": trans["img"], "name": name}
-                    )
-                else:
-                    db.session.execute(
-                        db.text("INSERT INTO categories (name, name_en, name_hi, image_url) VALUES (:name, :en, :hi, :img)"),
-                        {"name": name, "en": trans["en"], "hi": trans["hi"], "img": trans["img"]}
-                    )
+                db.session.execute(
+                    db.text("UPDATE categories SET name_en = :en, name_hi = :hi, image_url = :img WHERE name = :name"),
+                    {"en": trans["en"], "hi": trans["hi"], "img": trans["img"], "name": name}
+                )
             db.session.execute(db.text("UPDATE categories SET name_en = name WHERE name_en IS NULL"))
             db.session.execute(db.text("UPDATE categories SET image_url = '/logo.svg' WHERE image_url IS NULL"))
             db.session.commit()
-            print("Successfully seeded all 22 product types and collections.")
+            print("Successfully backpopulated category translations and images.")
         except Exception as e:
             db.session.rollback()
-            print("Failed to seed categories and collections:", e)
+            print("Failed to backpopulate category translations and images:", e)
 
 
         # Import all models to ensure they are registered with SQLAlchemy metadata
@@ -164,6 +160,10 @@ def run_updates():
         try:
             import json
             default_settings = {
+                "maintenance_mode": "false",
+                "maintenance_message": "The website is temporarily under maintenance. Please try again later.",
+                "maintenance_enabled_by_admin": "",
+                "maintenance_enabled_at": "",
                 "owner_image": "/owner.png",
                 "owner_name": "Shri Suresh Soni",
                 "owner_title": "Founder & Master Craftsman",

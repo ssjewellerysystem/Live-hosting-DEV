@@ -19,6 +19,16 @@ class AdminModel(db.Model):
             "created_at": format_iso_datetime(self.created_at)
         }
 
+    def verify_password(self, provided_password):
+        import bcrypt
+        try:
+            if self.password.startswith('$2b$') or self.password.startswith('$2a$'):
+                return bcrypt.checkpw(provided_password.encode('utf-8'), self.password.encode('utf-8'))
+            return self.password == provided_password
+        except Exception:
+            return False
+
+
 class AdminAuditLog(db.Model):
     __tablename__ = 'admin_audit_logs'
     

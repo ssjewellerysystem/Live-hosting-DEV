@@ -23,10 +23,15 @@ if all([CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET]):
         api_secret=CLOUDINARY_API_SECRET
     )
     CLOUDINARY_ENABLED = True
-    print("[CLOUDINARY] Configured successfully.")
+    print("[CLOUDINARY] Configured successfully for products.")
 else:
     CLOUDINARY_ENABLED = False
-    print("[CLOUDINARY] Credentials missing. Falling back to local upload serving.")
+    print("\n" + "="*80)
+    print("WARNING: [CLOUDINARY] Credentials missing in environment variables.")
+    print("WARNING: Gracefully falling back to local file storage for product image uploads.")
+    print("WARNING: Local storage is TEMPORARY and NOT recommended for production deployments.")
+    print("WARNING: Uploaded files will be lost if the server container restarts or scales down.")
+    print("="*80 + "\n")
 
 # Local Upload folder setup
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'uploads')

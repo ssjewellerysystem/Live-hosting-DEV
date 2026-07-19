@@ -1,29 +1,52 @@
+import os
 import pymysql
 import psycopg2
+from dotenv import load_dotenv
+
+# Load local environment variables if available
+load_dotenv()
+
+print("----------------------------------------------------------------")
+print("DEVELOPMENT UTILITY: MySQL to Neon PostgreSQL Migration Script")
+print("----------------------------------------------------------------")
 
 # =====================================
-# Railway MySQL Connection
+# Railway MySQL Connection (Environment-driven)
 # =====================================
+mysql_host = os.getenv("MIGRATION_MYSQL_HOST")
+mysql_port = int(os.getenv("MIGRATION_MYSQL_PORT", 3306))
+mysql_user = os.getenv("MIGRATION_MYSQL_USER")
+mysql_password = os.getenv("MIGRATION_MYSQL_PASSWORD")
+mysql_db = os.getenv("MIGRATION_MYSQL_DB")
+
+if not all([mysql_host, mysql_user, mysql_password, mysql_db]):
+    raise RuntimeError(
+        "Missing one or more MySQL migration environment variables:\n"
+        "- MIGRATION_MYSQL_HOST\n"
+        "- MIGRATION_MYSQL_USER\n"
+        "- MIGRATION_MYSQL_PASSWORD\n"
+        "- MIGRATION_MYSQL_DB"
+    )
+
 mysql_conn = pymysql.connect(
-    host="thomas.proxy.rlwy.net",
-    port=10126,
-    user="root",
-    password="pgFFWSVcOwHEKNBIDeORObDLzsLbdqyN",
-    database="railway",
+    host=mysql_host,
+    port=mysql_port,
+    user=mysql_user,
+    password=mysql_password,
+    database=mysql_db,
     cursorclass=pymysql.cursors.DictCursor
 )
 
 # =====================================
-# Neon PostgreSQL Connection
+# Neon PostgreSQL Connection (Environment-driven)
 # =====================================
-pg_conn = psycopg2.connect(
-    host="ep-bold-base-ao7v7l2l-pooler.c-2.ap-southeast-1.aws.neon.tech",
-    port=5432,
-    user="neondb_owner",
-    password="npg_GOsy48HeAJhP",
-    dbname="neondb",
-    sslmode="require"
-)
+pg_uri = os.getenv("DATABASE_URI") or os.getenv("DATABASE_URL")
+if not pg_uri:
+    raise RuntimeError(
+        "Missing target PostgreSQL connection URI in environment variables (DATABASE_URI or DATABASE_URL)."
+    )
+
+pg_conn = psycopg2.connect(pg_uri)
 
 mysql_cur = mysql_conn.cursor()
 pg_cur = pg_conn.cursor()

@@ -5,7 +5,7 @@ import cloudinary
 import cloudinary.uploader
 from backend.models.product import ProductModel
 from backend.models.review import ReviewModel
-from backend.middleware.auth import token_required, admin_required
+from backend.middleware.auth import token_required, admin_required, maintenance_block
 from backend.extensions import db
 from backend.utils.timezone import format_iso_datetime
 
@@ -58,14 +58,23 @@ def get_admin_name_from_request():
 @products_bp.route('', methods=['GET'])
 def get_products():
     category = request.args.get('category')
+    collection_id = request.args.get('collection_id') or request.args.get('collection')
+    status = request.args.get('status')
     search = request.args.get('search')
     admin_view = request.args.get('admin_view') or request.args.get('admin')
     
     homepage_only = False
-    if not category and not search and admin_view != 'true':
+    if not category and not search and not collection_id and not status and admin_view != 'true':
         homepage_only = True
         
-    products = ProductModel.get_all(category, search, homepage_only=homepage_only)
+    products = ProductModel.get_all(
+        category=category,
+        search_query=search,
+        homepage_only=homepage_only,
+        collection_id=collection_id if (collection_id and collection_id.isdigit()) else None,
+        collection=collection_id if (collection_id and not collection_id.isdigit()) else None,
+        status=status
+    )
     return jsonify(products), 200
 
 @products_bp.route('/<id>', methods=['GET'])
@@ -398,6 +407,7 @@ def upload_image():
 # User: Request to Buy Out-of-Stock Product
 @products_bp.route('/<id>/request-buy', methods=['POST'])
 @token_required
+@maintenance_block
 def request_buy_product(current_user, id):
     try:
         prod_id = int(id)

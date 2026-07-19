@@ -46,7 +46,12 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # Enable CORS for frontend requests
-CORS(app)
+CORS(app, resources={r"/*": {
+    "origins": ["http://localhost:5173"],
+    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    "allow_headers": ["Authorization", "Content-Type", "Accept"],
+    "supports_credentials": True
+}})
 
 # Initialize extensions
 db.init_app(app)

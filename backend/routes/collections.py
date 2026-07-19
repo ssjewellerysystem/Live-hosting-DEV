@@ -3,7 +3,7 @@ import time
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 from backend.extensions import db
-from backend.models.collection import CollectionModel, CollectionProductModel
+from backend.models.collection import CollectionModel
 from backend.models.product import ProductModel
 from backend.middleware.auth import admin_required
 from backend.utils.audit import log_admin_action
@@ -42,12 +42,9 @@ def get_collections():
         result = []
         for col in collections:
             col_dict = col.to_dict()
-            # Fetch products assigned to this collection
-            mappings = CollectionProductModel.query.filter_by(collection_id=col.id).all()
-            products_list = []
-            for m in mappings:
-                if m.product:
-                    products_list.append(m.product.to_dict())
+            # Fetch products assigned to this collection using collection_id
+            products = ProductModel.query.filter_by(collection_id=col.id).all()
+            products_list = [p.to_dict() for p in products]
             col_dict['products'] = products_list
             col_dict['products_count'] = len(products_list)
             result.append(col_dict)
@@ -64,7 +61,7 @@ def get_all_collections():
         result = []
         for col in collections:
             col_dict = col.to_dict()
-            count = CollectionProductModel.query.filter_by(collection_id=col.id).count()
+            count = ProductModel.query.filter_by(collection_id=col.id).count()
             col_dict['products_count'] = count
             result.append(col_dict)
         return jsonify(result), 200
@@ -183,7 +180,9 @@ def delete_collection(id):
             
         name = collection.name
         
-        # Deleting collection cascade deletes products from collection_products due to relationship cascade
+        # Clear collection_id for products in this collection
+        ProductModel.query.filter_by(collection_id=id).update({ProductModel.collection_id: None})
+        
         db.session.delete(collection)
         db.session.commit()
         
@@ -204,8 +203,8 @@ def get_collection_products_assignment(id):
             return jsonify({"message": "Collection not found."}), 404
             
         # Get all assigned product ids
-        assigned_mappings = CollectionProductModel.query.filter_by(collection_id=id).all()
-        assigned_ids = {m.product_id for m in assigned_mappings}
+        assigned_products = ProductModel.query.filter_by(collection_id=id).all()
+        assigned_ids = {p.id for p in assigned_products}
         
         # Get all products in the store
         all_products = ProductModel.query.all()
@@ -239,14 +238,12 @@ def sync_collection_products(id):
         data = request.get_json() or {}
         product_ids = data.get("product_ids", [])
         
-        # Validate that all product_ids exist
-        # Remove existing mappings
-        CollectionProductModel.query.filter_by(collection_id=id).delete()
+        # Remove existing mappings by setting collection_id to None
+        ProductModel.query.filter_by(collection_id=id).update({ProductModel.collection_id: None})
         
-        # Add new mappings
-        for pid in product_ids:
-            mapping = CollectionProductModel(collection_id=id, product_id=pid)
-            db.session.add(mapping)
+        # Set new mappings
+        if product_ids:
+            ProductModel.query.filter(ProductModel.id.in_(product_ids)).update({ProductModel.collection_id: id}, synchronize_session=False)
             
         db.session.commit()
         

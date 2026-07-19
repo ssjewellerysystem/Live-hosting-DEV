@@ -23,7 +23,7 @@ class CollectionModel(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')), onupdate=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
     
-    products = db.relationship('CollectionProductModel', back_populates='collection', cascade='all, delete-orphan')
+    products = db.relationship('ProductModel', back_populates='collection')
 
     def to_dict(self):
         return {
@@ -46,12 +46,4 @@ class CollectionModel(db.Model):
             "updated_at": format_iso_datetime(self.updated_at) if self.updated_at else ""
         }
 
-class CollectionProductModel(db.Model):
-    __tablename__ = 'collection_products'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    collection_id = db.Column(db.Integer, db.ForeignKey('collections.id', ondelete='CASCADE'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id', ondelete='CASCADE'), nullable=False)
-    
-    collection = db.relationship('CollectionModel', back_populates='products')
-    product = db.relationship('ProductModel')
+

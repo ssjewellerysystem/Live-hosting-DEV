@@ -10,7 +10,7 @@ import {
 import { AuthContext, API_BASE_URL, SERVER_BASE_URL } from '../context/AuthContext';
 import { formatPrice } from '../utils/priceFormatter';
 import { translateCategory } from '../utils/categoryTranslations';
-import { CollectionManagementTab } from '../components/admin/CollectionManagementTab';
+
 
 const ACTION_TYPES = [
   "Product Added",
@@ -48,7 +48,23 @@ const formatTimestamp = (dateInput) => {
 export const AdminControl = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin } = useContext(AuthContext);
+  const { user, isAdmin, maintenanceMode, checkMaintenanceStatus } = useContext(AuthContext);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+
+  const handleToggleMaintenance = async () => {
+    try {
+      const activeToken = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      await axios.post(`${API_BASE_URL}/admin/maintenance/toggle`, 
+        { enabled: !maintenanceMode },
+        { headers: { 'Authorization': `Bearer ${activeToken}` } }
+      );
+      await checkMaintenanceStatus();
+      setShowMaintenanceModal(false);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || "Failed to toggle maintenance mode.");
+    }
+  };
 
   // Parse activeTab from URL search query parameter
   const getTabFromUrl = () => {
@@ -78,14 +94,9 @@ export const AdminControl = () => {
     const tab = getTabFromUrl();
     setActiveTab(tab);
   }, [location.search]);
-  const [stats, setStats] = useState({
-    total_users: 0,
-    total_products: 0,
-    total_orders: 0,
-    total_revenue: 0,
-    total_sales: 0,
-    products_active: 0
-  });
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState(null);
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -250,6 +261,8 @@ export const AdminControl = () => {
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: 'Rings',
+    collection_id: null,
+    status: 'active',
     price: '',
     discount: 0,
     stock: '',
@@ -288,6 +301,11 @@ export const AdminControl = () => {
   const [productAnalyticsData, setProductAnalyticsData] = useState(null);
   
   const [overviewAnalytics, setOverviewAnalytics] = useState(null);
+  const [adminCollections, setAdminCollections] = useState([]);
+  const [productFilterCategory, setProductFilterCategory] = useState('All');
+  const [productFilterCollection, setProductFilterCollection] = useState('All');
+  const [productFilterStatus, setProductFilterStatus] = useState('All');
+  const [productFilterSearch, setProductFilterSearch] = useState('');
 
   // General Audit Logs states
   const [generalAuditLogs, setGeneralAuditLogs] = useState([]);
@@ -326,12 +344,23 @@ export const AdminControl = () => {
   }, [selectedOrder]);
 
   const fetchStats = async () => {
+    setStatsLoading(true);
+    setStatsError(null);
     try {
-      const res = await axios.get(`${API_BASE_URL}/admin/stats`);
-      setStats(res.data);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE_URL}/admin/dashboard/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.data && typeof res.data.total_sales !== 'undefined') {
+        setStats(res.data);
+      } else {
+        throw new Error("Invalid stats response");
+      }
     } catch (err) {
-      console.error(err);
-      setError("Failed to fetch admin stats. Check authorization.");
+      console.error("fetchStats error:", err);
+      setStatsError("Unable to load statistics");
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -339,6 +368,15 @@ export const AdminControl = () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/products?admin_view=true`);
       setProducts(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchAdminCollections = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/collections`);
+      setAdminCollections(res.data || []);
     } catch (err) {
       console.error(err);
     }
@@ -1857,6 +1895,7 @@ export const AdminControl = () => {
     setError('');
     await fetchStats();
     await fetchProducts();
+    await fetchAdminCollections();
     await fetchOrders();
     await fetchMessages();
     await fetchFaqs();
@@ -2092,6 +2131,8 @@ export const AdminControl = () => {
       await axios.post(`${API_BASE_URL}/products`, {
         name: newProduct.name,
         category: newProduct.category,
+        collection_id: newProduct.collection_id || null,
+        status: newProduct.status || 'active',
         price: parseFloat(newProduct.price),
         discount: parseInt(newProduct.discount) || 0,
         stock: parseInt(newProduct.stock),
@@ -2114,6 +2155,8 @@ export const AdminControl = () => {
       setNewProduct({
         name: '',
         category: 'Rings',
+        collection_id: null,
+        status: 'active',
         price: '',
         discount: 0,
         stock: '',
@@ -2149,6 +2192,8 @@ export const AdminControl = () => {
       await axios.put(`${API_BASE_URL}/products/${editingProduct._id}`, {
         name: editingProduct.name,
         category: editingProduct.category,
+        collection_id: editingProduct.collection_id || null,
+        status: editingProduct.status || 'active',
         price: parseFloat(editingProduct.price),
         discount: parseInt(editingProduct.discount) || 0,
         stock: parseInt(editingProduct.stock),
@@ -2166,6 +2211,7 @@ export const AdminControl = () => {
       alert("Product updated successfully!");
       setEditingProduct(null);
       fetchProducts();
+      fetchStats();
     } catch (err) {
       console.error(err);
       alert("Failed to update product details.");
@@ -2193,6 +2239,7 @@ export const AdminControl = () => {
         status: newStatus
       });
       fetchOrders();
+      fetchStats();
     } catch (err) {
       console.error(err);
       alert("Failed to update order status.");
@@ -3081,12 +3128,25 @@ export const AdminControl = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Admin Management Panel</h1>
             <p className="text-xs text-slate-400 mt-1">Perform product CRUD, modify user status, update orders, and review customer tickets.</p>
           </div>
-          <button
-            onClick={loadDashboardData}
-            className="mt-4 sm:mt-0 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-transparent dark:bg-[#1E1E1E] dark:border-[#D4A75F] text-slate-700 dark:text-[#D4A75F] dark:hover:bg-[#2A2A2A] rounded-[12px] dark:shadow-[0_4px_12px_rgba(212,167,95,0.25)] text-xs font-bold transition-all"
-          >
-            Refresh Data
-          </button>
+          <div className="flex flex-wrap items-center gap-3 mt-4 sm:mt-0">
+            <button
+              onClick={() => setShowMaintenanceModal(true)}
+              className={`px-4 py-2 border rounded-[12px] text-xs font-bold transition-all flex items-center gap-2 ${
+                maintenanceMode
+                  ? 'bg-red-600 hover:bg-red-700 text-white border-transparent shadow-[0_4px_12px_rgba(220,38,38,0.25)]'
+                  : 'bg-amber-500 hover:bg-amber-600 text-white border-transparent shadow-[0_4px_12px_rgba(245,158,11,0.25)]'
+              }`}
+            >
+              <Shield className="h-4 w-4" />
+              <span>Maintenance {maintenanceMode ? 'ON' : 'OFF'}</span>
+            </button>
+            <button
+              onClick={loadDashboardData}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-transparent dark:bg-[#1E1E1E] dark:border-[#D4A75F] text-slate-700 dark:text-[#D4A75F] dark:hover:bg-[#2A2A2A] rounded-[12px] dark:shadow-[0_4px_12px_rgba(212,167,95,0.25)] text-xs font-bold transition-all"
+            >
+              Refresh Data
+            </button>
+          </div>
         </div>
 
         {/* Loading Spinner */}
@@ -3099,49 +3159,83 @@ export const AdminControl = () => {
           <>
             {/* Quick Metrics grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-              {/* Sales Card */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Total Sales</span>
-                  <span className="text-2xl font-black block mt-1 price-amount">₹{formatPrice(stats.total_sales ?? 0)}</span>
+              {statsError ? (
+                <div className="col-span-1 sm:col-span-2 lg:col-span-4 bg-red-500/10 border border-red-500/20 p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-red-500/20 p-2.5 rounded-xl text-red-500">
+                      <ShieldAlert className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-red-500">Unable to load statistics</h4>
+                      <p className="text-xs text-red-400 mt-0.5">Failed to fetch the latest metrics from the database.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={fetchStats}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-650 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                  >
+                    Retry
+                  </button>
                 </div>
-                <div className="bg-emerald-500/10 p-3 rounded-xl text-emerald-500">
-                  <BarChart3 className="h-6 w-6" />
-                </div>
-              </div>
+              ) : statsLoading || !stats ? (
+                <>
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="animate-pulse flex items-center justify-between w-full h-[88px] bg-slate-100 dark:bg-slate-800/40 border border-slate-200/40 dark:border-slate-800 rounded-2xl p-5">
+                      <div className="space-y-2.5 w-2/3">
+                        <div className="h-2.5 bg-slate-200 dark:bg-slate-805 rounded w-1/2"></div>
+                        <div className="h-6 bg-slate-300 dark:bg-slate-700 rounded w-3/4"></div>
+                      </div>
+                      <div className="h-12 w-12 bg-slate-300 dark:bg-slate-750 rounded-xl"></div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {/* Sales Card */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Total Sales</span>
+                      <span className="text-2xl font-black block mt-1 price-amount">₹{formatPrice(stats.total_sales)}</span>
+                    </div>
+                    <div className="bg-emerald-500/10 p-3 rounded-xl text-emerald-500">
+                      <BarChart3 className="h-6 w-6" />
+                    </div>
+                  </div>
 
-              {/* Orders Card */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Total Orders</span>
-                  <span className="text-2xl font-black block mt-1">{stats.total_orders}</span>
-                </div>
-                <div className="bg-indigo-500/10 p-3 rounded-xl text-indigo-500">
-                  <ShoppingBag className="h-6 w-6" />
-                </div>
-              </div>
+                  {/* Orders Card */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Total Orders</span>
+                      <span className="text-2xl font-black block mt-1">{stats.total_orders}</span>
+                    </div>
+                    <div className="bg-indigo-500/10 p-3 rounded-xl text-indigo-500">
+                      <ShoppingBag className="h-6 w-6" />
+                    </div>
+                  </div>
 
-              {/* Products Card */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Products Active</span>
-                  <span className="text-2xl font-black block mt-1">{stats.products_active ?? 0}</span>
-                </div>
-                <div className="bg-amber-500/10 p-3 rounded-xl text-amber-500">
-                  <Package className="h-6 w-6" />
-                </div>
-              </div>
+                  {/* Products Card */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Products Active</span>
+                      <span className="text-2xl font-black block mt-1">{stats.products_active}</span>
+                    </div>
+                    <div className="bg-amber-500/10 p-3 rounded-xl text-amber-500">
+                      <Package className="h-6 w-6" />
+                    </div>
+                  </div>
 
-              {/* Users Card */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Registered Users</span>
-                  <span className="text-2xl font-black block mt-1">{stats.total_users}</span>
-                </div>
-                <div className="bg-rose-500/10 p-3 rounded-xl text-rose-500">
-                  <Users className="h-6 w-6" />
-                </div>
-              </div>
+                  {/* Users Card */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Registered Users</span>
+                      <span className="text-2xl font-black block mt-1">{stats.registered_users ?? stats.total_users}</span>
+                    </div>
+                    <div className="bg-rose-500/10 p-3 rounded-xl text-rose-500">
+                      <Users className="h-6 w-6" />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Dashboard Tabs navigation */}
@@ -3156,16 +3250,7 @@ export const AdminControl = () => {
               >
                 Product Management
               </button>
-              <button
-                onClick={() => handleTabChange('collections')}
-                className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === 'collections'
-                    ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
-                }`}
-              >
-                Collection Management
-              </button>
+
               <button
                 onClick={() => handleTabChange('users')}
                 className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${
@@ -3739,29 +3824,132 @@ export const AdminControl = () => {
             )}
 
             {/* TAB CONTENT: PRODUCTS MANAGEMENT */}
-            {activeTab === 'products' && (
+            {activeTab === 'products' && (() => {
+              const filteredProducts = products.filter(p => {
+                const matchesSearch = !productFilterSearch || 
+                  p.name.toLowerCase().includes(productFilterSearch.toLowerCase()) ||
+                  (p.description && p.description.toLowerCase().includes(productFilterSearch.toLowerCase()));
+                
+                const matchesCategory = productFilterCategory === 'All' || p.category === productFilterCategory;
+                
+                const matchesCollection = productFilterCollection === 'All' || p.collection === productFilterCollection;
+                
+                const matchesStatus = productFilterStatus === 'All' || p.status === productFilterStatus;
+                
+                return matchesSearch && matchesCategory && matchesCollection && matchesStatus;
+              });
+
+              return (
                 <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-base font-extrabold flex items-center gap-2">
-                        <span>Catalog Products</span>
-                        <span className="px-2.5 py-1 text-xs bg-[#D4A75F] text-[#111827] rounded-full font-bold shadow-sm">
-                          {products.length}
+                    {/* Header Container */}
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+                      {/* Left Column/Group on Desktop & Mobile */}
+                      <div className="flex flex-col md:flex-row md:items-center gap-2">
+                        <h3 className="text-base font-extrabold text-slate-850 dark:text-slate-100">
+                          Catalog Products
+                        </h3>
+                        {/* Desktop Badge: hidden on mobile, visible on desktop */}
+                        <span className="hidden md:inline-block px-2.5 py-1 text-xs bg-[#D4A75F] text-[#111827] rounded-full font-bold shadow-sm whitespace-nowrap">
+                          {products.length} Products
                         </span>
-                      </h3>
+                      </div>
+
+                      {/* Mobile-only badge and button row */}
+                      <div className="flex md:hidden flex-wrap items-center justify-between gap-3 w-full">
+                        <span className="px-2.5 py-1 text-xs bg-[#D4A75F] text-[#111827] rounded-full font-bold shadow-sm whitespace-nowrap">
+                          {products.length} Products
+                        </span>
+                        <button
+                          onClick={() => {
+                            setIsAddModalOpen(true);
+                            setIsAddImagesOpen(false);
+                          }}
+                          className="h-[42px] px-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[12px] text-xs font-bold shadow flex items-center justify-center gap-1.5 transition-all whitespace-nowrap flex-shrink-0"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Add Product</span>
+                        </button>
+                      </div>
+
+                      {/* Desktop-only button: hidden on mobile */}
                       <button
                         onClick={() => {
                           setIsAddModalOpen(true);
                           setIsAddImagesOpen(false);
                         }}
-                        className="py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition-all"
+                        className="hidden md:flex py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow items-center gap-1.5 transition-all"
                       >
                         <Plus className="h-4 w-4" />
                         <span>Add Product</span>
                       </button>
                     </div>
 
+                    {/* Filters Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      {/* Search Filter */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Search</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="Search name, description..."
+                            value={productFilterSearch}
+                            onChange={(e) => setProductFilterSearch(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800 dark:text-slate-100"
+                          />
+                          <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                        </div>
+                      </div>
+
+                      {/* Category Filter */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Category</label>
+                        <select
+                          value={productFilterCategory}
+                          onChange={(e) => setProductFilterCategory(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800 dark:text-slate-100"
+                        >
+                          <option value="All">All Categories</option>
+                          <option value="Rings">Rings</option>
+                          <option value="Necklaces">Necklaces</option>
+                          <option value="Earrings">Earrings</option>
+                          <option value="Bracelets">Bracelets</option>
+                          <option value="Bridal Collection">Bridal Collection</option>
+                        </select>
+                      </div>
+
+                      {/* Collection Filter */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Collection</label>
+                        <select
+                          value={productFilterCollection}
+                          onChange={(e) => setProductFilterCollection(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800 dark:text-slate-100"
+                        >
+                          <option value="All">All Collections</option>
+                          {adminCollections.map(col => (
+                            <option key={col.id} value={col.name}>{col.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Status Filter */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</label>
+                        <select
+                          value={productFilterStatus}
+                          onChange={(e) => setProductFilterStatus(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-slate-800 dark:text-slate-100"
+                        >
+                          <option value="All">All Statuses</option>
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
-                    {products.map(p => {
+                    {filteredProducts.map(p => {
                       const discountedPrice = Math.round(p.price - (p.price * (p.discount / 100)));
                       
                       // Audit date formatting helper
@@ -3796,11 +3984,19 @@ export const AdminControl = () => {
                           <div>
                             {/* Product Image and Category */}
                             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-3">
-                              <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 flex-shrink-0">
+                              <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-955 border border-slate-100 dark:border-slate-800 flex-shrink-0">
                                 <img src={p.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'} alt="" className="h-full w-full object-cover" />
                               </div>
                               <div className="flex flex-col justify-center min-w-0">
-                                <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{p.category}</span>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{p.category}</span>
+                                  {p.collection && (
+                                    <span className="text-[8px] font-bold bg-[#D4A75F]/15 text-[#D4A75F] px-1 py-0.5 rounded">{p.collection}</span>
+                                  )}
+                                  <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                    {p.status === 'active' ? 'Active' : 'Inactive'}
+                                  </span>
+                                </div>
                                 <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5" title={p.name}>{p.name}</h4>
                               </div>
                             </div>
@@ -3897,7 +4093,8 @@ export const AdminControl = () => {
                     })}
                   </div>
                 </div>
-            )}
+              );
+            })()}
 
             {/* TAB CONTENT: ORDERS MANAGEMENT */}
             {activeTab === 'orders' && (
@@ -4330,10 +4527,7 @@ export const AdminControl = () => {
               </div>
             )}
 
-            {/* TAB CONTENT: COLLECTION MANAGEMENT */}
-            {activeTab === 'collections' && (
-              <CollectionManagementTab />
-            )}
+
 
             {/* TAB CONTENT: USERS MANAGEMENT */}
             {activeTab === 'users' && (
@@ -4442,7 +4636,7 @@ export const AdminControl = () => {
                 {/* ROW 1: Name, Category, Stock Level, Price, Discount */}
                 <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
                   {/* Product Title */}
-                  <div className="col-span-2 md:col-span-4">
+                  <div className="col-span-2 md:col-span-3">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Product Title</label>
                     {editFormLang === 'en' ? (
                       <input
@@ -4484,16 +4678,31 @@ export const AdminControl = () => {
                     </select>
                   </div>
 
+                  {/* Collection */}
+                  <div className="col-span-2 md:col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Collection</label>
+                    <select
+                      value={editingProduct.collection_id || ''}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, collection_id: e.target.value || null })}
+                      className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-slate-850 dark:text-slate-100"
+                    >
+                      <option value="">None (Optional)</option>
+                      {adminCollections.map(col => (
+                        <option key={col.id} value={col.id}>{col.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Stock Level */}
-                  <div className="col-span-1 md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Stock Level</label>
+                  <div className="col-span-1 md:col-span-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Stock</label>
                     <input
                       type="number"
                       required
                       min="0"
                       value={editingProduct.stock}
                       onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value })}
-                      className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
+                      className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
                     />
                   </div>
 
@@ -4524,22 +4733,38 @@ export const AdminControl = () => {
                   </div>
                 </div>
 
-                {/* Homepage Visibility */}
-                <div className="flex items-center gap-2.5 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-                  <input
-                    type="checkbox"
-                    id="edit_show_on_homepage"
-                    checked={editingProduct.show_on_homepage || false}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, show_on_homepage: e.target.checked })}
-                    className="w-4 h-4 text-emerald-500 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer"
-                  />
+                {/* Homepage Visibility & Status */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center p-3.5 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl">
+                  {/* Homepage Visibility */}
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="edit_show_on_homepage"
+                      checked={editingProduct.show_on_homepage || false}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, show_on_homepage: e.target.checked })}
+                      className="w-4 h-4 text-emerald-500 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <div>
+                      <label htmlFor="edit_show_on_homepage" className="block text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                        Homepage Visibility
+                      </label>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                        Show this product on the homepage grid and featured collections.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Dropdown */}
                   <div>
-                    <label htmlFor="edit_show_on_homepage" className="block text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                      Homepage Visibility
-                    </label>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">
-                      Show this product on the homepage grid and featured collections.
-                    </span>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Product Status</label>
+                    <select
+                      value={editingProduct.status || 'active'}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, status: e.target.value })}
+                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-slate-850 dark:text-slate-100"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
                   </div>
                 </div>
 
@@ -4707,7 +4932,7 @@ export const AdminControl = () => {
                 {/* ROW 1: Name, Category, Stock Level, Price, Discount */}
                 <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
                   {/* Product Title */}
-                  <div className="col-span-2 md:col-span-4">
+                  <div className="col-span-2 md:col-span-3">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Product Title</label>
                     {formLang === 'en' ? (
                       <input
@@ -4749,9 +4974,24 @@ export const AdminControl = () => {
                     </select>
                   </div>
 
+                  {/* Collection */}
+                  <div className="col-span-2 md:col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Collection</label>
+                    <select
+                      value={newProduct.collection_id || ''}
+                      onChange={(e) => setNewProduct({ ...newProduct, collection_id: e.target.value || null })}
+                      className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-slate-850 dark:text-slate-100"
+                    >
+                      <option value="">None (Optional)</option>
+                      {adminCollections.map(col => (
+                        <option key={col.id} value={col.id}>{col.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Stock Level */}
-                  <div className="col-span-1 md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Stock Level</label>
+                  <div className="col-span-1 md:col-span-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Stock</label>
                     <input
                       type="number"
                       required
@@ -4792,22 +5032,38 @@ export const AdminControl = () => {
                   </div>
                 </div>
 
-                {/* Homepage Visibility */}
-                <div className="flex items-center gap-2.5 p-3.5 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl">
-                  <input
-                    type="checkbox"
-                    id="add_show_on_homepage"
-                    checked={newProduct.show_on_homepage || false}
-                    onChange={(e) => setNewProduct({ ...newProduct, show_on_homepage: e.target.checked })}
-                    className="w-4 h-4 text-emerald-500 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer"
-                  />
+                {/* Homepage Visibility & Status */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center p-3.5 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl">
+                  {/* Homepage Visibility */}
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="add_show_on_homepage"
+                      checked={newProduct.show_on_homepage || false}
+                      onChange={(e) => setNewProduct({ ...newProduct, show_on_homepage: e.target.checked })}
+                      className="w-4 h-4 text-emerald-500 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <div>
+                      <label htmlFor="add_show_on_homepage" className="block text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                        Homepage Visibility
+                      </label>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                        Show this product on the homepage grid and featured collections.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Dropdown */}
                   <div>
-                    <label htmlFor="add_show_on_homepage" className="block text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                      Homepage Visibility
-                    </label>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">
-                      Show this product on the homepage grid and featured collections.
-                    </span>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Product Status</label>
+                    <select
+                      value={newProduct.status || 'active'}
+                      onChange={(e) => setNewProduct({ ...newProduct, status: e.target.value })}
+                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-slate-850 dark:text-slate-100"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
                   </div>
                 </div>
 
@@ -5983,6 +6239,69 @@ export const AdminControl = () => {
             <CheckCircle2 className="h-5 w-5 text-emerald-500" />
           </div>
           <span className="text-xs font-bold tracking-wide">{toast.message}</span>
+        </div>
+      )}
+
+      {/* Maintenance Toggle Confirmation Modal */}
+      {showMaintenanceModal && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 transform scale-100 transition-all duration-300">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-3 rounded-xl ${maintenanceMode ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
+                <Shield className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold tracking-tight">
+                {maintenanceMode ? 'Disable Maintenance Mode?' : 'Enable Maintenance Mode?'}
+              </h3>
+            </div>
+            
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-semibold leading-relaxed">
+              {maintenanceMode ? (
+                <div>
+                  While maintenance mode is disabled:
+                  <ul className="list-disc pl-5 mt-2 space-y-1 font-normal text-left">
+                    <li>Customers can resume placing orders</li>
+                    <li>Checkout will be enabled</li>
+                    <li>Request to buy and cart checkout will be fully operational</li>
+                  </ul>
+                </div>
+              ) : (
+                <div>
+                  While maintenance mode is enabled:
+                  <ul className="list-disc pl-5 mt-2 space-y-1 font-normal text-left">
+                    <li>Customers cannot place orders</li>
+                    <li>Request To Buy will be disabled</li>
+                    <li>Checkout will be disabled</li>
+                    <li>Cart checkout will be blocked</li>
+                    <li>Payment APIs will be blocked</li>
+                    <li>Product browsing remains available</li>
+                    <li>Admin panel remains fully accessible</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowMaintenanceModal(false)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-all text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleMaintenance}
+                className={`flex-1 py-2.5 text-white rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                  maintenanceMode 
+                    ? 'bg-amber-500 hover:bg-amber-600' 
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {maintenanceMode ? 'Yes, Disable' : 'Yes, Enable'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

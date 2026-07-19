@@ -1175,9 +1175,7 @@ def delete_category_admin(id):
             
         name = category.name
         
-        # Check if there are products in this category
-        if category.products and len(category.products) > 0:
-            return jsonify({"message": f"Cannot delete category '{name}' because it contains {len(category.products)} products."}), 400
+        # Check if there are products in this category - Allowed (SET NULL on delete is handled by DB schema)
             
         db.session.delete(category)
         db.session.commit()

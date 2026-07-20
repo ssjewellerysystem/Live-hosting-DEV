@@ -46,8 +46,22 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # Enable CORS for frontend requests
+allowed_origins = [
+    r"https?://localhost:\d+",
+    r"https?://127\.0\.0\.1:\d+",
+    r"https?://.*\.ssjewellry\.com",
+    r"https?://ssjewellry\.com",
+    r"https?://.*\.onrender\.com"
+]
+env_origins = os.getenv("ALLOWED_ORIGINS")
+if env_origins:
+    if env_origins.strip() == "*":
+        allowed_origins = [r".*"]
+    else:
+        allowed_origins.extend([origin.strip() for origin in env_origins.split(",") if origin.strip()])
+
 CORS(app, resources={r"/*": {
-    "origins": ["http://localhost:5173"],
+    "origins": allowed_origins,
     "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     "allow_headers": ["Authorization", "Content-Type", "Accept"],
     "supports_credentials": True

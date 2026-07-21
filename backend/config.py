@@ -40,10 +40,13 @@ def resolve_neon_uri(uri):
 database_uri = os.environ.get("DATABASE_URI") or os.environ.get("DATABASE_URL")
 
 if not database_uri:
-    # Fallback to the Neon PostgreSQL database URI
-    raw_uri = "postgresql://neondb_owner:npg_GOsy48HeAJhP@ep-bold-base-ao7v7l2l-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-else:
-    raw_uri = database_uri
+    raise RuntimeError(
+        "CRITICAL ERROR: DATABASE_URI or DATABASE_URL environment variable is not set. "
+        "A database connection is required to start the SSJewellery application. "
+        "Please configure this environment variable and restart the service."
+    )
+
+raw_uri = database_uri
 
 if raw_uri and raw_uri.startswith("postgres://"):
     raw_uri = raw_uri.replace("postgres://", "postgresql://", 1)

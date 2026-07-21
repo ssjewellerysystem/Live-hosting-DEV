@@ -16,7 +16,7 @@ from backend.utils.timezone import format_iso_datetime, get_ist_time
 from backend.utils.security import mask_email, mask_name
 
 auth_bp = Blueprint('auth', __name__)
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_SSJewellery_key_123")
+from backend.config import JWT_SECRET
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -39,7 +39,6 @@ def login():
     import jwt
     import datetime
     import pytz
-    from backend.routes.admin import JWT_SECRET
     from backend.utils.audit import log_admin_action
 
     # Check if 'email' attribute exists in AdminModel
@@ -92,8 +91,13 @@ def login():
 
     # STEP 2: If no matching admin exists, check the users table
     try:
+        from backend.utils.security import encryptSensitiveData, encrypt_fallback
+        active_val = encryptSensitiveData(input_val)
+        fallback_val = encrypt_fallback(input_val)
+        
         user_obj = UserModel.query.filter(
-            (UserModel.email == input_val) | (UserModel.phone == input_val)
+            (UserModel.email == active_val) | (UserModel.phone == active_val) |
+            (UserModel.email == fallback_val) | (UserModel.phone == fallback_val)
         ).with_for_update().first()
         
         if user_obj:
@@ -164,7 +168,12 @@ def send_otp_route():
         return jsonify({"message": "Invalid email format."}), 400
         
     # Check if duplicate registration
-    existing_user = UserModel.query.filter_by(email=email).first()
+    from backend.utils.security import encryptSensitiveData, encrypt_fallback
+    active_email = encryptSensitiveData(email)
+    fallback_email = encrypt_fallback(email)
+    existing_user = UserModel.query.filter(
+        (UserModel.email == active_email) | (UserModel.email == fallback_email)
+    ).first()
     if existing_user:
         return jsonify({"message": "User with this email already exists."}), 400
         
@@ -300,7 +309,12 @@ def verify_otp_route():
         address = temp_data.get("address")
         
         # Double check duplicate
-        if UserModel.query.filter_by(email=email).with_for_update().first():
+        from backend.utils.security import encryptSensitiveData, encrypt_fallback
+        active_email = encryptSensitiveData(email)
+        fallback_email = encrypt_fallback(email)
+        if UserModel.query.filter(
+            (UserModel.email == active_email) | (UserModel.email == fallback_email)
+        ).with_for_update().first():
             db.session.delete(otp_record)
             db.session.commit()
             return jsonify({"message": "User with this email already exists."}), 400
@@ -430,7 +444,6 @@ def user_login_route():
     import jwt
     import datetime
     import pytz
-    from backend.routes.admin import JWT_SECRET
     from backend.utils.audit import log_admin_action
 
     # Check if 'email' attribute exists in AdminModel
@@ -483,8 +496,13 @@ def user_login_route():
 
     # STEP 2: If no matching admin exists, check the users table
     try:
+        from backend.utils.security import encryptSensitiveData, encrypt_fallback
+        active_val = encryptSensitiveData(input_val)
+        fallback_val = encrypt_fallback(input_val)
+        
         user_obj = UserModel.query.filter(
-            (UserModel.email == input_val) | (UserModel.phone == input_val)
+            (UserModel.email == active_val) | (UserModel.phone == active_val) |
+            (UserModel.email == fallback_val) | (UserModel.phone == fallback_val)
         ).first()
         
         if user_obj:
@@ -545,8 +563,13 @@ def forgot_password():
     if not email_or_mobile:
         return jsonify({"message": "Please provide your registered email or mobile number."}), 400
         
+    from backend.utils.security import encryptSensitiveData, encrypt_fallback
+    active_val = encryptSensitiveData(email_or_mobile)
+    fallback_val = encrypt_fallback(email_or_mobile)
+    
     user_obj = UserModel.query.filter(
-        (UserModel.email == email_or_mobile) | (UserModel.phone == email_or_mobile)
+        (UserModel.email == active_val) | (UserModel.phone == active_val) |
+        (UserModel.email == fallback_val) | (UserModel.phone == fallback_val)
     ).first()
     
     if not user_obj:
@@ -629,8 +652,13 @@ def verify_reset_otp():
     if not email_or_mobile or not otp:
         return jsonify({"message": "Please provide email/mobile and OTP."}), 400
         
+    from backend.utils.security import encryptSensitiveData, encrypt_fallback
+    active_val = encryptSensitiveData(email_or_mobile)
+    fallback_val = encrypt_fallback(email_or_mobile)
+    
     user_obj = UserModel.query.filter(
-        (UserModel.email == email_or_mobile) | (UserModel.phone == email_or_mobile)
+        (UserModel.email == active_val) | (UserModel.phone == active_val) |
+        (UserModel.email == fallback_val) | (UserModel.phone == fallback_val)
     ).first()
     
     if not user_obj:
@@ -679,8 +707,13 @@ def resend_reset_otp():
     if not email_or_mobile:
         return jsonify({"message": "Email is required."}), 400
         
+    from backend.utils.security import encryptSensitiveData, encrypt_fallback
+    active_val = encryptSensitiveData(email_or_mobile)
+    fallback_val = encrypt_fallback(email_or_mobile)
+    
     user_obj = UserModel.query.filter(
-        (UserModel.email == email_or_mobile) | (UserModel.phone == email_or_mobile)
+        (UserModel.email == active_val) | (UserModel.phone == active_val) |
+        (UserModel.email == fallback_val) | (UserModel.phone == fallback_val)
     ).first()
     
     if not user_obj:
@@ -755,8 +788,13 @@ def reset_password():
     if not email_or_mobile or not new_password:
         return jsonify({"message": "Please provide email/mobile and new password."}), 400
         
+    from backend.utils.security import encryptSensitiveData, encrypt_fallback
+    active_val = encryptSensitiveData(email_or_mobile)
+    fallback_val = encrypt_fallback(email_or_mobile)
+    
     user_obj = UserModel.query.filter(
-        (UserModel.email == email_or_mobile) | (UserModel.phone == email_or_mobile)
+        (UserModel.email == active_val) | (UserModel.phone == active_val) |
+        (UserModel.email == fallback_val) | (UserModel.phone == fallback_val)
     ).first()
     
     if not user_obj:
@@ -802,9 +840,21 @@ def checkout_login_route():
     if not name or not phone:
         return jsonify({"message": "Name and phone are required for checkout registration."}), 400
         
-    user_obj = UserModel.query.filter(
-        (UserModel.phone == phone) | (UserModel.email == email) if email else (UserModel.phone == phone)
-    ).first()
+    from backend.utils.security import encryptSensitiveData, encrypt_fallback
+    active_phone = encryptSensitiveData(phone)
+    fallback_phone = encrypt_fallback(phone)
+    active_email = encryptSensitiveData(email) if email else None
+    fallback_email = encrypt_fallback(email) if email else None
+    
+    if email:
+        user_obj = UserModel.query.filter(
+            (UserModel.phone == active_phone) | (UserModel.phone == fallback_phone) |
+            (UserModel.email == active_email) | (UserModel.email == fallback_email)
+        ).first()
+    else:
+        user_obj = UserModel.query.filter(
+            (UserModel.phone == active_phone) | (UserModel.phone == fallback_phone)
+        ).first()
     
     if not user_obj:
         # Create a new guest user
@@ -1423,7 +1473,12 @@ def google_callback():
         print(f"[OAUTH LOG] Google user login. Profile updated for: {mask_email(email)}")
     else:
         # Check if user already exists by email
-        user_obj = UserModel.query.filter_by(email=email).first()
+        from backend.utils.security import encryptSensitiveData, encrypt_fallback
+        active_email = encryptSensitiveData(email)
+        fallback_email = encrypt_fallback(email)
+        user_obj = UserModel.query.filter(
+            (UserModel.email == active_email) | (UserModel.email == fallback_email)
+        ).first()
         if user_obj:
             if user_obj.is_blocked:
                 print(f"[OAUTH ERROR] Suspended user attempted Google login: {mask_email(email)}")
@@ -1615,7 +1670,12 @@ def microsoft_callback():
         print(f"[OAUTH LOG] Microsoft user login. Profile updated for: {mask_email(email)}")
     else:
         # Check if user already exists by email
-        user_obj = UserModel.query.filter_by(email=email).first()
+        from backend.utils.security import encryptSensitiveData, encrypt_fallback
+        active_email = encryptSensitiveData(email)
+        fallback_email = encrypt_fallback(email)
+        user_obj = UserModel.query.filter(
+            (UserModel.email == active_email) | (UserModel.email == fallback_email)
+        ).first()
         if user_obj:
             if user_obj.is_blocked:
                 print(f"[OAUTH ERROR] Suspended user attempted Microsoft login: {mask_email(email)}")
@@ -1733,7 +1793,12 @@ def microsoft_login():
         db.session.commit()
     else:
         # 2. Check if user already exists by email (to link account)
-        user_obj = UserModel.query.filter_by(email=email).first()
+        from backend.utils.security import encryptSensitiveData, encrypt_fallback
+        active_email = encryptSensitiveData(email)
+        fallback_email = encrypt_fallback(email)
+        user_obj = UserModel.query.filter(
+            (UserModel.email == active_email) | (UserModel.email == fallback_email)
+        ).first()
         if user_obj:
             if user_obj.is_blocked:
                 return jsonify({"message": "Your account has been suspended by the administrator."}), 403

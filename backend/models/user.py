@@ -27,21 +27,22 @@ class DeliveryAddress(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
 
     def to_dict(self):
+        from backend.utils.security import decryptSensitiveData
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "house_number": self.house_number or "",
-            "building_name": self.building_name or "",
-            "street": self.street or "",
-            "area": self.area or "",
-            "landmark": self.landmark or "",
-            "city": self.city or "",
-            "state": self.state or "",
-            "pincode": self.pincode or "",
+            "house_number": decryptSensitiveData(self.house_number) or "",
+            "building_name": decryptSensitiveData(self.building_name) or "",
+            "street": decryptSensitiveData(self.street) or "",
+            "area": decryptSensitiveData(self.area) or "",
+            "landmark": decryptSensitiveData(self.landmark) or "",
+            "city": decryptSensitiveData(self.city) or "",
+            "state": decryptSensitiveData(self.state) or "",
+            "pincode": decryptSensitiveData(self.pincode) or "",
             "address_type": self.address_type or "Home",
             "is_default": bool(self.is_default),
             "alternate_mobile_number": self.alternate_mobile_number or "",
-            "country": self.country or "India",
+            "country": decryptSensitiveData(self.country) or "India",
             "created_at": format_iso_datetime(self.created_at) if hasattr(self, 'created_at') else None
         }
 
@@ -148,18 +149,20 @@ class UserModel(db.Model):
             self.addresses.append(value)
 
     def to_dict(self):
+        from backend.utils.security import decryptSensitiveData
+        
         # Address
         addr = self.address
         addr_dict = {
             "id": addr.id if addr else None,
-            "house_number": addr.house_number if addr else "",
-            "building_name": addr.building_name if addr else "",
-            "street": addr.street if addr else "",
-            "area": addr.area if addr else "",
-            "landmark": addr.landmark if addr else "",
-            "city": addr.city if addr else "",
-            "state": addr.state if addr else "",
-            "pincode": addr.pincode if addr else "",
+            "house_number": decryptSensitiveData(addr.house_number) if addr else "",
+            "building_name": decryptSensitiveData(addr.building_name) if addr else "",
+            "street": decryptSensitiveData(addr.street) if addr else "",
+            "area": decryptSensitiveData(addr.area) if addr else "",
+            "landmark": decryptSensitiveData(addr.landmark) if addr else "",
+            "city": decryptSensitiveData(addr.city) if addr else "",
+            "state": decryptSensitiveData(addr.state) if addr else "",
+            "pincode": decryptSensitiveData(addr.pincode) if addr else "",
             "address_type": addr.address_type if addr else "Home",
             "is_default": addr.is_default if addr else False,
             "alternate_mobile_number": addr.alternate_mobile_number if addr else ""
@@ -226,9 +229,9 @@ class UserModel(db.Model):
         return {
             "id": str(self.id),
             "_id": str(self.id),
-            "name": self.name,
-            "email": self.email,
-            "mobile": self.mobile or "",
+            "name": decryptSensitiveData(self.name) or "Unavailable",
+            "email": decryptSensitiveData(self.email) or "Unavailable",
+            "mobile": decryptSensitiveData(self.mobile) or "",
             "address": addr_dict,
             "addresses": [addr.to_dict() for addr in self.addresses] if self.addresses else [],
             "wishlist": wishlist_list,
@@ -504,43 +507,7 @@ class UserModel(db.Model):
             users = UserModel.query.options(
                 selectinload(UserModel.addresses)
             ).all()
-            user_list = []
-            for u in users:
-                addr = u.address
-                addr_dict = {
-                    "id": addr.id if addr else None,
-                    "house_number": addr.house_number if addr else "",
-                    "building_name": addr.building_name if addr else "",
-                    "street": addr.street if addr else "",
-                    "area": addr.area if addr else "",
-                    "landmark": addr.landmark if addr else "",
-                    "city": addr.city if addr else "",
-                    "state": addr.state if addr else "",
-                    "pincode": addr.pincode if addr else "",
-                    "address_type": addr.address_type if addr else "Home",
-                    "is_default": addr.is_default if addr else False,
-                    "alternate_mobile_number": addr.alternate_mobile_number if addr else ""
-                }
-                user_list.append({
-                    "id": str(u.id),
-                    "_id": str(u.id),
-                    "name": u.name,
-                    "email": u.email,
-                    "mobile": u.mobile or "",
-                    "address": addr_dict,
-                    "is_blocked": bool(u.is_blocked),
-                    "is_admin": bool(u.is_admin),
-                    "is_verified": bool(u.is_verified),
-                    "created_at": format_iso_datetime(u.created_at),
-                    "last_login": format_iso_datetime(u.last_login),
-                    "microsoft_id": u.microsoft_id,
-                    "provider": u.provider or "local",
-                    "provider_id": u.provider_id,
-                    "preferred_language": u.preferred_language,
-                    "first_login": bool(u.first_login),
-                    "role": "admin" if u.is_admin else "customer"
-                })
-            return user_list
+            return [u.to_dict() for u in users]
         except Exception as e:
             print("Error in find_all:", e)
             return []

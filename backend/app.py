@@ -40,6 +40,8 @@ from backend.routes.support import support_bp
 from backend.routes.coupons import coupons_bp
 from backend.routes.banners import banners_bp
 from backend.routes.collections import collections_bp
+from backend.routes.gold_rate import gold_rate_bp
+
 
 app = Flask(__name__)
 # Load configuration
@@ -81,6 +83,8 @@ app.register_blueprint(support_bp, url_prefix='/api/support')
 app.register_blueprint(coupons_bp, url_prefix='/api/coupons')
 app.register_blueprint(banners_bp, url_prefix='/api/banners')
 app.register_blueprint(collections_bp, url_prefix='/api/collections')
+app.register_blueprint(gold_rate_bp)
+
 
 from flask import request
 from backend.utils.helpers import generate_otp, verify_otp, is_valid_email
@@ -253,6 +257,13 @@ with app.app_context():
         start_report_scheduler(app)
     except Exception as err:
         print("[APP] Scheduler will start after DB is ready:", err)
+
+    try:
+        from backend.utils.gold_rate_scheduler import start_gold_rate_scheduler
+        start_gold_rate_scheduler(app)
+    except Exception as err:
+        print("[APP] Gold rate scheduler error:", err)
+
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))

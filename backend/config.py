@@ -48,8 +48,10 @@ else:
 if raw_uri and raw_uri.startswith("postgres://"):
     raw_uri = raw_uri.replace("postgres://", "postgresql://", 1)
 
+JWT_SECRET = os.environ.get("JWT_SECRET", "supersecret_SSJewellery_key_123")
+
 class Config:
-    SECRET_KEY = os.environ.get("JWT_SECRET", "supersecret_SSJewellery_key_123")
+    SECRET_KEY = JWT_SECRET
     SQLALCHEMY_DATABASE_URI = resolve_neon_uri(raw_uri)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = True

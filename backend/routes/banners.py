@@ -24,18 +24,10 @@ if all([CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET]):
             api_secret=CLOUDINARY_API_SECRET
         )
         CLOUDINARY_ENABLED = True
-        print("[CLOUDINARY] Configured successfully for banners.")
     except Exception:
         CLOUDINARY_ENABLED = False
-        print("[CLOUDINARY] Failed to configure Cloudinary for banners.")
 else:
     CLOUDINARY_ENABLED = False
-    print("\n" + "="*80)
-    print("WARNING: [CLOUDINARY] Credentials missing in environment variables.")
-    print("WARNING: Gracefully falling back to local file storage for banner image uploads.")
-    print("WARNING: Local storage is TEMPORARY and NOT recommended for production deployments.")
-    print("WARNING: Uploaded files will be lost if the server container restarts or scales down.")
-    print("="*80 + "\n")
 
 # Local Upload folder
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'uploads')

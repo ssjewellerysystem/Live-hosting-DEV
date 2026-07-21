@@ -10,16 +10,9 @@ import { formatPrice } from '../utils/priceFormatter';
 export const Checkout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, checkoutLogin, updateUser, token, maintenanceMode, setShowMaintenanceWarning } = useContext(AuthContext);
+  const { user, checkoutLogin, updateUser, token } = useContext(AuthContext);
   const { cart, cartTotal, clearCart } = useContext(CartContext);
   const { t } = useTranslation();
-
-  useEffect(() => {
-    if (maintenanceMode) {
-      setShowMaintenanceWarning(true);
-      navigate('/');
-    }
-  }, [maintenanceMode, navigate, setShowMaintenanceWarning]);
 
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment/OTP, 3: Success Receipt
   
@@ -592,11 +585,6 @@ export const Checkout = () => {
 
   const handlePlaceOrder = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (maintenanceMode) {
-      setShowMaintenanceWarning(true);
-      navigate('/');
-      return;
-    }
     if (!termsAccepted) {
       setError(t('checkout_page.agree_warning'));
       return;

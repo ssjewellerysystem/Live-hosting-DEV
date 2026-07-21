@@ -5,7 +5,7 @@ import cloudinary
 import cloudinary.uploader
 from backend.models.product import ProductModel
 from backend.models.review import ReviewModel
-from backend.middleware.auth import token_required, admin_required, maintenance_block
+from backend.middleware.auth import token_required, admin_required
 from backend.extensions import db
 from backend.utils.timezone import format_iso_datetime
 
@@ -23,15 +23,10 @@ if all([CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET]):
         api_secret=CLOUDINARY_API_SECRET
     )
     CLOUDINARY_ENABLED = True
-    print("[CLOUDINARY] Configured successfully for products.")
+    print("[CLOUDINARY] Configured successfully.")
 else:
     CLOUDINARY_ENABLED = False
-    print("\n" + "="*80)
-    print("WARNING: [CLOUDINARY] Credentials missing in environment variables.")
-    print("WARNING: Gracefully falling back to local file storage for product image uploads.")
-    print("WARNING: Local storage is TEMPORARY and NOT recommended for production deployments.")
-    print("WARNING: Uploaded files will be lost if the server container restarts or scales down.")
-    print("="*80 + "\n")
+    print("[CLOUDINARY] Credentials missing. Falling back to local upload serving.")
 
 # Local Upload folder setup
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'uploads')
@@ -50,8 +45,8 @@ def get_admin_name_from_request():
         import jwt
         from backend.models.user import UserModel
         data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        if data.get("is_admin"):
-            return data.get("username") or "Administrator"
+        if data.get("user_id") == "admin_user" and data.get("is_admin"):
+            return "Administrator"
         else:
             user = UserModel.find_by_id(data.get("user_id"))
             if user:
@@ -63,23 +58,14 @@ def get_admin_name_from_request():
 @products_bp.route('', methods=['GET'])
 def get_products():
     category = request.args.get('category')
-    collection_id = request.args.get('collection_id') or request.args.get('collection')
-    status = request.args.get('status')
     search = request.args.get('search')
     admin_view = request.args.get('admin_view') or request.args.get('admin')
     
     homepage_only = False
-    if not category and not search and not collection_id and not status and admin_view != 'true':
+    if not category and not search and admin_view != 'true':
         homepage_only = True
         
-    products = ProductModel.get_all(
-        category=category,
-        search_query=search,
-        homepage_only=homepage_only,
-        collection_id=collection_id if (collection_id and collection_id.isdigit()) else None,
-        collection=collection_id if (collection_id and not collection_id.isdigit()) else None,
-        status=status
-    )
+    products = ProductModel.get_all(category, search, homepage_only=homepage_only)
     return jsonify(products), 200
 
 @products_bp.route('/<id>', methods=['GET'])
@@ -412,7 +398,6 @@ def upload_image():
 # User: Request to Buy Out-of-Stock Product
 @products_bp.route('/<id>/request-buy', methods=['POST'])
 @token_required
-@maintenance_block
 def request_buy_product(current_user, id):
     try:
         prod_id = int(id)

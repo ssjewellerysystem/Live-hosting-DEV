@@ -58,36 +58,6 @@ def encrypt(plain_text):
         print(f"Encryption error: {e}")
         return plain_str
 
-def encrypt_fallback(plain_text):
-    """Encrypt plain_text using the legacy/fallback encryption key."""
-    if plain_text is None:
-        return None
-    plain_str = str(plain_text)
-    if not plain_str:
-        return plain_str
-    if plain_str.startswith("BB_ENC:"):
-        return plain_str
-        
-    try:
-        fallback_secret = "supersecret_SSJewellery_key_123"
-        fallback_key = hashlib.sha256(fallback_secret.encode('utf-8')).digest()
-        
-        iv = get_deterministic_iv(plain_str)
-        cipher = Cipher(algorithms.AES(fallback_key), modes.CBC(iv), backend=default_backend())
-        encryptor = cipher.encryptor()
-        
-        padder = padding.PKCS7(128).padder()
-        padded_data = padder.update(plain_str.encode('utf-8')) + padder.finalize()
-        
-        ciphertext = encryptor.update(padded_data) + encryptor.finalize()
-        
-        combined = iv + ciphertext
-        encoded = base64.b64encode(combined).decode('utf-8')
-        return f"BB_ENC:{encoded}"
-    except Exception as e:
-        print(f"Encryption fallback error: {e}")
-        return plain_str
-
 def decrypt(cipher_text):
     """Decrypt cipher_text using AES-256-CBC."""
     if cipher_text is None:
@@ -96,35 +66,25 @@ def decrypt(cipher_text):
     if not cipher_str.startswith("BB_ENC:"):
         return cipher_str
         
-    keys_to_try = [ENCRYPTION_KEY]
-    fallback_secret = "supersecret_SSJewellery_key_123"
-    fallback_key = hashlib.sha256(fallback_secret.encode('utf-8')).digest()
-    if fallback_key not in keys_to_try:
-        keys_to_try.append(fallback_key)
+    try:
+        encoded = cipher_str[len("BB_ENC:"):]
+        combined = base64.b64decode(encoded.encode('utf-8'))
         
-    last_err = None
-    for key in keys_to_try:
-        try:
-            encoded = cipher_str[len("BB_ENC:"):]
-            combined = base64.b64decode(encoded.encode('utf-8'))
-            
-            iv = combined[:16]
-            ciphertext = combined[16:]
-            
-            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-            decryptor = cipher.decryptor()
-            
-            padded_data = decryptor.update(ciphertext) + decryptor.finalize()
-            
-            unpadder = padding.PKCS7(128).unpadder()
-            plain_text = unpadder.update(padded_data) + unpadder.finalize()
-            
-            return plain_text.decode('utf-8')
-        except Exception as e:
-            last_err = e
-            
-    print(f"Decryption error: {last_err}")
-    return "Unavailable"
+        iv = combined[:16]
+        ciphertext = combined[16:]
+        
+        cipher = Cipher(algorithms.AES(ENCRYPTION_KEY), modes.CBC(iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+        
+        padded_data = decryptor.update(ciphertext) + decryptor.finalize()
+        
+        unpadder = padding.PKCS7(128).unpadder()
+        plain_text = unpadder.update(padded_data) + unpadder.finalize()
+        
+        return plain_text.decode('utf-8')
+    except Exception as e:
+        print(f"Decryption error: {e}")
+        return cipher_str
 
 def mask_email(email):
     """Mask email as ir**********@gmail.com."""

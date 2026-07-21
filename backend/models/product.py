@@ -23,7 +23,6 @@ class ProductModel(db.Model):
     images = db.Column(db.JSON) # JSON array of image URLs
     stock = db.Column(db.Integer, default=0)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id', ondelete='SET NULL'), nullable=True)
-    collection_id = db.Column(db.Integer, db.ForeignKey('collections.id', ondelete='SET NULL'), nullable=True)
     ratings = db.Column(db.Numeric(3, 2), default=5.00)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')), onupdate=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
@@ -53,7 +52,6 @@ class ProductModel(db.Model):
     wishlist_items = db.relationship('Wishlist', backref='product', cascade='all, delete-orphan', lazy=True)
     order_items = db.relationship('OrderItem', backref='product', lazy=True)
     variants = db.relationship('ProductVariantModel', backref='product', cascade='all, delete-orphan', lazy=True)
-    collection = db.relationship('CollectionModel', back_populates='products')
 
     def to_dict(self):
         from flask import request
@@ -114,8 +112,6 @@ class ProductModel(db.Model):
             "images": image_urls,
             "stock": int(self.stock),
             "category": cat_name,
-            "collection": self.collection.name if self.collection else "",
-            "collection_id": str(self.collection_id) if self.collection_id is not None else None,
             "category_attributes": attributes_list,
             "ratings": float(self.ratings) if self.ratings is not None else 5.0,
             "review_count": len(self.reviews) if self.reviews else 0,
@@ -144,9 +140,9 @@ class ProductModel(db.Model):
         }
 
     @staticmethod
-    def get_all(category=None, search_query=None, homepage_only=False, collection_id=None, status=None, collection=None):
+    def get_all(category=None, search_query=None, homepage_only=False):
         from backend.utils.cache import products_cache
-        cache_key = f"all_{category or 'None'}_{search_query or 'None'}_{homepage_only}_{collection_id or 'None'}_{status or 'None'}_{collection or 'None'}"
+        cache_key = f"all_{category or 'None'}_{search_query or 'None'}_{homepage_only}"
         cached_val = products_cache.get(cache_key)
         if cached_val is not None:
             return cached_val
@@ -163,28 +159,12 @@ class ProductModel(db.Model):
             query = query.filter(ProductModel.show_on_homepage == True)
             
         if category and category != 'All':
-            if str(category).isdigit():
-                query = query.filter(ProductModel.category_id == int(category))
-            else:
-                from backend.models.category import Category
-                query = query.join(Category).filter(Category.name == category)
-            
-        if collection_id and collection_id != 'All':
-            query = query.filter(ProductModel.collection_id == int(collection_id))
-            
-        if collection and collection != 'All':
-            if str(collection).isdigit():
-                query = query.filter(ProductModel.collection_id == int(collection))
-            else:
-                from backend.models.collection import CollectionModel
-                query = query.join(CollectionModel, ProductModel.collection_id == CollectionModel.id).filter(CollectionModel.name == collection)
-            
-        if status and status != 'All':
-            query = query.filter(ProductModel.status == status)
+            from backend.models.category import Category
+            query = query.join(Category).filter(Category.name == category)
             
         if search_query:
             from backend.models.category import Category
-            query = query.outerjoin(Category, ProductModel.category_id == Category.id).filter(
+            query = query.outerjoin(Category).filter(
                 (ProductModel.name.like(f"%{search_query}%")) |
                 (ProductModel.name_en.like(f"%{search_query}%")) |
                 (ProductModel.name_hi.like(f"%{search_query}%")) |
@@ -256,17 +236,6 @@ class ProductModel(db.Model):
         elif len(images_input) == 1:
             images_input = [images_input[0], images_input[0]]
 
-        collection_id = data.get("collection_id")
-        if collection_id in [None, "", "None", "null"]:
-            collection_id = None
-            if data.get("collection"):
-                from backend.models.collection import CollectionModel
-                col = CollectionModel.query.filter_by(name=data.get("collection")).first()
-                if col:
-                    collection_id = col.id
-        else:
-            collection_id = int(collection_id)
-
         admin_name = data.get("created_by") or data.get("admin_name") or "admin"
 
         product = ProductModel(
@@ -277,7 +246,6 @@ class ProductModel(db.Model):
             images=images_input,
             stock=int(data.get("stock", 0)),
             category_id=category.id,
-            collection_id=collection_id,
             ratings=float(data.get("ratings", 5.0)),
             created_at=get_ist_time(),
             updated_at=get_ist_time(),
@@ -478,30 +446,6 @@ class ProductModel(db.Model):
                 old_cat = product.category.name if product.category else "Uncategorized"
                 log_change("Product Update", "category", old_cat, cat_name)
                 product.category_id = category.id
-
-            if "collection_id" in data or "collection" in data:
-                collection_id = data.get("collection_id")
-                if collection_id in [None, "", "None", "null"]:
-                    collection_id = None
-                    if data.get("collection"):
-                        from backend.models.collection import CollectionModel
-                        col = CollectionModel.query.filter_by(name=data.get("collection")).first()
-                        if col:
-                            collection_id = col.id
-                else:
-                    collection_id = int(collection_id)
-                
-                old_col = product.collection.name if product.collection else "None"
-                new_col = ""
-                if collection_id:
-                    from backend.models.collection import CollectionModel
-                    col = CollectionModel.query.get(collection_id)
-                    new_col = col.name if col else "None"
-                else:
-                    new_col = "None"
-                
-                log_change("Product Update", "collection", old_col, new_col)
-                product.collection_id = collection_id
             if "ratings" in data: product.ratings = float(data["ratings"])
             if "status" in data:
                 log_change("Product Update", "status", product.status, data["status"])
@@ -559,43 +503,18 @@ class ProductModel(db.Model):
             db.session.rollback()
             print("Failed to update product:", e)
             return None
+
     @staticmethod
     def delete_product(product_id):
         try:
             prod_id = int(product_id)
             product = ProductModel.query.with_for_update().get(prod_id)
             if product:
-                # 1. ProductImageModel
-                ProductImageModel.query.filter_by(product_id=prod_id).delete()
-                # 2. ProductVariantModel
-                ProductVariantModel.query.filter_by(product_id=prod_id).delete()
-                # 3. CartItem
-                from backend.models.user import CartItem
-                CartItem.query.filter_by(product_id=prod_id).delete()
-                # 4. Wishlist
-                from backend.models.user import Wishlist
-                Wishlist.query.filter_by(product_id=prod_id).delete()
-                # 5. ReviewModel
-                from backend.models.review import ReviewModel
-                ReviewModel.query.filter_by(product_id=prod_id).delete()
-                # 6. StockHistoryModel
-                StockHistoryModel.query.filter_by(product_id=prod_id).delete()
-                # 7. ProductAuditLogModel
-                ProductAuditLogModel.query.filter_by(product_id=prod_id).delete()
-                # 8. BuyRequestModel
-                BuyRequestModel.query.filter_by(product_id=prod_id).delete()
-                
-                # 9. Set OrderItem product_id to NULL
-                from backend.models.order import OrderItem
-                OrderItem.query.filter_by(product_id=prod_id).update({OrderItem.product_id: None})
-                
                 db.session.delete(product)
                 db.session.commit()
                 return True
             return False
-        except Exception as e:
-            db.session.rollback()
-            print("Error deleting product:", e)
+        except Exception:
             return False
 
     @staticmethod

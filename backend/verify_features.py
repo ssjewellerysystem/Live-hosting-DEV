@@ -34,10 +34,10 @@ def run_tests():
     # 1. Admin Login
     print("\n[Step 1] Attempting Admin login...")
     login_payload = {
-        "username": "admin",
-        "password": "admin123"
+        "email": "admin@SSJewellery.com",
+        "password": "Admin@123"
     }
-    status, res_json = make_request(f"{BASE_URL}/api/admin/login", method="POST", data=login_payload)
+    status, res_json = make_request(f"{BASE_URL}/api/auth/login", method="POST", data=login_payload)
     if status != 200:
         print(f"FAILED to login. Status: {status}")
         sys.exit(1)

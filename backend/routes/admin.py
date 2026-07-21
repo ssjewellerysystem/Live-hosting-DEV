@@ -14,186 +14,104 @@ from sqlalchemy import func
 admin_bp = Blueprint('admin', __name__)
 
 JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_SSJewellery_key_123")
+ADMIN_ID = os.getenv("ADMIN_ID", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 @admin_bp.route('/login', methods=['POST'])
 def admin_login():
     data = request.get_json() or {}
-    username = data.get("username") or data.get("admin_id")
+    admin_id = data.get("admin_id")
     password = data.get("password")
     
-    if not username or not password:
-        return jsonify({"message": "Please enter both Username and Password."}), 400
+    if not admin_id or not password:
+        return jsonify({"message": "Please enter both Admin ID and Password."}), 400
         
-    from backend.models.admin import AdminModel
-    from backend.utils.audit import log_admin_action
-    
-    admin = AdminModel.query.filter_by(username=username).first()
-    
-    if admin and admin.verify_password(password):
+    if (admin_id == ADMIN_ID or admin_id == "admin@SSJewellery.com") and password == ADMIN_PASSWORD:
         # Generate JWT Token for Admin
         payload = {
-            "admin_id": str(admin.id),
-            "user_id": str(admin.id),
+            "user_id": "admin_user",
             "is_admin": True,
-            "username": admin.username,
             "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
         }
         token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
         
         # Audit Log
+        from backend.utils.audit import log_admin_action
         log_admin_action("Admin Login", "Admin Authentication", "Admin login successful")
         
         return jsonify({
             "message": "Admin login successful!",
             "token": token,
-            "admin_id": str(admin.id),
-            "username": admin.username,
-            "role": "admin",
-            "permissions": ["all"],
             "user": {
-                "id": str(admin.id),
-                "_id": str(admin.id),
-                "name": admin.username,
-                "username": admin.username,
-                "email": f"{admin.username}@SSJewellery.com",
+                "name": "Administrator",
+                "email": "admin@SSJewellery.com",
                 "is_admin": True,
-                "role": "admin",
-                "permissions": ["all"]
+                "role": "admin"
             }
         }), 200
     else:
         # Audit Log for failed attempt
-        log_admin_action("Admin Login", "Admin Authentication", f"Failed admin login attempt (Username: {username})", status="Failed")
-        return jsonify({"message": "Invalid Username or Password."}), 401
-
+        from backend.utils.audit import log_admin_action
+        log_admin_action("Admin Login", "Admin Authentication", f"Failed admin login attempt (ID: {admin_id})", status="Failed")
+        return jsonify({"message": "Invalid Admin credentials. Check your configured .env file."}), 401
 
 @admin_bp.route('/stats', methods=['GET'])
-@admin_bp.route('/dashboard/stats', methods=['GET'])
 @admin_required
 def get_dashboard_stats():
-    from flask import current_app
-    import sys
-    import traceback
-    from sqlalchemy.exc import SQLAlchemyError
+    # 1. Total Sales (calculated from total_amount of non-cancelled orders)
+    total_sales_q = db.session.query(func.sum(OrderModel.total_amount)).filter(
+        OrderModel.order_status != 'Cancelled'
+    ).scalar()
+    total_sales = float(total_sales_q) if total_sales_q else 0.0
 
-    # Log incoming request
-    current_app.logger.info(f"Incoming request: {request.method} {request.url}")
-    print(f"Incoming request: {request.method} {request.url}", flush=True)
+    # 2. Total Orders
+    total_orders = OrderModel.query.count()
 
-    try:
-        # 1. Total Sales (calculated from total_amount of non-cancelled orders)
-        sales_query = db.session.query(func.sum(OrderModel.total_amount)).filter(
-            OrderModel.order_status != 'Cancelled'
-        )
-        current_app.logger.info(f"SQL for total sales: {sales_query}")
-        print(f"SQL for total sales: {sales_query}", flush=True)
-        total_sales_q = sales_query.scalar()
-        total_sales = float(total_sales_q) if total_sales_q else 0.0
+    # 3. Active Products (status = 'active')
+    products_active = ProductModel.query.filter(ProductModel.status == 'active').count()
 
-        # 2. Total Orders
-        orders_query = db.session.query(func.count(OrderModel.id))
-        current_app.logger.info(f"SQL for total orders: {orders_query}")
-        print(f"SQL for total orders: {orders_query}", flush=True)
-        total_orders = orders_query.scalar() or 0
+    # 4. Registered Users
+    total_users = UserModel.query.filter_by(is_admin=False).count()
 
-        # 3. Active Products (status = 'active')
-        products_query = db.session.query(func.count(ProductModel.id)).filter(ProductModel.status == 'active')
-        current_app.logger.info(f"SQL for active products: {products_query}")
-        print(f"SQL for active products: {products_query}", flush=True)
-        products_active = products_query.scalar() or 0
+    # Calculate revenues today and this month using database aggregation
+    now = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    today_start_naive = today_start.replace(tzinfo=None)
+    month_start_naive = month_start.replace(tzinfo=None)
+    
+    revenue_today_q = db.session.query(func.sum(OrderModel.total_amount)).filter(
+        OrderModel.order_status != 'Cancelled',
+        OrderModel.created_at >= today_start_naive
+    ).scalar()
+    revenue_today = float(revenue_today_q) if revenue_today_q else 0.0
 
-        # 4. Registered Users
-        users_query = db.session.query(func.count(UserModel.id)).filter(UserModel.is_admin == False)
-        current_app.logger.info(f"SQL for registered users: {users_query}")
-        print(f"SQL for registered users: {users_query}", flush=True)
-        total_users = users_query.scalar() or 0
-
-        # Calculate revenues today and this month using database aggregation
-        now = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
-        today_start_naive = today_start.replace(tzinfo=None)
-        month_start_naive = month_start.replace(tzinfo=None)
-        
-        revenue_today_query = db.session.query(func.sum(OrderModel.total_amount)).filter(
-            OrderModel.order_status != 'Cancelled',
-            OrderModel.created_at >= today_start_naive
-        )
-        current_app.logger.info(f"SQL for revenue today: {revenue_today_query}")
-        print(f"SQL for revenue today: {revenue_today_query}", flush=True)
-        revenue_today_q = revenue_today_query.scalar()
-        revenue_today = float(revenue_today_q) if revenue_today_q else 0.0
-
-        revenue_month_query = db.session.query(func.sum(OrderModel.total_amount)).filter(
-            OrderModel.order_status != 'Cancelled',
-            OrderModel.created_at >= month_start_naive
-        )
-        current_app.logger.info(f"SQL for revenue month: {revenue_month_query}")
-        print(f"SQL for revenue month: {revenue_month_query}", flush=True)
-        revenue_month_q = revenue_month_query.scalar()
-        revenue_month = float(revenue_month_q) if revenue_month_q else 0.0
-                
-        # 7. Pending Orders
-        pending_orders_query = db.session.query(func.count(OrderModel.id)).filter(OrderModel.order_status == 'Pending')
-        current_app.logger.info(f"SQL for pending orders: {pending_orders_query}")
-        print(f"SQL for pending orders: {pending_orders_query}", flush=True)
-        pending_orders = pending_orders_query.scalar() or 0
-
-        # 8. Low Stock Products (stock < 10)
-        low_stock_query = db.session.query(func.count(ProductModel.id)).filter(ProductModel.stock < 10)
-        current_app.logger.info(f"SQL for low stock products: {low_stock_query}")
-        print(f"SQL for low stock products: {low_stock_query}", flush=True)
-        low_stock_products_count = low_stock_query.scalar() or 0
-
-        response_payload = {
-            "total_sales": total_sales,
-            "total_revenue": total_sales,
-            "total_orders": total_orders,
-            "active_products": products_active,
-            "products_active": products_active,
-            "total_products": products_active,
-            "total_users": total_users,
-            "registered_users": total_users,
-            "revenue_today": round(revenue_today, 2),
-            "revenue_month": round(revenue_month, 2),
-            "pending_orders": pending_orders,
-            "low_stock_products_count": low_stock_products_count
-        }
-
-        return jsonify(response_payload), 200
-
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = exc_tb.tb_frame.f_code.co_filename if exc_tb else __file__
-        line_no = exc_tb.tb_lineno if exc_tb else 0
-        
-        sql_error = ""
-        if isinstance(e, SQLAlchemyError):
-            sql_error = str(getattr(e, 'orig', e))
+    revenue_month_q = db.session.query(func.sum(OrderModel.total_amount)).filter(
+        OrderModel.order_status != 'Cancelled',
+        OrderModel.created_at >= month_start_naive
+    ).scalar()
+    revenue_month = float(revenue_month_q) if revenue_month_q else 0.0
             
-        log_msg = (
-            f"ERROR in get_dashboard_stats:\n"
-            f"- Request URL: {request.url}\n"
-            f"- HTTP Status: 500\n"
-            f"- SQL Error: {sql_error}\n"
-            f"- Python Exception: {str(e)}\n"
-            f"- File name: {fname}\n"
-            f"- Line number: {line_no}\n"
-        )
-        current_app.logger.error(log_msg)
-        print(log_msg, flush=True)
-        
-        traceback_str = "".join(traceback.format_exception(exc_type, exc_obj, exc_tb))
-        
-        return jsonify({
-            "error": str(e),
-            "sql_error": sql_error,
-            "file_name": fname,
-            "line_number": line_no,
-            "traceback": traceback_str,
-            "message": "Database query failed."
-        }), 500
+    # 7. Pending Orders
+    pending_orders = OrderModel.query.filter_by(order_status='Pending').count()
+
+    # 8. Low Stock Products (stock < 10)
+    low_stock_products_count = ProductModel.query.filter(ProductModel.stock < 10).count()
+
+    return jsonify({
+        "total_sales": total_sales,
+        "total_revenue": total_sales,
+        "total_orders": total_orders,
+        "active_products": products_active,
+        "products_active": products_active,
+        "total_products": products_active,
+        "total_users": total_users,
+        "revenue_today": round(revenue_today, 2),
+        "revenue_month": round(revenue_month, 2),
+        "pending_orders": pending_orders,
+        "low_stock_products_count": low_stock_products_count
+    }), 200
 
 @admin_bp.route('/users', methods=['GET'])
 @admin_required
@@ -1273,137 +1191,6 @@ def delete_category_admin(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": f"Failed to delete category: {str(e)}"}), 500
-
-
-@admin_bp.route('/maintenance/status', methods=['GET'])
-def get_maintenance_status():
-    from backend.models.settings import SiteSettingModel, SiteSettings
-    import logging
-    logger = logging.getLogger("maintenance_status")
-    
-    logger.info("Incoming GET request to /maintenance/status")
-    
-    try:
-        # Check if settings exist in DB
-        settings = SiteSettings.query.first()
-        logger.info(f"Database query result for SiteSettings: {settings}")
-        
-        if settings is None:
-            logger.info("SiteSettings record does not exist on query. Creating default records...")
-            setting_mode = SiteSettingModel(key='maintenance_mode', value='false')
-            setting_msg = SiteSettingModel(key='maintenance_message', value='The website is temporarily under maintenance.')
-            setting_by = SiteSettingModel(key='maintenance_enabled_by_admin', value='')
-            setting_at = SiteSettingModel(key='maintenance_enabled_at', value='')
-            db.session.add(setting_mode)
-            db.session.add(setting_msg)
-            db.session.add(setting_by)
-            db.session.add(setting_at)
-            db.session.commit()
-            
-            settings = SiteSettings.query.first()
-            logger.info(f"Successfully created default settings on first run: {settings}")
-
-        logger.info(f"Current maintenance status: enabled={settings.maintenance_mode}, message='{settings.maintenance_message}'")
-        
-        return jsonify({
-            "maintenance_mode": settings.maintenance_mode,
-            "maintenance_message": settings.maintenance_message,
-            "enabled_by_admin": settings.maintenance_enabled_by_admin,
-            "enabled_at": settings.maintenance_enabled_at
-        }), 200
-    except Exception as e:
-        logger.error(f"Exact exception in get_maintenance_status: {str(e)}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "message": f"Failed to fetch maintenance status: {str(e)}"
-        }), 500
-
-
-@admin_bp.route('/maintenance/toggle', methods=['POST'])
-@admin_required
-def toggle_maintenance_mode():
-    from backend.models.settings import SiteSettingModel, SiteSettings
-    from backend.utils.audit import log_admin_action
-    import datetime
-    import jwt
-    import logging
-    from backend.config import Config
-    
-    logger = logging.getLogger("maintenance_toggle")
-    
-    # Extract JWT Secret safely from Config
-    JWT_SECRET = getattr(Config, 'SECRET_KEY', os.getenv("JWT_SECRET", "supersecret_SSJewellery_key_123"))
-    
-    data = request.get_json() or {}
-    enabled = data.get("enabled")
-    message = data.get("message", "The website is temporarily under maintenance. Please try again later.")
-    
-    logger.info(f"Incoming POST request to /maintenance/toggle: enabled={enabled}, message='{message}'")
-    
-    if enabled is None:
-        logger.warning("Validation failed: 'enabled' key not provided in the request body.")
-        return jsonify({"message": "Please provide 'enabled' boolean in the request body.", "success": False}), 400
-        
-    try:
-        admin_username = "admin"
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.split(" ")[1]
-            try:
-                decoded = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-                admin_username = decoded.get("username") or decoded.get("admin_id") or "admin"
-            except Exception as jwt_err:
-                logger.warning(f"Failed to decode JWT token: {jwt_err}")
-                pass
-        
-        # Query SiteSettings
-        settings = SiteSettings.query.first()
-        logger.info(f"Database query result for SiteSettings: {settings}")
-        
-        if settings is None:
-            logger.info("SiteSettings record does not exist on query. Creating default records...")
-            setting_mode = SiteSettingModel(key='maintenance_mode', value='false')
-            setting_msg = SiteSettingModel(key='maintenance_message', value='The website is temporarily under maintenance.')
-            setting_by = SiteSettingModel(key='maintenance_enabled_by_admin', value='')
-            setting_at = SiteSettingModel(key='maintenance_enabled_at', value='')
-            db.session.add(setting_mode)
-            db.session.add(setting_msg)
-            db.session.add(setting_by)
-            db.session.add(setting_at)
-            db.session.commit()
-            
-            settings = SiteSettings.query.first()
-            logger.info(f"Successfully created default settings on first run: {settings}")
-
-        logger.info(f"Current maintenance status before update: enabled={settings.maintenance_mode}, message='{settings.maintenance_message}'")
-        
-        # Perform updates
-        settings.maintenance_mode = enabled
-        settings.maintenance_message = message
-        settings.maintenance_enabled_by_admin = admin_username if enabled else ""
-        settings.maintenance_enabled_at = datetime.datetime.utcnow().isoformat() + 'Z' if enabled else ""
-        
-        db.session.commit()
-        logger.info(f"Database stored the updated value correctly: enabled={settings.maintenance_mode}, message='{settings.maintenance_message}'")
-        
-        action = "Enable Maintenance Mode" if enabled else "Disable Maintenance Mode"
-        log_admin_action(action, "Site Settings", f"Maintenance mode toggled to {enabled} by admin {admin_username}")
-        
-        return jsonify({
-            "success": True,
-            "maintenance_mode": enabled,
-            "maintenance_message": message,
-            "enabled_by_admin": admin_username if enabled else "",
-            "enabled_at": settings.maintenance_enabled_at if enabled else ""
-        }), 200
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Exact exception in toggle_maintenance_mode: {str(e)}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "message": f"Failed to toggle maintenance mode: {str(e)}"
-        }), 500
-
 
 
 

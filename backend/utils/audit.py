@@ -17,8 +17,8 @@ def log_admin_action(action_type, module, details, status="Success", user_id=Non
     if token:
         try:
             data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            if data.get("is_admin"):
-                admin_name = data.get("username") or "admin"
+            if data.get("user_id") == "admin_user" and data.get("is_admin"):
+                admin_name = "admin"
             else:
                 from backend.models.user import UserModel
                 user = UserModel.find_by_id(data.get("user_id"))

@@ -196,8 +196,8 @@ def calculate_dashboard_stats(m, y):
     stats['cancelled_orders'] = db.session.execute(db.text(cancelled_q), {"m": m, "y": y}).scalar() or 0
     
     # Users Count
-    stats['registered_users'] = db.session.execute(db.text("SELECT COUNT(*) FROM users WHERE is_admin = FALSE")).scalar() or 0
-    stats['new_users_this_month'] = db.session.execute(db.text("SELECT COUNT(*) FROM users WHERE is_admin = FALSE AND MONTH(created_at) = :m AND YEAR(created_at) = :y"), {"m": m, "y": y}).scalar() or 0
+    stats['registered_users'] = db.session.execute(db.text("SELECT COUNT(*) FROM users WHERE is_admin = 0")).scalar() or 0
+    stats['new_users_this_month'] = db.session.execute(db.text("SELECT COUNT(*) FROM users WHERE is_admin = 0 AND MONTH(created_at) = :m AND YEAR(created_at) = :y"), {"m": m, "y": y}).scalar() or 0
     
     # Products / Stock
     stats['active_products'] = db.session.execute(db.text("SELECT COUNT(*) FROM products")).scalar() or 0
@@ -233,7 +233,7 @@ def get_users_report():
         u.full_name AS `Full Name`,
         u.email AS `Email`,
         u.phone AS `Mobile Number`,
-        CASE WHEN u.is_admin = TRUE THEN 'Admin' ELSE 'Customer' END AS `Role`,
+        CASE WHEN u.is_admin = 1 THEN 'Admin' ELSE 'Customer' END AS `Role`,
         da.street AS `Address`,
         da.city AS `City`,
         da.state AS `State`,
@@ -257,7 +257,7 @@ def get_users_report():
             ), 
             0.0
         ) AS `Total Spending`,
-        CASE WHEN u.is_blocked = TRUE THEN 'Blocked' ELSE 'Active' END AS `Account Status`,
+        CASE WHEN u.is_blocked = 1 THEN 'Blocked' ELSE 'Active' END AS `Account Status`,
         u.last_login AS `Last Login`,
         (
             SELECT COUNT(*) FROM (

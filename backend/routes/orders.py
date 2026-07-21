@@ -3,7 +3,7 @@ from backend.extensions import db
 from backend.models.order import OrderModel
 from backend.models.product import ProductModel
 from backend.models.user import UserModel, DeliveryAddress
-from backend.middleware.auth import token_required, admin_required, maintenance_block
+from backend.middleware.auth import token_required, admin_required
 from backend.utils.email_service import send_order_confirmation
 
 orders_bp = Blueprint('orders', __name__)
@@ -25,24 +25,23 @@ def is_address_complete(addr, name, phone):
         return False
     if not house or not str(house).strip():
         return False
-    if not street or str(street).strip() == "":
+    if not street or not str(street).strip():
         return False
-    if not area or str(area).strip() == "":
+    if not area or not str(area).strip():
         return False
-    if not city or str(city).strip() == "":
+    if not city or not str(city).strip():
         return False
-    if not state or str(state).strip() == "":
+    if not state or not str(state).strip():
         return False
-    if not pincode or str(pincode).strip() == "":
+    if not pincode or not str(pincode).strip():
         return False
-    if not country or str(country).strip() == "":
+    if not country or not str(country).strip():
         return False
         
     return True
 
 @orders_bp.route('', methods=['POST'])
 @token_required
-@maintenance_block
 def create_order(current_user):
     from backend.models.product import BuyRequestModel, ProductModel, StockHistoryModel, ProductAuditLogModel
     from backend.utils.timezone import get_ist_time

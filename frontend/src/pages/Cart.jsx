@@ -2,14 +2,12 @@ import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingCart, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
-import { AuthContext } from '../context/AuthContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatPrice } from '../utils/priceFormatter';
 import { LuxuryImage } from '../components/LuxuryImage';
 
 export const Cart = () => {
   const { cart, removeFromCart, updateQuantity, cartCount, cartTotal } = useContext(CartContext);
-  const { maintenanceMode, setShowMaintenanceWarning } = useContext(AuthContext);
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -19,10 +17,6 @@ export const Cart = () => {
   const grandTotal = Math.round(cartTotal + shippingFee + gstTax);
 
   const handleCheckout = () => {
-    if (maintenanceMode) {
-      setShowMaintenanceWarning(true);
-      return;
-    }
     navigate('/checkout');
   };
 

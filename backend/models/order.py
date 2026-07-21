@@ -62,84 +62,13 @@ class OrderModel(db.Model):
                 "image": it.image or ""
             })
             
-        from backend.utils.security import decryptSensitiveData
-        
-        # 1. Resolve customer details using existing database relationships (UserModel)
-        customer_full_name = "Unavailable"
-        customer_email = "Unavailable"
-        customer_mobile = "Unavailable"
-        
-        if self.user:
-            customer_full_name = decryptSensitiveData(self.user.full_name) or "Unavailable"
-            customer_email = decryptSensitiveData(self.user.email) or "Unavailable"
-            customer_mobile = decryptSensitiveData(self.user.phone) or "Unavailable"
-            
-        # 2. Extract and decrypt shipping address fields
-        sh_addr = self.shipping_address
-        
-        # If shipping_address is null or failed to decrypt (still has 'encrypted_data' key)
-        if not sh_addr or (isinstance(sh_addr, dict) and "encrypted_data" in sh_addr):
-            shipping_dict = {
-                "name": customer_full_name,
-                "address": "Unavailable",
-                "city": "Unavailable",
-                "state": "Unavailable",
-                "pincode": "Unavailable",
-                "email": customer_email,
-                "phone": customer_mobile,
-                "mobile": customer_mobile
-            }
-            delivery_address = "Unavailable"
-            city = "Unavailable"
-            state = "Unavailable"
-            pincode = "Unavailable"
-        else:
-            # It decrypted successfully to a dictionary
-            s_name = decryptSensitiveData(sh_addr.get("name")) or customer_full_name
-            s_address = decryptSensitiveData(sh_addr.get("address") or sh_addr.get("street")) or "Unavailable"
-            s_city = decryptSensitiveData(sh_addr.get("city")) or "Unavailable"
-            s_state = decryptSensitiveData(sh_addr.get("state")) or "Unavailable"
-            s_pincode = decryptSensitiveData(sh_addr.get("pincode")) or "Unavailable"
-            s_email = decryptSensitiveData(sh_addr.get("email")) or customer_email
-            s_phone = decryptSensitiveData(sh_addr.get("phone") or sh_addr.get("mobile")) or customer_mobile
-            
-            shipping_dict = {
-                "name": s_name,
-                "address": s_address,
-                "city": s_city,
-                "state": s_state,
-                "pincode": s_pincode,
-                "email": s_email,
-                "phone": s_phone,
-                "mobile": s_phone
-            }
-            
-            delivery_address = s_address
-            city = s_city
-            state = s_state
-            pincode = s_pincode
-            
-            if customer_full_name == "Unavailable" and s_name != "Unavailable":
-                customer_full_name = s_name
-            if customer_email == "Unavailable" and s_email != "Unavailable":
-                customer_email = s_email
-            if customer_mobile == "Unavailable" and s_phone != "Unavailable":
-                customer_mobile = s_phone
-            
         return {
             "id": str(self.id),
             "_id": str(self.id),
             "order_id": self.order_id,
             "user_id": str(self.user_id) if self.user_id else None,
-            "user_email": customer_email,
-            "customer_full_name": customer_full_name,
-            "customer_email": customer_email,
-            "customer_mobile": customer_mobile,
-            "delivery_address": delivery_address,
-            "city": city,
-            "state": state,
-            "pincode": pincode,
-            "shipping_address": shipping_dict,
+            "user_email": self.user.email if (self.user and self.user.email) else "Not Available",
+            "shipping_address": self.shipping_address or {},
             "items": item_list,
             "total_amount": float(self.total_amount),
             "order_status": self.order_status,

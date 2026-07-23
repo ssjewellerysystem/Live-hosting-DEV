@@ -90,7 +90,7 @@ class OrderModel(db.Model):
     def create_order(user_id, shipping_address, items, total_amount, terms_accepted=False, commit=True):
         # Generate clean unique Order ID
         random_num = random.randint(100000, 999999)
-        order_id = f"BB-{random_num}"
+        order_id = f"SS-{random_num}"
         
         est_delivery = (get_ist_time() + timedelta(days=5)).strftime("%d-%m-%Y")
         

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { CreditCard, Truck, ShieldCheck, Mail, Key, ShoppingBag, CheckCircle, ArrowRight, ArrowLeft, ShieldAlert, X, Plus, Edit2, Trash2, MapPin, Check, Home, Briefcase } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
+import { useMaintenance } from '../context/MaintenanceContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatPrice } from '../utils/priceFormatter';
 
@@ -12,6 +13,7 @@ export const Checkout = () => {
   const location = useLocation();
   const { user, checkoutLogin, updateUser, token } = useContext(AuthContext);
   const { cart, cartTotal, clearCart } = useContext(CartContext);
+  const { isMaintenanceMode, showMaintenancePopup } = useMaintenance();
   const { t } = useTranslation();
 
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment/OTP, 3: Success Receipt
@@ -176,10 +178,15 @@ export const Checkout = () => {
 
   // Redirect to login if user is not logged in for buy request checkout
   useEffect(() => {
+    if (isMaintenanceMode && step !== 3) {
+      showMaintenancePopup();
+      navigate('/cart');
+      return;
+    }
     if (buyRequestId && !user) {
       navigate('/login?redirect=' + encodeURIComponent('checkout?buy_request_id=' + buyRequestId));
     }
-  }, [buyRequestId, user, navigate]);
+  }, [isMaintenanceMode, step, buyRequestId, user, navigate, showMaintenancePopup]);
 
   // Fetch buy request details if buy_request_id is present
   useEffect(() => {
@@ -585,6 +592,10 @@ export const Checkout = () => {
 
   const handlePlaceOrder = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (isMaintenanceMode) {
+      showMaintenancePopup();
+      return;
+    }
     if (!termsAccepted) {
       setError(t('checkout_page.agree_warning'));
       return;
@@ -1646,8 +1657,8 @@ export const Checkout = () => {
                 <span className="font-bold text-slate-855 dark:text-slate-55 price-amount">₹{formatPrice(successOrder.total_amount)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">{t('checkout_page.est_delivery')}</span>
-                <span className="font-bold text-slate-850 dark:text-slate-55">{t('checkout_page.delivery_days')}</span>
+                <span className="text-slate-400">{t('checkout_page.est_delivery', { defaultValue: 'Tracking Link' })}</span>
+                <span className="font-bold text-slate-850 dark:text-slate-55">{t('checkout_page.delivery_days', { defaultValue: 'Tracking link will be provided to you soon.' })}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">{t('checkout_page.shipping_address')}</span>

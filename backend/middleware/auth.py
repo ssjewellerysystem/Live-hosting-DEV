@@ -4,7 +4,9 @@ from flask import request, jsonify
 import jwt
 from backend.models.user import UserModel
 
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_SSJewellery_key_123")
+from backend.config import Config
+
+JWT_SECRET = Config.JWT_SECRET
 
 def token_required(f):
     @wraps(f)

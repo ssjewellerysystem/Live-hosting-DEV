@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { ChevronUp, X, Heart, Sparkles } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
+import axios from 'axios';
+import { API_BASE_URL } from '../context/AuthContext';
 
 // 3D Parallax & Magnetic Card component for Occasion
-const ParallaxOccasionCard = ({ item, onExpand, index }) => {
+const ParallaxOccasionCard = ({ item, onExpand, onCollectionClick, index }) => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
@@ -56,7 +58,13 @@ const ParallaxOccasionCard = ({ item, onExpand, index }) => {
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      onClick={() => onExpand(item)}
+      onClick={() => {
+        if (onCollectionClick) {
+          onCollectionClick(item.title);
+        } else if (onExpand) {
+          onExpand(item);
+        }
+      }}
       className="relative w-[260px] sm:w-[330px] aspect-[9/14] rounded-2xl overflow-hidden cursor-pointer group border border-slate-200/40 dark:border-slate-800/80 bg-slate-900 shadow-md hover:shadow-2xl transition-shadow duration-350 select-none flex-shrink-0 no-zoom"
     >
       {/* Background Image with Parallax Offset */}
@@ -104,83 +112,42 @@ const ParallaxOccasionCard = ({ item, onExpand, index }) => {
   );
 };
 
-export const OccasionGallery = ({ items: propItems }) => {
+export const OccasionGallery = ({ items: propItems, activeCollection, onCollectionClick }) => {
   const { language } = useTranslation();
   const [selectedItem, setSelectedItem] = useState(null);
 
-  // Occasions Lookbook Data
-  const defaultItems = {
-    en: [
-      {
-        id: 1,
-        title: "Date Night",
-        subtitle: "Elegance & Layered Statements",
-        image: "/cat_necklaces.png",
-        description: "Perfect combinations of layered gold chains, subtle collar necklaces, and delicate hoops. Crafted to make statement memories under candlelit tables.",
-        tips: ["Pair with solid dark necklines to highlight gold textures.", "Layer 2-3 chains of varying lengths.", "Keep earrings minimal if layering necklaces."]
-      },
-      {
-        id: 2,
-        title: "Wedding Wear",
-        subtitle: "Regal Heritage Kundan",
-        image: "/cat_bridal.png",
-        description: "Ornate traditional bridal choker sets, heavy designer jhumkas, and matching hand ornaments. Tailored for classic royal elegance.",
-        tips: ["Complement heavily embroidered outfits with choker-length sets.", "Style with matching maang-tika for classic look.", "Incorporate natural pearls for color balance."]
-      },
-      {
-        id: 3,
-        title: "Office Wear",
-        subtitle: "Minimalistic Luxury Studs",
-        image: "/cat_earrings.png",
-        description: "Chic, lightweight, and modern daily-wear items. Understated solitaire bands, studs, and sleek bracelets designed for executive confidence.",
-        tips: ["Stick to one key statement piece (e.g. sleek studs or minimalist watch).", "Platinum/white-gold options work best with formal suits.", "Avoid noisy jingling bracelets."]
-      },
-      {
-        id: 4,
-        title: "Daily Wear",
-        subtitle: "Versatile Chic Bangles",
-        image: "/cat_bracelets.png",
-        description: "Comfortable, durable, yet elegant gold bands and bracelets. Built for regular wear while retaining luxurious gold textures.",
-        tips: ["Mix different gold karats for unique color play.", "Opt for smooth, snag-free lock styles.", "Great for layering alongside wristwatches."]
-      }
-    ],
-    hi: [
-      {
-        id: 1,
-        title: "डिनर डेट",
-        subtitle: "लालित्य और लेयर्ड आभूषण",
-        image: "/cat_necklaces.png",
-        description: "लेयर्ड सोने की जंजीरों, सूक्ष्म कॉलर हार और नाजुक हुप्स का सही संयोजन। मोमबत्ती की रोशनी में सुखद यादें बनाने के लिए डिज़ाइन किया गया।",
-        tips: ["सोने की बनावट को उभारने के लिए गहरे रंग के कपड़ों के साथ पहनें।", "अलग-अलग लंबाई की 2-3 चेन लेयर करें।", "हार लेयर करते समय झुमके हल्के रखें।"]
-      },
-      {
-        id: 2,
-        title: "शादी विवाह",
-        subtitle: "शाही विरासत कुंदन",
-        image: "/cat_bridal.png",
-        description: "कढ़ाई वाले परिधानों के साथ चोकर-लंबाई वाले सेट पहनें। क्लासिक लुक के लिए मांग-टीका के साथ स्टाइल करें।",
-        tips: ["कढ़ाई वाले परिधानों के साथ चोकर-लंबाई वाले सेट पहनें।", "क्लासिक लुक के लिए मांग-टीका के साथ स्टाइल करें।", "रंग संतुलन के लिए प्राकृतिक मोतियों को शामिल करें।"]
-      },
-      {
-        id: 3,
-        title: "ऑफिस वियर",
-        subtitle: "न्यूनतम लक्जरी स्टड्स",
-        image: "/cat_earrings.png",
-        description: "ठाठ, हल्के और आधुनिक दैनिक-पहनने वाले आभूषण। कार्यकारी आत्मविश्वास के लिए सुरुचिपूर्ण सॉलिटेयर रिंग, स्टड्स और चिकनी ब्रेसलेट।",
-        tips: ["एक प्रमुख आभूषण पहनें (जैसे सूक्ष्म स्टड्स या न्यूनतम ब्रेसलेट)।", "औपचारिक सूट के साथ सफेद सोना/प्लैटिनम सबसे अच्छे लगते हैं।", "आवाज करने वाले कंगन पहनने से बचें।"]
-      },
-      {
-        id: 4,
-        title: "दैनिक पहनावा",
-        subtitle: "बहुमुखी ब्रेसलेट",
-        image: "/cat_bracelets.png",
-        description: "आरामदायक, टिकाऊ, फिर भी सुरुचिपूर्ण सोने के छल्ले और कंगन। शानदार बनावट के साथ नियमित रूप से पहनने के लिए उपयुक्त।",
-        tips: ["अनोखे लुक के लिए सोने के विभिन्न रंगों को मिलाएं।", "स्मूथ और सुरक्षित लॉक स्टाइल चुनें।", "कलाई घड़ी के साथ लेयरिंग के लिए बेहतरीन।"]
-      }
-    ]
-  };
+  const [dbCollections, setDbCollections] = useState([]);
 
-  const items = propItems || defaultItems[language === 'hi' ? 'hi' : 'en'];
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDbCollections = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/collections`);
+        if (isMounted && response.data) {
+          const mapped = response.data
+            .filter(c => c.is_active !== false)
+            .map(c => ({
+              id: c.id,
+              title: c.name || c.title,
+              subtitle: c.subtitle || c.description || (language === 'hi' ? 'विशेष संग्रह' : 'Curated Masterpiece'),
+              image: c.image || c.image_url || c.thumbnail_image || "/cat_bridal.png",
+              description: c.description || (language === 'hi' ? 'हमारे नवीनतम संग्रह की खोज करें।' : 'Discover our latest handcrafted collection.'),
+              tips: Array.isArray(c.styling_tips) && c.styling_tips.length > 0 ? c.styling_tips : [
+                language === 'hi' ? 'सुंदर लुक के लिए परिधानों के साथ पहनें।' : 'Pair with classic ensembles for timeless luxury.',
+                language === 'hi' ? 'सदाबहार चमक के लिए सोने के डिज़ाइन चुनें।' : 'Explore fine gold craftsmanship for special milestones.'
+              ]
+            }));
+          setDbCollections(mapped);
+        }
+      } catch (err) {
+        console.error("Error fetching dynamic collections:", err);
+      }
+    };
+    fetchDbCollections();
+    return () => { isMounted = false; };
+  }, [language]);
+
+  const items = (propItems && propItems.length > 0) ? propItems : dbCollections;
 
   return (
     <section className="relative w-full overflow-hidden py-16 bg-transparent transition-colors duration-300">
@@ -211,11 +178,11 @@ export const OccasionGallery = ({ items: propItems }) => {
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500/10 text-[#D4A75F] text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-4"
         >
           <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-          {language === 'hi' ? 'अवसर के अनुसार लुकबुक' : 'Shop by Occasion'}
+          {language === 'hi' ? 'संग्रह के अनुसार खरीदें' : 'Shop by Collection'}
         </motion.div>
         
         <h2 className="text-2xl sm:text-4xl font-serif font-bold text-[#3F1D5A] dark:text-[#EFE7DB] tracking-wide">
-          {language === 'hi' ? 'हर अवसर के लिए विशेष स्टाइल' : 'Styling Curated for Every Occasion'}
+          {language === 'hi' ? 'हर संग्रह के लिए विशेष स्टाइल' : 'Styling Curated for Every Collection'}
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-3 max-w-xl mx-auto">
           {language === 'hi' 
@@ -234,6 +201,7 @@ export const OccasionGallery = ({ items: propItems }) => {
               key={`${item.id}-${index}`} 
               item={item} 
               onExpand={setSelectedItem} 
+              onCollectionClick={onCollectionClick}
               index={index} 
             />
           ))}

@@ -1,19 +1,10 @@
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
+import { API_BASE_URL, SERVER_BASE_URL } from '../config/env';
+
+export { API_BASE_URL, SERVER_BASE_URL };
 export const AuthContext = createContext();
-
-const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL;
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return 'http://localhost:5000/api';
-  }
-  return 'https://ssjewellery-main.onrender.com/api';
-};
-
-export const API_BASE_URL = getApiBaseUrl();
-export const SERVER_BASE_URL = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0, -4) : API_BASE_URL;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

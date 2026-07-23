@@ -39,7 +39,7 @@ const BannerSkeleton = () => (
   <div className="relative h-[480px] lg:h-[680px] xl:h-[740px] min-h-[450px] overflow-hidden rounded-[16px] lg:rounded-[20px] bg-[#1B0B26] border border-[#D4A75F]/15 flex items-center justify-center">
     <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
     <img
-      src="/loading-logo.png"
+      src="/loading-logo.jpg"
       alt="SSJewellery"
       className="h-32 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen"
     />
@@ -50,7 +50,7 @@ const MobileBannerSkeleton = () => (
   <div className="relative h-[390px] xs:h-[420px] sm:h-[440px] overflow-hidden rounded-[16px] bg-[#1B0B26] border border-[#D4A75F]/15 flex items-center justify-center">
     <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
     <img
-      src="/loading-logo.png"
+      src="/loading-logo.jpg"
       alt="SSJewellery"
       className="h-24 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen"
     />
@@ -76,7 +76,7 @@ const CategorySkeleton = () => (
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-[#F2E8D9]/60 dark:border-slate-800/80 p-1 flex items-center justify-center overflow-hidden relative">
               <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
               <img
-                src="/loading-logo.png"
+                src="/loading-logo.jpg"
                 alt="Loading..."
                 className="w-10 h-auto opacity-50 object-contain relative z-20 animate-pulse dark:mix-blend-screen mix-blend-multiply dark:invert-0 invert"
               />
@@ -107,7 +107,7 @@ const MobileCategorySkeleton = () => (
             <div className="w-[68px] h-[68px] rounded-full border-2 border-[#F2E8D9]/60 dark:border-slate-800/80 p-1 flex items-center justify-center overflow-hidden relative">
               <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
               <img
-                src="/loading-logo.png"
+                src="/loading-logo.jpg"
                 alt="Loading..."
                 className="w-9 h-auto opacity-50 object-contain relative z-20 animate-pulse dark:mix-blend-screen mix-blend-multiply dark:invert-0 invert"
               />
@@ -174,15 +174,15 @@ const SearchSpotlight = ({ products, language }) => {
         <div className="lg:col-span-4 order-2 lg:order-1 text-center lg:text-left flex flex-col justify-center">
           <span className="inline-flex self-center lg:self-start items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold bg-[#D4A75F]/15 text-[#D4A75F] border border-[#D4A75F]/35 uppercase tracking-widest mb-4">
             <Sparkles className="h-3 w-3 animate-pulse" />
-            {activeSearch 
+            {activeSearch
               ? (language === 'hi' ? 'शीर्ष खोज मिलान' : 'Top Search Match')
               : activeCategory !== 'All'
-              ? `${translateCategory(activeCategory, language)} ${language === 'hi' ? 'विशेष संग्रह' : 'Spotlight'}`
-              : (language === 'hi' ? 'विशेष संग्रह' : 'Featured Collection')
+                ? `${translateCategory(activeCategory, language)} ${language === 'hi' ? 'विशेष संग्रह' : 'Spotlight'}`
+                : (language === 'hi' ? 'विशेष संग्रह' : 'Featured Collection')
             }
           </span>
-          
-          <motion.h2 
+
+          <motion.h2
             key={`title-${activeIndex}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -191,8 +191,8 @@ const SearchSpotlight = ({ products, language }) => {
           >
             {mainProduct.name}
           </motion.h2>
-          
-          <motion.p 
+
+          <motion.p
             key={`desc-${activeIndex}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -210,8 +210,8 @@ const SearchSpotlight = ({ products, language }) => {
               {language === 'hi' ? 'विवरण देखें' : 'Explore The Craft'}
               <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-slate-950" />
             </Link>
-            
-            <motion.span 
+
+            <motion.span
               key={`price-${activeIndex}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -224,21 +224,21 @@ const SearchSpotlight = ({ products, language }) => {
 
         {/* Center/Right Column - 3D Jewelry Stands display */}
         <div className="lg:col-span-8 order-1 lg:order-2 relative h-[300px] md:h-[400px] flex items-center justify-center">
-          
+
           {/* 1. Left Background Stand (Blurred) */}
           {leftProduct && (
             <div className="absolute left-[5%] md:left-[15%] bottom-[10%] scale-[0.7] opacity-40 blur-[1.5px] transition-all hover:opacity-75 hover:blur-0 duration-500 z-10 hidden sm:block">
               <div className="relative flex flex-col items-center">
                 {/* Mannequin / Display shape */}
                 <div className="w-[120px] h-[160px] bg-gradient-to-b from-[#20142A] to-[#0F0715] rounded-t-[50px] shadow-lg flex items-center justify-center p-3 border border-[#D4A75F]/15">
-                  <motion.img 
+                  <motion.img
                     key={`left-img-${activeIndex}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
-                    src={leftImg} 
-                    alt={leftProduct.name} 
-                    className="w-[85px] h-[85px] object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)]" 
+                    src={leftImg}
+                    alt={leftProduct.name}
+                    className="w-[85px] h-[85px] object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)]"
                   />
                 </div>
                 {/* Gold collar collar base */}
@@ -252,33 +252,33 @@ const SearchSpotlight = ({ products, language }) => {
           {/* 2. Main Center Stand (Highlighted) */}
           <div className="relative z-20 scale-[0.7] xs:scale-[0.8] sm:scale-[0.9] md:scale-110 transform transition-transform duration-500 hover:scale-[1.03] md:hover:scale-[1.12]">
             <div className="relative flex flex-col items-center">
-              
+
               {/* Mannequin Bust */}
               <div className="w-[180px] h-[230px] bg-gradient-to-b from-[#2B1B35] to-[#140C1A] rounded-t-[80px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] flex items-center justify-center p-4 border border-[#D4A75F]/35 relative">
-                <motion.img 
+                <motion.img
                   key={`main-img-${activeIndex}`}
-                  src={mainImg} 
-                  alt={mainProduct.name} 
+                  src={mainImg}
+                  alt={mainProduct.name}
                   className="w-[130px] h-[130px] object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.4)]"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
-                  transition={{ 
+                  transition={{
                     opacity: { duration: 0.4 },
                     scale: { duration: 0.4 },
-                    y: { duration: 4, repeat: Infinity, ease: "easeInOut" } 
+                    y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
                   }}
                 />
               </div>
-              
+
               {/* Gold neck joint */}
               <div className="w-[130px] h-[10px] bg-gradient-to-r from-[#B38F4B] via-[#D4A75F] to-[#B38F4B] rounded-full shadow-md" />
-              
+
               {/* Marble Pillar Pedestal */}
               <div className="w-[150px] h-[40px] bg-gradient-to-b from-[#333333] to-[#222222] rounded-md shadow-lg border-t border-white/20 relative overflow-hidden">
                 {/* Marble texture gloss */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent" />
               </div>
-              
+
               {/* Gold Base Ring */}
               <div className="w-[160px] h-[6px] bg-[#D4A75F] rounded-full shadow-md" />
             </div>
@@ -290,14 +290,14 @@ const SearchSpotlight = ({ products, language }) => {
               <div className="relative flex flex-col items-center">
                 {/* Mannequin / Display shape */}
                 <div className="w-[120px] h-[160px] bg-gradient-to-b from-[#20142A] to-[#0F0715] rounded-t-[50px] shadow-lg flex items-center justify-center p-3 border border-[#D4A75F]/15">
-                  <motion.img 
+                  <motion.img
                     key={`right-img-${activeIndex}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
-                    src={rightImg} 
-                    alt={rightProduct.name} 
-                    className="w-[85px] h-[85px] object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)]" 
+                    src={rightImg}
+                    alt={rightProduct.name}
+                    className="w-[85px] h-[85px] object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)]"
                   />
                 </div>
                 {/* Gold collar base */}
@@ -315,14 +315,14 @@ const SearchSpotlight = ({ products, language }) => {
   );
 };
 
-const BannerSlider = React.memo(({ 
-  slides, 
-  activeSlide, 
-  setActiveSlide, 
-  isAdmin, 
-  handleNextSlide, 
-  handlePrevSlide, 
-  opacityParallax, 
+const BannerSlider = React.memo(({
+  slides,
+  activeSlide,
+  setActiveSlide,
+  isAdmin,
+  handleNextSlide,
+  handlePrevSlide,
+  opacityParallax,
   yParallax,
   bannersLoading,
   onCategoryClick
@@ -353,7 +353,7 @@ const BannerSlider = React.memo(({
         <div className="hidden md:block relative w-full">
           <div className="relative overflow-hidden bg-[#1B0B26] flex items-center justify-center h-screen min-h-[600px]">
             <div className="absolute inset-0 luxury-gold-shimmer pointer-events-none" />
-            <img src="/loading-logo.png" alt="SSJewellery" className="h-28 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen" />
+            <img src="/loading-logo.jpg" alt="SSJewellery" className="h-28 w-auto opacity-60 object-contain relative z-20 animate-pulse mix-blend-screen" />
           </div>
         </div>
         {/* Mobile Loading Skeleton */}
@@ -455,9 +455,9 @@ const BannerSlider = React.memo(({
           {/* ---- DECORATIVE CORNER ORNAMENT ---- */}
           <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 25, pointerEvents: 'none' }}>
             <svg width="52" height="52" viewBox="0 0 52 52" fill="none" opacity="0.45">
-              <path d="M2 2 L24 2" stroke="#D4A75F" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M2 2 L2 24" stroke="#D4A75F" strokeWidth="1.5" strokeLinecap="round"/>
-              <circle cx="2" cy="2" r="2.5" fill="#D4A75F"/>
+              <path d="M2 2 L24 2" stroke="#D4A75F" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M2 2 L2 24" stroke="#D4A75F" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="2" cy="2" r="2.5" fill="#D4A75F" />
             </svg>
           </div>
 
@@ -653,18 +653,17 @@ const BannerSlider = React.memo(({
             {slides.map((slide, idx) => (
               <div
                 key={idx}
-                className={`absolute inset-0 bg-gradient-to-tr ${slide.gradient} transition-opacity duration-1000 ${
-                  idx === activeSlide 
-                    ? 'opacity-100 z-10' 
-                    : 'opacity-0 z-0 pointer-events-none'
-                }`}
+                className={`absolute inset-0 bg-gradient-to-tr ${slide.gradient} transition-opacity duration-1000 ${idx === activeSlide
+                  ? 'opacity-100 z-10'
+                  : 'opacity-0 z-0 pointer-events-none'
+                  }`}
               >
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-[#1B0B26]/30 to-[#3F1D5A]/10 mix-blend-multiply opacity-90 pointer-events-none" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(212,167,95,0.15),transparent_50%)] pointer-events-none" />
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4A75F]/20 to-transparent pointer-events-none" />
 
                 <div className="h-full flex flex-col items-center justify-between text-center pt-5 pb-8 px-4 text-white z-10 relative">
-                  
+
                   <div className="flex flex-col items-center">
                     <motion.h1
                       initial={{ opacity: 0, y: 15 }}
@@ -674,7 +673,7 @@ const BannerSlider = React.memo(({
                     >
                       {slide.title}
                     </motion.h1>
-                    
+
                     <motion.p
                       initial={{ opacity: 0, y: 10 }}
                       animate={idx === activeSlide ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
@@ -731,9 +730,8 @@ const BannerSlider = React.memo(({
             <button
               key={idx}
               onClick={() => setActiveSlide(idx)}
-              className={`h-1.5 transition-all duration-300 rounded-full cursor-pointer ${
-                idx === activeSlide ? 'bg-[#D4A75F] w-6' : 'bg-slate-350 dark:bg-slate-800 hover:bg-slate-200 w-1.5'
-              }`}
+              className={`h-1.5 transition-all duration-300 rounded-full cursor-pointer ${idx === activeSlide ? 'bg-[#D4A75F] w-6' : 'bg-slate-350 dark:bg-slate-800 hover:bg-slate-200 w-1.5'
+                }`}
             />
           ))}
         </div>
@@ -741,6 +739,26 @@ const BannerSlider = React.memo(({
     </>
   );
 });
+
+const DEFAULT_CATEGORIES = [
+  { name: "Rings", label: "Rings", img: "/cat_rings.png" },
+  { name: "Necklaces", label: "Necklaces", img: "/cat_necklaces.png" },
+  { name: "Earrings", label: "Earrings", img: "/cat_earrings.png" },
+  { name: "Bracelets", label: "Bracelets", img: "/cat_bracelets.png" },
+  { name: "Bridal Collection", label: "Bridal Collection", img: "/cat_bridal.png" }
+];
+
+const getCategoryDefaultImg = (name, img) => {
+  if (img && img !== '/logo.svg') return img;
+  if (!name) return '/logo.svg';
+  const lower = name.toLowerCase();
+  if (lower.includes('ring')) return '/cat_rings.png';
+  if (lower.includes('necklace')) return '/cat_necklaces.png';
+  if (lower.includes('earring')) return '/cat_earrings.png';
+  if (lower.includes('bracelet') || lower.includes('bangle')) return '/cat_bracelets.png';
+  if (lower.includes('bridal')) return '/cat_bridal.png';
+  return '/logo.svg';
+};
 
 const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCategoryClick }) => {
   const { language } = useContext(AuthContext);
@@ -752,11 +770,11 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
     const fetchCategories = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/products/categories`);
-        if (isMounted) {
-          const mapped = (response.data || []).map(cat => ({
+        if (isMounted && response.data && response.data.length > 0) {
+          const mapped = response.data.map(cat => ({
             name: cat.name,
             label: cat.name,
-            img: cat.image_url || "/logo.svg"
+            img: getCategoryDefaultImg(cat.name, cat.image_url)
           }));
           setCategories(mapped);
         }
@@ -770,7 +788,9 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
     return () => { isMounted = false; };
   }, []);
 
-  if (loading || parentLoading) {
+  const displayCategories = (categories && categories.length > 0) ? categories : DEFAULT_CATEGORIES;
+
+  if (loading && parentLoading) {
     return (
       <>
         <CategorySkeleton />
@@ -782,7 +802,7 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
   return (
     <>
       {/* Desktop view */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
@@ -801,7 +821,7 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
           </div>
 
           <div className="flex justify-center items-center gap-8 lg:gap-14 flex-wrap">
-            {categories.map((cat) => {
+            {displayCategories.map((cat) => {
               const isActive = activeCategory === cat.name;
               return (
                 <motion.div
@@ -817,11 +837,10 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
                     className="category-item-link flex flex-col items-center justify-center focus:outline-none cursor-pointer select-none w-20 sm:w-24 group no-zoom"
                   >
                     <div
-                      className={`rounded-full flex items-center justify-center overflow-hidden border-2 p-0.5 transition-all duration-500 ${
-                        isActive
-                          ? 'bg-transparent border-[#D4A75F] shadow-[0_0_18px_rgba(212,167,95,0.85),_0_0_35px_rgba(212,167,95,0.4)] ring-2 ring-[#D4A75F]/20'
-                          : 'bg-transparent border-slate-200 dark:border-slate-800 group-hover:border-[#D4A75F]/70 group-hover:shadow-[0_0_12px_rgba(212,167,95,0.45)]'
-                      }`}
+                      className={`rounded-full flex items-center justify-center overflow-hidden border-2 p-0.5 transition-all duration-500 ${isActive
+                        ? 'bg-transparent border-[#D4A75F] shadow-[0_0_18px_rgba(212,167,95,0.85),_0_0_35px_rgba(212,167,95,0.4)] ring-2 ring-[#D4A75F]/20'
+                        : 'bg-transparent border-slate-200 dark:border-slate-800 group-hover:border-[#D4A75F]/70 group-hover:shadow-[0_0_12px_rgba(212,167,95,0.45)]'
+                        }`}
                       style={{
                         width: '76px',
                         height: '76px'
@@ -833,19 +852,17 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
                         width="76"
                         height="76"
                         wrapperClassName="rounded-full"
-                        className={`w-full h-full object-cover rounded-full transition-all duration-500 no-zoom ${
-                          isActive
-                            ? 'opacity-100 saturate-120 brightness-105 contrast-105'
-                            : 'opacity-50 saturate-30 brightness-90 contrast-90 group-hover:opacity-100 group-hover:saturate-100 group-hover:brightness-100 group-hover:contrast-100'
-                        }`}
+                        className={`w-full h-full object-cover rounded-full transition-all duration-500 no-zoom ${isActive
+                          ? 'opacity-100 saturate-120 brightness-105 contrast-105'
+                          : 'opacity-50 saturate-30 brightness-90 contrast-90 group-hover:opacity-100 group-hover:saturate-100 group-hover:brightness-100 group-hover:contrast-100'
+                          }`}
                       />
                     </div>
 
-                    <span className={`mt-2 text-xs md:text-sm font-bold tracking-wide transition-colors duration-300 text-center w-full px-0.5 ${
-                      isActive
-                        ? 'text-[#D4A75F]'
-                        : 'text-slate-800 dark:text-[#F8FAFC] group-hover:text-[#D4A75F]'
-                    }`}>
+                    <span className={`mt-2 text-xs md:text-sm font-bold tracking-wide transition-colors duration-300 text-center w-full px-0.5 ${isActive
+                      ? 'text-[#D4A75F]'
+                      : 'text-slate-800 dark:text-[#F8FAFC] group-hover:text-[#D4A75F]'
+                      }`}>
                       {translateCategory(cat.name, language)}
                     </span>
                   </Link>
@@ -873,7 +890,7 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
           </div>
 
           <div className="flex overflow-x-auto gap-4 pb-2 scroll-smooth snap-x snap-mandatory justify-start no-scrollbar">
-            {categories.map((cat) => {
+            {displayCategories.map((cat) => {
               const isActive = activeCategory === cat.name;
               return (
                 <motion.div
@@ -889,11 +906,10 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
                     className="category-item-link snap-center flex-none flex flex-col items-center justify-center focus:outline-none cursor-pointer select-none w-[76px] sm:w-[84px] group no-zoom"
                   >
                     <div
-                      className={`rounded-full flex items-center justify-center overflow-hidden border-2 p-0.5 transition-all duration-500 ${
-                        isActive
-                          ? 'bg-transparent border-[#D4A75F] shadow-[0_0_15px_rgba(212,167,95,0.85),_0_0_30px_rgba(212,167,95,0.4)] ring-2 ring-[#D4A75F]/20'
-                          : 'bg-transparent border-slate-200 dark:border-slate-800 group-hover:border-[#D4A75F]/70 group-hover:shadow-[0_0_10px_rgba(212,167,95,0.45)]'
-                      }`}
+                      className={`rounded-full flex items-center justify-center overflow-hidden border-2 p-0.5 transition-all duration-500 ${isActive
+                        ? 'bg-transparent border-[#D4A75F] shadow-[0_0_15px_rgba(212,167,95,0.85),_0_0_30px_rgba(212,167,95,0.4)] ring-2 ring-[#D4A75F]/20'
+                        : 'bg-transparent border-slate-200 dark:border-slate-800 group-hover:border-[#D4A75F]/70 group-hover:shadow-[0_0_10px_rgba(212,167,95,0.45)]'
+                        }`}
                       style={{
                         width: '68px',
                         height: '68px'
@@ -905,19 +921,17 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
                         width="68"
                         height="68"
                         wrapperClassName="rounded-full"
-                        className={`w-full h-full object-cover rounded-full transition-all duration-500 no-zoom ${
-                          isActive
-                            ? 'opacity-100 saturate-120 brightness-105 contrast-105'
-                            : 'opacity-50 saturate-30 brightness-90 contrast-90 group-hover:opacity-100 group-hover:saturate-100 group-hover:brightness-100 group-hover:contrast-100'
-                        }`}
+                        className={`w-full h-full object-cover rounded-full transition-all duration-500 no-zoom ${isActive
+                          ? 'opacity-100 saturate-120 brightness-105 contrast-105'
+                          : 'opacity-50 saturate-30 brightness-90 contrast-90 group-hover:opacity-100 group-hover:saturate-100 group-hover:brightness-100 group-hover:contrast-100'
+                          }`}
                       />
                     </div>
 
-                    <span className={`mt-2 text-[10px] sm:text-xs font-bold tracking-wide transition-colors duration-300 text-center w-full px-0.5 ${
-                      isActive
-                        ? 'text-[#D4A75F]'
-                        : 'text-slate-800 dark:text-[#F8FAFC] group-hover:text-[#D4A75F]'
-                    }`}>
+                    <span className={`mt-2 text-[10px] sm:text-xs font-bold tracking-wide transition-colors duration-300 text-center w-full px-0.5 ${isActive
+                      ? 'text-[#D4A75F]'
+                      : 'text-slate-800 dark:text-[#F8FAFC] group-hover:text-[#D4A75F]'
+                      }`}>
                       {translateCategory(cat.name, language)}
                     </span>
                   </Link>
@@ -937,6 +951,94 @@ const parseJsonSafe = (str, fallback) => {
   } catch (e) {
     return fallback;
   }
+};
+
+const matchesCollection = (product, collectionName) => {
+  if (!collectionName || collectionName === 'All') return true;
+  if (!product) return false;
+
+  const target = collectionName.toLowerCase().trim();
+
+  if (product.collection && String(product.collection).toLowerCase().includes(target)) return true;
+  if (product.occasion && String(product.occasion).toLowerCase().includes(target)) return true;
+
+  const searchFields = [
+    product.name,
+    product.description,
+    product.category,
+    product.name_en,
+    product.name_hi,
+    product.description_en,
+    product.description_hi,
+    product.features_en,
+    product.features_hi,
+    product.specifications_en,
+    product.specifications_hi
+  ].filter(Boolean).map(s => String(s).toLowerCase());
+
+  const fullText = searchFields.join(' ');
+
+  if (target.includes('wedding') || target.includes('शादी')) {
+    return (
+      fullText.includes('wedding') ||
+      fullText.includes('bridal') ||
+      fullText.includes('kundan') ||
+      fullText.includes('dulhan') ||
+      fullText.includes('shaadi') ||
+      fullText.includes('royal') ||
+      fullText.includes('choker') ||
+      fullText.includes('heavy') ||
+      fullText.includes('polki') ||
+      fullText.includes('gold')
+    );
+  }
+
+  if (target.includes('office') || target.includes('ऑफिस')) {
+    return (
+      fullText.includes('office') ||
+      fullText.includes('stud') ||
+      fullText.includes('minimal') ||
+      fullText.includes('sleek') ||
+      fullText.includes('daily') ||
+      fullText.includes('light') ||
+      fullText.includes('work') ||
+      fullText.includes('solitaire') ||
+      fullText.includes('earring')
+    );
+  }
+
+  if (target.includes('daily') || target.includes('दैनिक')) {
+    return (
+      fullText.includes('daily') ||
+      fullText.includes('bangle') ||
+      fullText.includes('chain') ||
+      fullText.includes('ring') ||
+      fullText.includes('simple') ||
+      fullText.includes('comfort') ||
+      fullText.includes('casual') ||
+      fullText.includes('bracelet')
+    );
+  }
+
+  if (target.includes('date') || target.includes('डिनर')) {
+    return (
+      fullText.includes('date') ||
+      fullText.includes('night') ||
+      fullText.includes('necklace') ||
+      fullText.includes('layered') ||
+      fullText.includes('pendant') ||
+      fullText.includes('diamond') ||
+      fullText.includes('heart') ||
+      fullText.includes('fancy')
+    );
+  }
+
+  if (target.includes('new') || target.includes('नया')) {
+    return true;
+  }
+
+  const keywords = target.split(/\s+/);
+  return keywords.some(kw => fullText.includes(kw));
 };
 
 export const Home = () => {
@@ -1234,6 +1336,7 @@ export const Home = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get('category') || 'All';
+  const activeCollection = searchParams.get('collection') || searchParams.get('occasion') || 'All';
   const activeSearch = searchParams.get('search') || '';
 
   const handleCategoryClick = useCallback((categoryName, source = 'grid') => {
@@ -1252,6 +1355,32 @@ export const Home = () => {
         allProductsHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
+  }, [searchParams, setSearchParams]);
+
+  const handleCollectionClick = useCallback((collectionName) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (collectionName === 'All') {
+      newParams.delete('collection');
+      newParams.delete('occasion');
+    } else {
+      newParams.set('collection', collectionName);
+    }
+    setSearchParams(newParams, { preventScrollReset: true });
+
+    setTimeout(() => {
+      const allProductsHeading = document.getElementById('all-products-heading');
+      if (allProductsHeading) {
+        allProductsHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }, [searchParams, setSearchParams]);
+
+  const handleClearAllFilters = useCallback(() => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('category');
+    newParams.delete('collection');
+    newParams.delete('occasion');
+    setSearchParams(newParams, { preventScrollReset: true });
   }, [searchParams, setSearchParams]);
 
   // Banner Management States
@@ -1602,9 +1731,15 @@ export const Home = () => {
         }
 
         const response = await axios.get(url);
-        setProducts(response.data);
+        let fetchedData = response.data || [];
 
-        // Fetch all products (filtered by category if selected, but NOT by search query) if searching
+        if (activeCollection && activeCollection !== 'All') {
+          fetchedData = fetchedData.filter(p => matchesCollection(p, activeCollection));
+        }
+
+        setProducts(fetchedData);
+
+        // Fetch all products (filtered by category/collection if selected, but NOT by search query) if searching
         if (activeSearch) {
           setAllProductsLoading(true);
           let allUrl = `${API_BASE_URL}/products`;
@@ -1612,7 +1747,11 @@ export const Home = () => {
             allUrl += `?category=${encodeURIComponent(activeCategory)}`;
           }
           const allResponse = await axios.get(allUrl);
-          setAllProducts(allResponse.data);
+          let allFetched = allResponse.data || [];
+          if (activeCollection && activeCollection !== 'All') {
+            allFetched = allFetched.filter(p => matchesCollection(p, activeCollection));
+          }
+          setAllProducts(allFetched);
           setAllProductsLoading(false);
         } else {
           setAllProducts([]);
@@ -1626,7 +1765,7 @@ export const Home = () => {
     };
 
     fetchProducts();
-  }, [activeCategory, activeSearch, language, refreshTrigger]);
+  }, [activeCategory, activeCollection, activeSearch, language, refreshTrigger]);
 
   const isAdminAddressEmpty = !addUserForm.address?.trim() && !addUserForm.city?.trim() && !addUserForm.state?.trim() && !addUserForm.pincode?.trim();
   const isAdminPincodeInvalid = isAdminAddressEmpty ? false : addUserForm.pincode?.trim().length !== 6;
@@ -1651,10 +1790,10 @@ export const Home = () => {
         <SearchSpotlight products={products} language={language} />
       )}
 
-      {!activeSearch && (
-        <CategoryGrid 
-          activeCategory={activeCategory} 
-          loading={loading} 
+      {!activeSearch && activeCategory === 'All' && (
+        <CategoryGrid
+          activeCategory={activeCategory}
+          loading={loading}
           onCategoryClick={handleCategoryClick}
         />
       )}
@@ -1672,8 +1811,8 @@ export const Home = () => {
                 <button
                   onClick={() => setActiveTab('products')}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'products'
-                      ? 'bg-emerald-500 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                 >
                   All Products
@@ -1681,8 +1820,8 @@ export const Home = () => {
                 <button
                   onClick={() => setActiveTab('users')}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'users'
-                      ? 'bg-emerald-500 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                 >
                   Users Data
@@ -1690,8 +1829,8 @@ export const Home = () => {
                 <button
                   onClick={() => setActiveTab('analytics')}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'analytics'
-                      ? 'bg-emerald-500 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                 >
                   Admin Analytics
@@ -1700,12 +1839,16 @@ export const Home = () => {
             ) : (
               <>
                 <h2 className="text-2xl font-extrabold tracking-tight">
-                  {activeSearch 
+                  {activeSearch
                     ? (language === 'hi' ? `"${activeSearch}" के लिए खोज परिणाम` : `Search Results for "${activeSearch}"`)
-                    : (activeCategory === 'All' 
-                        ? translateUiLabel("All Products", language) 
-                        : `${translateCategory(activeCategory, language)} ${language === 'hi' ? 'उत्पाद' : 'Products'}`
-                      )
+                    : (activeCategory !== 'All' && activeCollection !== 'All'
+                      ? `${translateCategory(activeCategory, language)} - ${activeCollection}`
+                      : activeCategory !== 'All'
+                        ? `${translateCategory(activeCategory, language)} ${language === 'hi' ? 'उत्पाद' : 'Products'}`
+                        : activeCollection !== 'All'
+                          ? `${activeCollection} Collection`
+                          : translateUiLabel("All Products", language)
+                    )
                   }
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
@@ -1714,16 +1857,48 @@ export const Home = () => {
               </>
             )}
           </div>
-          <div className="flex items-center gap-4 mt-4 sm:mt-0 self-end sm:self-auto relative">
+          <div className="flex items-center gap-4 mt-4 sm:mt-0 self-end sm:self-auto relative flex-wrap">
             {activeCategory !== 'All' && activeTab === 'products' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#D4A75F]/15 text-[#D4A75F] border border-[#D4A75F]/30">
+                Category: {translateCategory(activeCategory, language)}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleCategoryClick('All');
+                  }}
+                  className="hover:text-red-500 font-bold ml-1 cursor-pointer"
+                  title="Remove Category Filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+
+            {activeCollection !== 'All' && activeTab === 'products' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#D4A75F]/15 text-[#D4A75F] border border-[#D4A75F]/30">
+                Collection: {activeCollection}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleCollectionClick('All');
+                  }}
+                  className="hover:text-red-500 font-bold ml-1 cursor-pointer"
+                  title="Remove Collection Filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+
+            {(activeCategory !== 'All' || activeCollection !== 'All') && activeTab === 'products' && (
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  handleCategoryClick('All');
+                  handleClearAllFilters();
                 }}
-                className="text-xs text-[#D4A75F] hover:text-[#B38F4B] hover:underline font-bold transition-colors"
+                className="text-xs text-[#D4A75F] hover:text-[#B38F4B] hover:underline font-bold transition-colors cursor-pointer"
               >
-                Clear filters
+                Clear all filters
               </button>
             )}
 
@@ -1776,11 +1951,11 @@ export const Home = () => {
             <button
               onClick={(e) => {
                 e.preventDefault();
-                handleCategoryClick('All');
+                handleClearAllFilters();
               }}
-              className="mt-6 px-5 py-2 bg-[#D4A75F] hover:bg-[#B38F4B] text-white rounded-xl text-xs font-bold shadow-md transition-colors"
+              className="mt-6 px-5 py-2 bg-[#D4A75F] hover:bg-[#B38F4B] text-white rounded-xl text-xs font-bold shadow-md transition-colors cursor-pointer"
             >
-              View All Products
+              Clear All Filters
             </button>
           </div>
         )}
@@ -1788,7 +1963,7 @@ export const Home = () => {
         {/* Product Grid (No Search) */}
         {activeTab === 'products' && !activeSearch && !loading && !error && products.length > 0 && (
           <motion.div
-            key={activeCategory}
+            key={`${activeCategory}-${activeCollection}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4 }}
@@ -1816,7 +1991,7 @@ export const Home = () => {
               </div>
             ) : (
               <motion.div
-                key={`search-${activeCategory}`}
+                key={`search-${activeCategory}-${activeCollection}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4 }}
@@ -1884,7 +2059,12 @@ export const Home = () => {
       {!activeSearch && activeTab === 'products' && (
         <>
           <LuxuryGallery items={siteSettings.luxury_gallery_items} />
-          <OccasionGallery items={parseJsonSafe(language === 'hi' ? siteSettings.occasion_items_hi : siteSettings.occasion_items_en, null)} />
+          {activeCollection === 'All' && (
+            <OccasionGallery
+              activeCollection={activeCollection}
+              onCollectionClick={handleCollectionClick}
+            />
+          )}
           <TrustShowcase />
           <GoldCalculator />
           <VideoShowcase url={siteSettings.video_showcase_url} />
@@ -1907,7 +2087,7 @@ export const Home = () => {
               badges: parseJsonSafe(siteSettings.owner_badges, ['BIS Hallmark Certified', 'ISO 9001:2015', 'Rajasthan Ratna Awardee', 'GIA Member'])
             }
           ]).map((owner, idx) => (
-            <OwnerShowcase 
+            <OwnerShowcase
               key={owner.id || idx}
               image={owner.image}
               name={owner.name}
@@ -2335,21 +2515,20 @@ export const Home = () => {
                                 {date}
                               </td>
                               <td className="py-3 px-2 text-center">
-                                <span className={`inline-flex items-center px-[12px] py-[4px] rounded-full text-[10px] font-semibold border shadow-sm ${
-                                  (order.order_status || '').toLowerCase() === 'pending'
-                                    ? 'status-badge-pending'
-                                    : (order.order_status || '').toLowerCase() === 'processing' || (order.order_status || '').toLowerCase() === 'confirmed' || (order.order_status || '').toLowerCase() === 'packed'
+                                <span className={`inline-flex items-center px-[12px] py-[4px] rounded-full text-[10px] font-semibold border shadow-sm ${(order.order_status || '').toLowerCase() === 'pending'
+                                  ? 'status-badge-pending'
+                                  : (order.order_status || '').toLowerCase() === 'processing' || (order.order_status || '').toLowerCase() === 'confirmed' || (order.order_status || '').toLowerCase() === 'packed'
                                     ? 'bg-[#3B82F6] text-white border-[#2563EB]'
                                     : (order.order_status || '').toLowerCase() === 'shipped' || (order.order_status || '').toLowerCase() === 'dispatched'
-                                    ? 'bg-[#06B6D4] text-white border-[#0891B2]'
-                                    : (order.order_status || '').toLowerCase() === 'out for delivery'
-                                    ? 'bg-[#8B5CF6] text-white border-[#7C3AED]'
-                                    : (order.order_status || '').toLowerCase() === 'delivered'
-                                    ? 'status-badge-success'
-                                    : (order.order_status || '').toLowerCase() === 'cancelled'
-                                    ? 'bg-[#EF4444] text-white border-[#DC2626]'
-                                    : 'bg-[#6B7280] text-white border-[#4B5563]'
-                                }`}>
+                                      ? 'bg-[#06B6D4] text-white border-[#0891B2]'
+                                      : (order.order_status || '').toLowerCase() === 'out for delivery'
+                                        ? 'bg-[#8B5CF6] text-white border-[#7C3AED]'
+                                        : (order.order_status || '').toLowerCase() === 'delivered'
+                                          ? 'status-badge-success'
+                                          : (order.order_status || '').toLowerCase() === 'cancelled'
+                                            ? 'bg-[#EF4444] text-white border-[#DC2626]'
+                                            : 'bg-[#6B7280] text-white border-[#4B5563]'
+                                  }`}>
                                   {order.order_status}
                                 </span>
                               </td>
@@ -2463,8 +2642,8 @@ export const Home = () => {
                                   {banner.title}
                                 </h4>
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${banner.is_active
-                                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                    : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                  : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
                                   }`}>
                                   {banner.is_active ? 'Active' : 'Inactive'}
                                 </span>

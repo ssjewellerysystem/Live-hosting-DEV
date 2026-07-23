@@ -4,7 +4,9 @@ from flask import request
 from backend.models.admin import AdminAuditLog
 from backend.extensions import db
 
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_SSJewellery_key_123")
+from backend.config import Config
+
+JWT_SECRET = Config.JWT_SECRET
 
 def log_admin_action(action_type, module, details, status="Success", user_id=None, order_id=None):
     admin_name = "admin"

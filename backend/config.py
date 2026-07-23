@@ -67,7 +67,13 @@ class Config:
     SQLALCHEMY_DATABASE_URI = resolve_neon_uri(raw_uri) if raw_uri else None
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = not IS_PRODUCTION
-    SQLALCHEMY_ENGINE_OPTIONS = {}
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+        "pool_timeout": 30,
+        "pool_size": 10,
+        "max_overflow": 5,
+    }
 
     # Flask-Mail Configuration
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")

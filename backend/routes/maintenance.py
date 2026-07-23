@@ -30,6 +30,7 @@ def get_maintenance_config():
             "enabled_at": at_time
         }
     except Exception as e:
+        db.session.rollback()
         print("[MAINTENANCE] Error fetching maintenance config:", e)
         return {
             "maintenance_mode": False,

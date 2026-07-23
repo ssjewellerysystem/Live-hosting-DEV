@@ -1758,7 +1758,7 @@ export const Home = () => {
         }
       } catch (err) {
         console.error("Error fetching products", err);
-        setError("Could not connect to the backend server. Make sure MongoDB and the Flask app are running.");
+        setError("Could not connect to the backend server. Please verify backend service availability and VITE_API_BASE_URL configuration.");
       } finally {
         setLoading(false);
       }

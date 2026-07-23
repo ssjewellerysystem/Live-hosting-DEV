@@ -23,6 +23,7 @@ class ProductModel(db.Model):
     images = db.Column(db.JSON) # JSON array of image URLs
     stock = db.Column(db.Integer, default=0)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id', ondelete='SET NULL'), nullable=True)
+    collection_id = db.Column(db.Integer, db.ForeignKey('collections.id', ondelete='SET NULL'), nullable=True)
     ratings = db.Column(db.Numeric(3, 2), default=5.00)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')), onupdate=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
@@ -100,6 +101,9 @@ class ProductModel(db.Model):
         except Exception:
             variants_list = []
 
+        coll_name = self.collection.name if hasattr(self, 'collection') and self.collection else None
+        coll_id = str(self.collection_id) if hasattr(self, 'collection_id') and self.collection_id else None
+
         return {
             "id": str(self.id),
             "_id": str(self.id),
@@ -112,6 +116,10 @@ class ProductModel(db.Model):
             "images": image_urls,
             "stock": int(self.stock),
             "category": cat_name,
+            "category_id": str(self.category_id) if self.category_id else None,
+            "collection_id": coll_id,
+            "collection": coll_name,
+            "collection_name": coll_name,
             "category_attributes": attributes_list,
             "ratings": float(self.ratings) if self.ratings is not None else 5.0,
             "review_count": len(self.reviews) if self.reviews else 0,
@@ -140,16 +148,18 @@ class ProductModel(db.Model):
         }
 
     @staticmethod
-    def get_all(category=None, search_query=None, homepage_only=False):
+    def get_all(category=None, search_query=None, homepage_only=False, collection=None):
         from backend.utils.cache import products_cache
-        cache_key = f"all_{category or 'None'}_{search_query or 'None'}_{homepage_only}"
+        cache_key = f"all_{category or 'None'}_{collection or 'None'}_{search_query or 'None'}_{homepage_only}"
         cached_val = products_cache.get(cache_key)
         if cached_val is not None:
             return cached_val
 
         from sqlalchemy.orm import joinedload
+        from backend.models.collection import CollectionModel
         query = ProductModel.query.options(
             joinedload(ProductModel.category),
+            joinedload(ProductModel.collection),
             joinedload(ProductModel.product_images),
             joinedload(ProductModel.variants),
             joinedload(ProductModel.reviews)
@@ -161,17 +171,26 @@ class ProductModel(db.Model):
         if category and category != 'All':
             from backend.models.category import Category
             query = query.join(Category).filter(Category.name == category)
+
+        if collection and collection != 'All':
+            if str(collection).isdigit():
+                query = query.filter(ProductModel.collection_id == int(collection))
+            else:
+                query = query.outerjoin(CollectionModel).filter(
+                    (CollectionModel.name == collection) | (CollectionModel.slug == collection)
+                )
             
         if search_query:
             from backend.models.category import Category
-            query = query.outerjoin(Category).filter(
+            query = query.outerjoin(Category).outerjoin(CollectionModel).filter(
                 (ProductModel.name.like(f"%{search_query}%")) |
                 (ProductModel.name_en.like(f"%{search_query}%")) |
                 (ProductModel.name_hi.like(f"%{search_query}%")) |
                 (ProductModel.description.like(f"%{search_query}%")) |
                 (ProductModel.description_en.like(f"%{search_query}%")) |
                 (ProductModel.description_hi.like(f"%{search_query}%")) |
-                (Category.name.like(f"%{search_query}%"))
+                (Category.name.like(f"%{search_query}%")) |
+                (CollectionModel.name.like(f"%{search_query}%"))
             )
             
         products = query.all()
@@ -238,6 +257,17 @@ class ProductModel(db.Model):
 
         admin_name = data.get("created_by") or data.get("admin_name") or "admin"
 
+        collection_input = data.get("collection_id") or data.get("collection")
+        collection_id = None
+        if collection_input and str(collection_input).lower() not in ["none", "null", "", "no collection", "0"]:
+            from backend.models.collection import CollectionModel
+            if str(collection_input).isdigit():
+                coll = CollectionModel.query.get(int(collection_input))
+            else:
+                coll = CollectionModel.query.filter_by(name=str(collection_input)).first()
+            if coll:
+                collection_id = coll.id
+
         product = ProductModel(
             name=name,
             price=float(data.get("price", 0)),
@@ -246,6 +276,7 @@ class ProductModel(db.Model):
             images=images_input,
             stock=int(data.get("stock", 0)),
             category_id=category.id,
+            collection_id=collection_id,
             ratings=float(data.get("ratings", 5.0)),
             created_at=get_ist_time(),
             updated_at=get_ist_time(),
@@ -446,6 +477,22 @@ class ProductModel(db.Model):
                 old_cat = product.category.name if product.category else "Uncategorized"
                 log_change("Product Update", "category", old_cat, cat_name)
                 product.category_id = category.id
+            if "collection" in data or "collection_id" in data:
+                collection_input = data.get("collection_id") if "collection_id" in data else data.get("collection")
+                if collection_input and str(collection_input).lower() not in ["none", "null", "", "no collection", "0"]:
+                    from backend.models.collection import CollectionModel
+                    if str(collection_input).isdigit():
+                        coll = CollectionModel.query.get(int(collection_input))
+                    else:
+                        coll = CollectionModel.query.filter_by(name=str(collection_input)).first()
+                    if coll:
+                        old_coll = product.collection.name if product.collection else "None"
+                        log_change("Product Update", "collection", old_coll, coll.name)
+                        product.collection_id = coll.id
+                    else:
+                        product.collection_id = None
+                else:
+                    product.collection_id = None
             if "ratings" in data: product.ratings = float(data["ratings"])
             if "status" in data:
                 log_change("Product Update", "status", product.status, data["status"])

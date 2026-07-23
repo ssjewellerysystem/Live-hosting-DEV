@@ -11,9 +11,11 @@ from backend.models.coupon import CouponModel
 from backend.extensions import db
 from sqlalchemy import func
 
+from backend.config import Config
+
 admin_bp = Blueprint('admin', __name__)
 
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_SSJewellery_key_123")
+JWT_SECRET = Config.JWT_SECRET
 ADMIN_ID = os.getenv("ADMIN_ID", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
@@ -1191,6 +1193,160 @@ def delete_category_admin(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": f"Failed to delete category: {str(e)}"}), 500
+
+# ==========================================
+# ADMIN COLLECTION MANAGEMENT ROUTES
+# ==========================================
+@admin_bp.route('/collections', methods=['GET'])
+def get_admin_collections():
+    from backend.models.collection import CollectionModel
+    try:
+        collections = CollectionModel.query.order_by(CollectionModel.display_order.asc(), CollectionModel.id.asc()).all()
+        return jsonify([c.to_dict() for c in collections]), 200
+    except Exception as e:
+        print("Error fetching admin collections:", e)
+        return jsonify([]), 200
+
+@admin_bp.route('/collections', methods=['POST'])
+def create_admin_collection():
+    from backend.models.collection import CollectionModel
+    from backend.utils.cache import products_cache
+    import json
+    data = request.get_json() or {}
+    name = (data.get("name") or data.get("title") or "").strip()
+    if not name:
+        return jsonify({"message": "Collection Name is required."}), 400
+
+    slug = (data.get("slug") or name.lower().replace(" ", "-")).strip()
+    subtitle = data.get("subtitle") or ""
+    description = data.get("description") or ""
+    image_url = data.get("image") or data.get("image_url") or data.get("thumbnail_image") or ""
+    
+    tips = data.get("styling_tips") or data.get("tips") or []
+    tips_str = json.dumps(tips) if isinstance(tips, (list, dict)) else str(tips)
+
+    display_order = int(data.get("display_order", 0))
+    is_active = bool(data.get("is_active", True))
+
+    existing = CollectionModel.query.filter((CollectionModel.name == name) | (CollectionModel.slug == slug)).first()
+    if existing:
+        # Update existing if matching name/slug to prevent duplicate error
+        existing.subtitle = subtitle
+        existing.description = description
+        existing.image = image_url or existing.image
+        existing.thumbnail_image = image_url or existing.thumbnail_image
+        existing.display_order = display_order
+        existing.is_active = is_active
+        db.session.commit()
+        return jsonify(existing.to_dict()), 200
+
+    coll = CollectionModel(
+        name=name,
+        slug=slug,
+        subtitle=subtitle,
+        description=description,
+        image=image_url,
+        thumbnail_image=image_url,
+        banner_image=image_url,
+        styling_tips=tips_str,
+        display_order=display_order,
+        is_active=is_active
+    )
+    db.session.add(coll)
+    db.session.commit()
+    products_cache.clear()
+
+    from backend.utils.audit import log_admin_action
+    log_admin_action("Collection Created", "Collection Management", f"Created collection '{name}'")
+
+    return jsonify(coll.to_dict()), 201
+
+@admin_bp.route('/collections/<id>', methods=['PUT'])
+def update_admin_collection(id):
+    from backend.models.collection import CollectionModel
+    from backend.utils.cache import products_cache
+    import json
+    try:
+        coll_id = int(id)
+        coll = CollectionModel.query.get(coll_id)
+        if not coll:
+            return jsonify({"message": "Collection not found."}), 404
+            
+        data = request.get_json() or {}
+        if "name" in data or "title" in data:
+            coll.name = (data.get("name") or data.get("title")).strip()
+            coll.slug = coll.name.lower().replace(" ", "-")
+        if "subtitle" in data:
+            coll.subtitle = data["subtitle"]
+        if "description" in data:
+            coll.description = data["description"]
+        if "image" in data or "image_url" in data:
+            img = data.get("image") or data.get("image_url")
+            coll.image = img
+            coll.thumbnail_image = img
+            coll.banner_image = img
+        if "styling_tips" in data or "tips" in data:
+            tips = data.get("styling_tips") or data.get("tips")
+            coll.styling_tips = json.dumps(tips) if isinstance(tips, (list, dict)) else str(tips)
+        if "display_order" in data:
+            coll.display_order = int(data["display_order"])
+        if "is_active" in data:
+            coll.is_active = bool(data["is_active"])
+
+        db.session.commit()
+        products_cache.clear()
+
+        from backend.utils.audit import log_admin_action
+        log_admin_action("Collection Updated", "Collection Management", f"Updated collection '{coll.name}'")
+
+        return jsonify(coll.to_dict()), 200
+    except Exception as e:
+        print("Error updating collection:", e)
+        return jsonify({"message": "Failed to update collection."}), 500
+
+@admin_bp.route('/collections/<id>', methods=['DELETE'])
+def delete_admin_collection(id):
+    from backend.models.collection import CollectionModel
+    from backend.models.product import ProductModel
+    from backend.utils.cache import products_cache
+    try:
+        coll_id = int(id)
+        coll = CollectionModel.query.get(coll_id)
+        if not coll:
+            return jsonify({"message": "Collection not found."}), 404
+
+        coll_name = coll.name
+        ProductModel.query.filter_by(collection_id=coll.id).update({ProductModel.collection_id: None})
+        db.session.delete(coll)
+        db.session.commit()
+        products_cache.clear()
+
+        from backend.utils.audit import log_admin_action
+        log_admin_action("Collection Deleted", "Collection Management", f"Deleted collection '{coll_name}'")
+
+        return jsonify({"message": "Collection deleted successfully!", "id": str(coll_id)}), 200
+    except Exception as e:
+        print("Error deleting collection:", e)
+        return jsonify({"message": "Failed to delete collection."}), 500
+
+@admin_bp.route('/collections/<id>/toggle', methods=['PUT'])
+def toggle_admin_collection_active(id):
+    from backend.models.collection import CollectionModel
+    from backend.utils.cache import products_cache
+    try:
+        coll_id = int(id)
+        coll = CollectionModel.query.get(coll_id)
+        if not coll:
+            return jsonify({"message": "Collection not found."}), 404
+
+        coll.is_active = not coll.is_active
+        db.session.commit()
+        products_cache.clear()
+
+        return jsonify(coll.to_dict()), 200
+    except Exception as e:
+        print("Error toggling collection:", e)
+        return jsonify({"message": "Failed to toggle collection state."}), 500
 
 
 

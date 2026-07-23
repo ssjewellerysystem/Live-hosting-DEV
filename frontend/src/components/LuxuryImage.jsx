@@ -10,7 +10,7 @@ export const LuxuryImage = React.memo(({
   wrapperClassName = '',
   loading = 'lazy',
   decoding = 'async',
-  fetchpriority,
+  fetchPriority,
   onLoad,
   onError,
   ...props
@@ -34,9 +34,9 @@ export const LuxuryImage = React.memo(({
     setStatus('loading');
   }, [src]);
 
-  // Preload only the currently selected main product image (fetchpriority="high")
+  // Preload only the currently selected main product image (fetchPriority="high")
   useEffect(() => {
-    if (fetchpriority === 'high' && src) {
+    if (fetchPriority === 'high' && src) {
       const link = document.createElement('link');
       link.rel = 'preload';
       link.as = 'image';
@@ -47,7 +47,7 @@ export const LuxuryImage = React.memo(({
         document.head.removeChild(link);
       };
     }
-  }, [src, fetchpriority]);
+  }, [src, fetchPriority]);
 
   const handleLoad = (e) => {
     if (src) {
@@ -97,7 +97,7 @@ export const LuxuryImage = React.memo(({
           alt={alt}
           loading={loading}
           decoding={decoding}
-          fetchpriority={fetchpriority}
+          fetchPriority={fetchPriority}
           className={`${className} transition-opacity duration-500 ease-in-out ${
             status === 'loaded' ? 'opacity-100' : 'opacity-0'
           }`}

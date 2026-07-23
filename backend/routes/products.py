@@ -68,17 +68,6 @@ def get_products():
     products = ProductModel.get_all(category, search, homepage_only=homepage_only)
     return jsonify(products), 200
 
-@products_bp.route('/<id>', methods=['GET'])
-def get_product(id):
-    product = ProductModel.find_by_id(id)
-    if not product:
-        return jsonify({"message": "Product not found!"}), 404
-        
-    # Get reviews for this product
-    reviews = ReviewModel.find_by_product_id(id)
-    product['reviews'] = reviews
-    return jsonify(product), 200
-
 @products_bp.route('/categories', methods=['GET'])
 def get_all_categories():
     from backend.utils.cache import categories_cache
@@ -89,33 +78,76 @@ def get_all_categories():
     from backend.models.category import Category
     from backend.models.product import ProductModel
     from sqlalchemy.orm import joinedload
-    categories = Category.query.all()
-    
-    result = []
-    for cat in categories:
-        image_url = cat.image_url
-        if not image_url or image_url == '/logo.svg':
-            first_product = ProductModel.query.options(
-                joinedload(ProductModel.product_images)
-            ).filter_by(category_id=cat.id).first()
-            if first_product:
-                if first_product.product_images:
-                    images_sorted = sorted(first_product.product_images, key=lambda x: x.image_order)
-                    if images_sorted:
-                        image_url = images_sorted[0].image_url
-                elif first_product.images:
-                    image_url = first_product.images[0] if len(first_product.images) > 0 else None
-                
-        result.append({
-            "id": str(cat.id),
-            "_id": str(cat.id),
-            "name": cat.name,
-            "name_en": cat.name_en or cat.name,
-            "name_hi": cat.name_hi or cat.name,
-            "image_url": image_url or "/logo.svg"
-        })
-    categories_cache.set('all_categories', result)
-    return jsonify(result), 200
+    try:
+        categories = Category.query.all()
+        
+        result = []
+        for cat in categories:
+            image_url = cat.image_url
+            if not image_url or image_url == '/logo.svg':
+                try:
+                    first_product = ProductModel.query.options(
+                        joinedload(ProductModel.product_images)
+                    ).filter_by(category_id=cat.id).first()
+                    if first_product:
+                        if first_product.product_images:
+                            images_sorted = sorted(first_product.product_images, key=lambda x: x.image_order)
+                            if images_sorted:
+                                image_url = images_sorted[0].image_url
+                        elif first_product.images:
+                            image_url = first_product.images[0] if len(first_product.images) > 0 else None
+                except Exception as inner_e:
+                    print("Error loading category product image:", inner_e)
+                    
+            result.append({
+                "id": str(cat.id),
+                "_id": str(cat.id),
+                "name": cat.name,
+                "name_en": cat.name_en or cat.name,
+                "name_hi": cat.name_hi or cat.name,
+                "image_url": image_url or "/logo.svg"
+            })
+        if result:
+            categories_cache.set('all_categories', result)
+        return jsonify(result), 200
+    except Exception as e:
+        print("Error fetching categories:", e)
+        fallback = [
+            {"id": "1", "_id": "1", "name": "Rings", "name_en": "Rings", "name_hi": "अंगूठियाँ", "image_url": "/cat_rings.png"},
+            {"id": "2", "_id": "2", "name": "Necklaces", "name_en": "Necklaces", "name_hi": "हार", "image_url": "/cat_necklaces.png"},
+            {"id": "3", "_id": "3", "name": "Earrings", "name_en": "Earrings", "name_hi": "झुमके", "image_url": "/cat_earrings.png"},
+            {"id": "4", "_id": "4", "name": "Bracelets", "name_en": "Bracelets", "name_hi": "कंगन", "image_url": "/cat_bracelets.png"},
+            {"id": "5", "_id": "5", "name": "Bridal Collection", "name_en": "Bridal Collection", "name_hi": "ब्राइडल कलेक्शन", "image_url": "/cat_bridal.png"}
+        ]
+        return jsonify(fallback), 200
+
+@products_bp.route('/collections', methods=['GET'])
+def get_all_collections():
+    from backend.models.collection import CollectionModel
+    try:
+        collections = CollectionModel.query.filter_by(is_active=True).order_by(CollectionModel.display_order.asc(), CollectionModel.id.asc()).all()
+        return jsonify([c.to_dict() for c in collections]), 200
+    except Exception as e:
+        print("Error fetching collections:", e)
+        fallback = [
+            {"id": "1", "_id": "1", "name": "Wedding Wear", "title": "Wedding Wear", "slug": "wedding-wear", "description": "Regal Heritage Kundan", "image": "/cat_bridal.png", "image_url": "/cat_bridal.png"},
+            {"id": "2", "_id": "2", "name": "Daily Wear", "title": "Daily Wear", "slug": "daily-wear", "description": "Versatile Chic Bangles", "image": "/cat_bracelets.png", "image_url": "/cat_bracelets.png"},
+            {"id": "3", "_id": "3", "name": "Office Wear", "title": "Office Wear", "slug": "office-wear", "description": "Minimalistic Luxury Studs", "image": "/cat_earrings.png", "image_url": "/cat_earrings.png"},
+            {"id": "4", "_id": "4", "name": "Date Night", "title": "Date Night", "slug": "date-night", "description": "Elegance & Layered Statements", "image": "/cat_necklaces.png", "image_url": "/cat_necklaces.png"},
+            {"id": "5", "_id": "5", "name": "New Collection", "title": "New Collection", "slug": "new-collection", "description": "Fresh Masterpieces & Solitaires", "image": "/luxury_solitaire_ring.png", "image_url": "/luxury_solitaire_ring.png"}
+        ]
+        return jsonify(fallback), 200
+
+@products_bp.route('/<id>', methods=['GET'])
+def get_product(id):
+    product = ProductModel.find_by_id(id)
+    if not product:
+        return jsonify({"message": "Product not found!"}), 404
+        
+    # Get reviews for this product
+    reviews = ReviewModel.find_by_product_id(id)
+    product['reviews'] = reviews
+    return jsonify(product), 200
 
 @products_bp.route('/categories/<category_name>/attributes', methods=['GET'])
 def get_category_attributes(category_name):

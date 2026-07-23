@@ -15,8 +15,10 @@ from backend.utils.email_service import send_email
 from backend.utils.timezone import format_iso_datetime, get_ist_time
 from backend.utils.security import mask_email, mask_name
 
+from backend.config import Config, FRONTEND_URL
+
 auth_bp = Blueprint('auth', __name__)
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_SSJewellery_key_123")
+JWT_SECRET = Config.JWT_SECRET
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -1285,7 +1287,7 @@ def google_callback():
     if not code:
         err = request.args.get("error", "Unknown error")
         print(f"[OAUTH ERROR] Google authorization callback error: {err}")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error={urllib.parse.quote(err)}")
+        return redirect(f"{FRONTEND_URL}/login?error={urllib.parse.quote(err)}")
         
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -1310,15 +1312,15 @@ def google_callback():
     except urllib.error.HTTPError as e:
         error_content = e.read().decode("utf-8")
         print(f"[OAUTH ERROR] Google token exchange failed: {error_content}")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Token+exchange+failed")
+        return redirect(f"{FRONTEND_URL}/login?error=Token+exchange+failed")
     except Exception as e:
         print(f"[OAUTH ERROR] Google token exchange network error: {str(e)}")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Network+error")
+        return redirect(f"{FRONTEND_URL}/login?error=Network+error")
         
     access_token = token_response.get("access_token")
     if not access_token:
         print("[OAUTH ERROR] Google token response did not contain access_token")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Invalid+token+response")
+        return redirect(f"{FRONTEND_URL}/login?error=Invalid+token+response")
         
     print("[OAUTH TOKEN VERIFICATION] Token exchanged successfully. Fetching user profile...")
     
@@ -1330,7 +1332,7 @@ def google_callback():
             profile_data = json.loads(resp.read().decode("utf-8"))
     except Exception as e:
         print(f"[OAUTH ERROR] Google profile fetch failed: {str(e)}")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Profile+fetch+failed")
+        return redirect(f"{FRONTEND_URL}/login?error=Profile+fetch+failed")
         
     masked_profile = {**profile_data}
     if 'email' in masked_profile:
@@ -1345,7 +1347,7 @@ def google_callback():
     
     if not google_id or not email:
         print("[OAUTH ERROR] Google profile was missing user ID or email")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Missing+profile+details")
+        return redirect(f"{FRONTEND_URL}/login?error=Missing+profile+details")
         
     # Check if user already exists
     user_obj = UserModel.query.filter_by(provider="google", provider_id=google_id).first()
@@ -1353,7 +1355,7 @@ def google_callback():
     if user_obj:
         if user_obj.is_blocked:
             print(f"[OAUTH ERROR] Suspended user attempted Google login: {mask_email(email)}")
-            return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Account+suspended")
+            return redirect(f"{FRONTEND_URL}/login?error=Account+suspended")
         
         user_obj.full_name = full_name
         user_obj.email = email
@@ -1366,7 +1368,7 @@ def google_callback():
         if user_obj:
             if user_obj.is_blocked:
                 print(f"[OAUTH ERROR] Suspended user attempted Google login: {mask_email(email)}")
-                return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Account+suspended")
+                return redirect(f"{FRONTEND_URL}/login?error=Account+suspended")
                 
             user_obj.provider = "google"
             user_obj.provider_id = google_id
@@ -1425,7 +1427,7 @@ def google_callback():
     
     # Redirect back to frontend
     user_json = json.dumps(user)
-    redirect_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?token={token}&user={urllib.parse.quote(user_json)}"
+    redirect_url = f"{FRONTEND_URL}/login?token={token}&user={urllib.parse.quote(user_json)}"
     print(f"[OAUTH SESSION CREATION] Login session created successfully for {mask_email(email)}. Redirecting to frontend.")
     return redirect(redirect_url)
 
@@ -1467,7 +1469,7 @@ def microsoft_callback():
     if not code:
         err = request.args.get("error", "Unknown error")
         print(f"[OAUTH ERROR] Microsoft authorization callback error: {err}")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error={urllib.parse.quote(err)}")
+        return redirect(f"{FRONTEND_URL}/login?error={urllib.parse.quote(err)}")
         
     client_id = os.getenv("MICROSOFT_CLIENT_ID")
     client_secret = os.getenv("MICROSOFT_CLIENT_SECRET")
@@ -1492,15 +1494,15 @@ def microsoft_callback():
     except urllib.error.HTTPError as e:
         error_content = e.read().decode("utf-8")
         print(f"[OAUTH ERROR] Microsoft token exchange failed: {error_content}")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Token+exchange+failed")
+        return redirect(f"{FRONTEND_URL}/login?error=Token+exchange+failed")
     except Exception as e:
         print(f"[OAUTH ERROR] Microsoft token exchange network error: {str(e)}")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Network+error")
+        return redirect(f"{FRONTEND_URL}/login?error=Network+error")
         
     access_token = token_response.get("access_token")
     if not access_token:
         print("[OAUTH ERROR] Microsoft token response did not contain access_token")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Invalid+token+response")
+        return redirect(f"{FRONTEND_URL}/login?error=Invalid+token+response")
         
     print("[OAUTH TOKEN VERIFICATION] Token exchanged successfully. Fetching Microsoft Graph profile...")
     
@@ -1512,7 +1514,7 @@ def microsoft_callback():
             profile_data = json.loads(resp.read().decode("utf-8"))
     except Exception as e:
         print(f"[OAUTH ERROR] Microsoft profile fetch failed: {str(e)}")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Profile+fetch+failed")
+        return redirect(f"{FRONTEND_URL}/login?error=Profile+fetch+failed")
         
     masked_profile = {**profile_data}
     if 'mail' in masked_profile:
@@ -1531,7 +1533,7 @@ def microsoft_callback():
     
     if not microsoft_id or not email:
         print("[OAUTH ERROR] Microsoft profile was missing user ID or email")
-        return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Missing+profile+details")
+        return redirect(f"{FRONTEND_URL}/login?error=Missing+profile+details")
         
     # Check if user already exists
     user_obj = UserModel.query.filter(
@@ -1542,7 +1544,7 @@ def microsoft_callback():
     if user_obj:
         if user_obj.is_blocked:
             print(f"[OAUTH ERROR] Suspended user attempted Microsoft login: {mask_email(email)}")
-            return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Account+suspended")
+            return redirect(f"{FRONTEND_URL}/login?error=Account+suspended")
         
         user_obj.full_name = full_name
         user_obj.email = email
@@ -1558,7 +1560,7 @@ def microsoft_callback():
         if user_obj:
             if user_obj.is_blocked:
                 print(f"[OAUTH ERROR] Suspended user attempted Microsoft login: {mask_email(email)}")
-                return redirect(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?error=Account+suspended")
+                return redirect(f"{FRONTEND_URL}/login?error=Account+suspended")
                 
             user_obj.provider = "microsoft"
             user_obj.provider_id = microsoft_id
@@ -1619,7 +1621,7 @@ def microsoft_callback():
     
     # Redirect back to frontend
     user_json = json.dumps(user)
-    redirect_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/login?token={token}&user={urllib.parse.quote(user_json)}"
+    redirect_url = f"{FRONTEND_URL}/login?token={token}&user={urllib.parse.quote(user_json)}"
     print(f"[OAUTH SESSION CREATION] Login session created successfully for {mask_email(email)}. Redirecting to frontend.")
     return redirect(redirect_url)
 

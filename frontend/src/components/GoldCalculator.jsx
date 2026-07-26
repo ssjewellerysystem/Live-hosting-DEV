@@ -72,47 +72,36 @@ export const GoldCalculator = () => {
   const calculations = useMemo(() => {
     const pricePerGram = activePricePerGram;
     const metalCost = pricePerGram * weight;
-    // Silver making charges are typically lower (~8%)
-    const makingPct = metalType === 'silver' ? 0.08 : 0.12;
-    const makingCharges = metalCost * makingPct;
-    const gst = (metalCost + makingCharges) * 0.03;
-    const grandTotal = metalCost + makingCharges + gst;
+    const grandTotal = metalCost;
     return {
       pricePerGram,
       metalCost: Math.round(metalCost),
-      makingCharges: Math.round(makingCharges),
-      gst: Math.round(gst),
-      grandTotal: Math.round(grandTotal),
-      makingPct: Math.round(makingPct * 100)
+      grandTotal: Math.round(grandTotal)
     };
-  }, [weight, activePricePerGram, metalType]);
+  }, [weight, activePricePerGram]);
 
   // Translation helpers
   const text = {
     en: {
       title: "Daily Gold & Silver Rate — Central India",
-      subtitle: "Real rates updated once daily at 9:00 AM IST. Jaipur city rates via RapidAPI.",
+      subtitle: "Real rates updated once daily at 9:00 AM IST.",
       goldPrice: "Today's Gold Rate (per gram)",
       weightLabel: "Jewellery Metal Weight",
       purityLabel: "Select Gold Purity",
       calculationSummary: "Estimated Price Breakdown",
       metalCost: "Metal Cost",
-      makingCharges: "Making Charges (12%)",
-      gst: "GST & Taxes (3%)",
       totalPrice: "Estimated Grand Total",
       helperNote: "Note: Rates are updated daily at 9 AM IST. Final price may vary by design, certification, and store rates.",
       liveIndicator: "DAILY UPDATED RATE"
     },
     hi: {
-      title: "दैनिक सोना-चाँदी दर — जयपुर, राजस्थान",
+      title: "दैनिक सोना-चाँदी दर — मध्य भारत",
       subtitle: "रेट प्रतिदिन सुबह 9 बजे IST पर अपडेट होते हैं।",
       goldPrice: "आज की सोने की दर (प्रति ग्राम)",
       weightLabel: "आभूषण धातु का वजन",
       purityLabel: "सोने की शुद्धता चुनें",
       calculationSummary: "अनुमानित मूल्य विवरण",
       metalCost: "धातु की लागत",
-      makingCharges: "मेकिंग चार्जेस (12%)",
-      gst: "जीएसटी और कर (3%)",
       totalPrice: "अनुमानित कुल मूल्य",
       helperNote: "नोट: रेट प्रतिदिन सुबह 9 बजे अपडेट होते हैं। अंतिम मूल्य डिजाइन और स्टोर दर के आधार पर भिन्न हो सकता है।",
       liveIndicator: "दैनिक अपडेट दर"
@@ -169,7 +158,7 @@ export const GoldCalculator = () => {
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 mt-1.5">
                 {metalType === 'silver'
-                  ? 'Silver jewellery price estimate with 8% making charges + 3% GST'
+                  ? (language === 'hi' ? 'चयनित वजन के आधार पर चांदी का मूल्य अनुमान' : 'Silver price estimate based on selected weight')
                   : text.subtitle}
               </p>
             </div>
@@ -177,7 +166,7 @@ export const GoldCalculator = () => {
             {/* Purity Grid — only for gold */}
             {metalType === 'gold' && (
               <div className="space-y-2.5">
-                <label className="block text-xs font-bold tracking-wide uppercase text-slate-350">
+                <label className="block text-xs font-bold tracking-wide uppercase calculator-section-label">
                   {text.purityLabel}
                 </label>
                 <div className="grid grid-cols-4 gap-2.5">
@@ -200,7 +189,7 @@ export const GoldCalculator = () => {
             {/* Weight Input Box */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold tracking-wide uppercase text-slate-350">
+                <label className="text-xs font-bold tracking-wide uppercase calculator-section-label">
                   {text.weightLabel}
                 </label>
                 {/* Unit Toggle */}
@@ -340,23 +329,15 @@ export const GoldCalculator = () => {
           <div className="h-full lg:col-span-5">
             <div className="flex flex-col justify-between h-full p-6 space-y-6 border bg-slate-900/70 border-slate-800 rounded-2xl">
               <div>
-                <h3 className="text-xs font-bold text-slate-350 uppercase tracking-wider border-b border-slate-800 pb-3 flex items-center gap-1.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider border-b border-slate-800 pb-3 flex items-center gap-1.5 calculator-section-label">
                   <Info className="h-4 w-4 text-[#D4A75F]" />
                   {text.calculationSummary}
                 </h3>
 
                 <div className="mt-4 space-y-3.5 text-xs text-slate-400">
                   <div className="flex items-center justify-between">
-                    <span>{text.metalCost} ({weight}g)</span>
+                    <span>{text.metalCost} ({weight >= 1000 ? `${(weight / 1000).toFixed(3)}kg` : `${weight}g`})</span>
                     <span className="font-semibold text-slate-200">₹{formatPrice(calculations.metalCost)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Making Charges ({calculations.makingPct}%)</span>
-                    <span className="font-semibold text-slate-200">₹{formatPrice(calculations.makingCharges)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>{text.gst}</span>
-                    <span className="font-semibold text-slate-200">₹{formatPrice(calculations.gst)}</span>
                   </div>
                 </div>
               </div>

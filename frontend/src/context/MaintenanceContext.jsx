@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from './AuthContext';
-import { Wrench, AlertTriangle, X, ShieldAlert } from 'lucide-react';
+import { X } from 'lucide-react';
 
 export const MaintenanceContext = createContext();
 
@@ -128,46 +128,35 @@ export const MaintenanceProvider = ({ children }) => {
       {/* Customer-Facing Website Under Maintenance Popup Modal */}
       {isUserPopupOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fade-in">
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-amber-500/30 dark:border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-[0_25px_70px_rgba(0,0,0,0.5)] text-center transform transition-all animate-scale-up">
+          <div className="relative w-full max-w-lg bg-[#0B1220] border border-[#D4A75F]/30 rounded-3xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.6)] transform transition-all animate-scale-up flex flex-col">
             
             {/* Header Close Icon */}
             <button
               onClick={closeMaintenancePopup}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="absolute top-3 right-3 z-20 text-white bg-black/60 hover:bg-black/80 backdrop-blur-md p-2 rounded-full transition-colors cursor-pointer border border-white/20 shadow-md"
+              title="Close"
             >
               <X className="h-5 w-5" />
             </button>
 
-            {/* Maintenance Icon Badge */}
-            <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mb-5 shadow-inner">
-              <ShieldAlert className="h-8 w-8 text-amber-500 dark:text-amber-400 animate-pulse" />
+            {/* Full Maintenance Image Body */}
+            <div className="relative w-full flex items-center justify-center bg-black overflow-hidden p-2">
+              <img
+                src="/maintenance_logo.jpg"
+                alt="Website Maintenance"
+                className="w-full h-auto max-h-[70vh] sm:max-h-[75vh] object-contain rounded-t-2xl block select-none no-zoom"
+              />
             </div>
 
-            {/* Popup Title */}
-            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3">
-              Website Under Maintenance
-            </h3>
-
-            {/* Popup Message */}
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium mb-6">
-              We are performing scheduled maintenance. Ordering is temporarily unavailable. Please try again shortly.
-            </p>
-
-            {/* Information Notice Pill */}
-            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3.5 mb-6 text-left flex items-start gap-2.5">
-              <Wrench className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-800 dark:text-amber-300 font-semibold leading-snug">
-                Product browsing remains fully accessible. You can continue exploring our collections.
-              </p>
+            {/* Bottom Action Button */}
+            <div className="p-4 bg-[#0B1220] border-t border-slate-800/80 flex items-center justify-center">
+              <button
+                onClick={closeMaintenancePopup}
+                className="w-full py-3.5 px-6 bg-gradient-to-r from-[#D4A75F] to-[#BF934B] hover:from-[#BF934B] hover:to-[#A87E39] text-white font-bold rounded-2xl shadow-lg shadow-[#D4A75F]/20 active:scale-98 transition-all text-sm sm:text-base tracking-wide cursor-pointer text-center"
+              >
+                Understood & Close
+              </button>
             </div>
-
-            {/* Action Button */}
-            <button
-              onClick={closeMaintenancePopup}
-              className="w-full py-3 px-6 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-2xl shadow-lg shadow-amber-500/25 active:scale-98 transition-all text-sm tracking-wide"
-            >
-              Understood & Close
-            </button>
           </div>
         </div>
       )}

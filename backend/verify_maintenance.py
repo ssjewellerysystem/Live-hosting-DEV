@@ -46,7 +46,7 @@ def run_maintenance_verification():
     # Produce a valid admin token for testing
     import jwt
     from backend.middleware.auth import JWT_SECRET
-    admin_token = jwt.encode({"user_id": "admin_user", "is_admin": True, "email": "admin@ssjewellery.com"}, JWT_SECRET, algorithm="HS256")
+    admin_token = jwt.encode({"user_id": "1", "username": "admin", "is_admin": True}, JWT_SECRET, algorithm="HS256")
 
     res_toggle = client.post(
         '/api/maintenance/toggle',
@@ -64,7 +64,7 @@ def run_maintenance_verification():
         db_setting = SiteSettingModel.query.filter_by(key='maintenance_mode').first()
         assert db_setting is not None and db_setting.value.lower() == 'true'
         by_setting = SiteSettingModel.query.filter_by(key='maintenance_by').first()
-        assert by_setting is not None and by_setting.value == "admin@ssjewellery.com"
+        assert by_setting is not None and by_setting.value in ["admin", "1"]
         print("✓ Database persists maintenance_mode, enabled_by_admin, and timestamp")
 
     # 6. Verify status endpoint returns maintenance_mode == True

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { ChevronUp, X, Heart, Sparkles } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
@@ -6,7 +6,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../context/AuthContext';
 
 // 3D Parallax & Magnetic Card component for Occasion
-const ParallaxOccasionCard = ({ item, onExpand, onCollectionClick, index }) => {
+const ParallaxOccasionCard = ({ item, onExpand, onCollectionClick, index, hasDraggedRef }) => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
@@ -59,6 +59,7 @@ const ParallaxOccasionCard = ({ item, onExpand, onCollectionClick, index }) => {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={() => {
+        if (hasDraggedRef && hasDraggedRef.current) return;
         if (onCollectionClick) {
           onCollectionClick(item.title);
         } else if (onExpand) {
@@ -76,11 +77,18 @@ const ParallaxOccasionCard = ({ item, onExpand, onCollectionClick, index }) => {
           y: imgY
         }}
       >
-        <img
-          src={item.image}
-          alt={item.title}
-          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 saturate-[1.1] brightness-[0.85] no-zoom"
-        />
+        {item.image ? (
+          <img
+            src={item.image}
+            alt={item.title}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 saturate-[1.1] brightness-[0.85] no-zoom"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-[#1B0B26] via-[#3F1D5A] to-[#0F071A] flex flex-col items-center justify-center text-center p-4">
+            <Sparkles className="h-10 w-10 text-[#D4A75F] animate-pulse mb-2" />
+          </div>
+        )}
       </motion.div>
 
       {/* Dark overlay with dynamic gradient */}
@@ -115,8 +123,22 @@ const ParallaxOccasionCard = ({ item, onExpand, onCollectionClick, index }) => {
 export const OccasionGallery = ({ items: propItems, activeCollection, onCollectionClick }) => {
   const { language } = useTranslation();
   const [selectedItem, setSelectedItem] = useState(null);
-
   const [dbCollections, setDbCollections] = useState([]);
+
+  const trackRef = useRef(null);
+  const trackContainerRef = useRef(null);
+  const positionRef = useRef(0);
+  const isInteractingRef = useRef(false);
+  const isHoveredRef = useRef(false);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartPositionRef = useRef(0);
+  const hasDraggedRef = useRef(false);
+  const velocityRef = useRef(0);
+  const lastMouseXRef = useRef(0);
+  const lastTimeRef = useRef(performance.now());
+  const resumeTimeoutRef = useRef(null);
+  const singleSetWidthRef = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -130,7 +152,7 @@ export const OccasionGallery = ({ items: propItems, activeCollection, onCollecti
               id: c.id,
               title: c.name || c.title,
               subtitle: c.subtitle || c.description || (language === 'hi' ? 'विशेष संग्रह' : 'Curated Masterpiece'),
-              image: c.image || c.image_url || c.thumbnail_image || "/cat_bridal.png",
+              image: (c.image && !c.image.includes('cat_')) ? c.image : ((c.image_url && !c.image_url.includes('cat_')) ? c.image_url : ((c.thumbnail_image && !c.thumbnail_image.includes('cat_')) ? c.thumbnail_image : null)),
               description: c.description || (language === 'hi' ? 'हमारे नवीनतम संग्रह की खोज करें।' : 'Discover our latest handcrafted collection.'),
               tips: Array.isArray(c.styling_tips) && c.styling_tips.length > 0 ? c.styling_tips : [
                 language === 'hi' ? 'सुंदर लुक के लिए परिधानों के साथ पहनें।' : 'Pair with classic ensembles for timeless luxury.',
@@ -149,26 +171,216 @@ export const OccasionGallery = ({ items: propItems, activeCollection, onCollecti
 
   const items = (propItems && propItems.length > 0) ? propItems : dbCollections;
 
+  const handleInteractionStart = () => {
+    isInteractingRef.current = true;
+    if (resumeTimeoutRef.current) {
+      clearTimeout(resumeTimeoutRef.current);
+      resumeTimeoutRef.current = null;
+    }
+  };
+
+  const handleInteractionEnd = () => {
+    if (resumeTimeoutRef.current) {
+      clearTimeout(resumeTimeoutRef.current);
+    }
+    resumeTimeoutRef.current = setTimeout(() => {
+      isInteractingRef.current = false;
+    }, 2500);
+  };
+
+  // RAF loop for continuous 60fps auto-play & smooth wrap-around
+  useEffect(() => {
+    let animationFrameId;
+    let lastTimestamp = performance.now();
+
+    const updatePosition = (timestamp) => {
+      const deltaTime = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+
+      const track = trackRef.current;
+      if (track && items.length > 0) {
+        const totalWidth = track.scrollWidth;
+        const singleSetWidth = totalWidth / 3;
+        singleSetWidthRef.current = singleSetWidth;
+
+        if (singleSetWidth > 0) {
+          // Initialize position to middle set once measured
+          if (positionRef.current === 0) {
+            positionRef.current = -singleSetWidth;
+          }
+
+          // Auto-play when not interacting, hovering, or dragging
+          if (!isInteractingRef.current && !isHoveredRef.current && !isDraggingRef.current) {
+            const speed = singleSetWidth / 35; // 35 seconds per single set loop
+            positionRef.current -= speed * Math.min(deltaTime, 0.1);
+          } else if (!isDraggingRef.current && Math.abs(velocityRef.current) > 0.05) {
+            positionRef.current += velocityRef.current;
+            velocityRef.current *= 0.90; // Momentum inertia friction
+          }
+
+          // Infinite wrap within [-2*W, 0]
+          if (positionRef.current <= -2 * singleSetWidth) {
+            positionRef.current += singleSetWidth;
+          } else if (positionRef.current > 0) {
+            positionRef.current -= singleSetWidth;
+          }
+
+          track.style.transform = `translate3d(${positionRef.current}px, 0, 0)`;
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(updatePosition);
+    };
+
+    animationFrameId = requestAnimationFrame(updatePosition);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [items.length]);
+
+  // Global mousemove and mouseup listeners for desktop drag
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDraggingRef.current) return;
+
+      const currentX = e.clientX;
+      const dx = currentX - dragStartXRef.current;
+      if (Math.abs(dx) > 5) {
+        hasDraggedRef.current = true;
+      }
+
+      const now = performance.now();
+      const dt = (now - lastTimeRef.current) / 1000;
+      if (dt > 0) {
+        const mouseDx = currentX - lastMouseXRef.current;
+        velocityRef.current = mouseDx;
+      }
+      lastMouseXRef.current = currentX;
+      lastTimeRef.current = now;
+
+      positionRef.current = dragStartPositionRef.current + dx;
+
+      const W = singleSetWidthRef.current;
+      if (W > 0) {
+        while (positionRef.current <= -2 * W) positionRef.current += W;
+        while (positionRef.current > 0) positionRef.current -= W;
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        handleInteractionEnd();
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  // Wheel listener for horizontal scroll / trackpad support
+  useEffect(() => {
+    const container = trackContainerRef.current;
+    if (!container) return;
+
+    let wheelTimer = null;
+
+    const handleWheel = (e) => {
+      const deltaX = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
+      if (deltaX !== 0) {
+        e.preventDefault();
+        handleInteractionStart();
+
+        positionRef.current -= deltaX * 1.2;
+
+        const W = singleSetWidthRef.current;
+        if (W > 0) {
+          while (positionRef.current <= -2 * W) positionRef.current += W;
+          while (positionRef.current > 0) positionRef.current -= W;
+        }
+
+        if (wheelTimer) clearTimeout(wheelTimer);
+        wheelTimer = setTimeout(() => {
+          handleInteractionEnd();
+        }, 200);
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      if (wheelTimer) clearTimeout(wheelTimer);
+    };
+  }, []);
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    handleInteractionStart();
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.clientX;
+    dragStartPositionRef.current = positionRef.current;
+    hasDraggedRef.current = false;
+    velocityRef.current = 0;
+    lastMouseXRef.current = e.clientX;
+    lastTimeRef.current = performance.now();
+  };
+
+  const handleTouchStart = (e) => {
+    if (!e.touches || e.touches.length === 0) return;
+    handleInteractionStart();
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.touches[0].clientX;
+    dragStartPositionRef.current = positionRef.current;
+    hasDraggedRef.current = false;
+    velocityRef.current = 0;
+    lastMouseXRef.current = e.touches[0].clientX;
+    lastTimeRef.current = performance.now();
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDraggingRef.current || !e.touches || e.touches.length === 0) return;
+
+    const currentX = e.touches[0].clientX;
+    const dx = currentX - dragStartXRef.current;
+    if (Math.abs(dx) > 5) {
+      hasDraggedRef.current = true;
+    }
+
+    const now = performance.now();
+    const dt = (now - lastTimeRef.current) / 1000;
+    if (dt > 0) {
+      const touchDx = currentX - lastMouseXRef.current;
+      velocityRef.current = touchDx;
+    }
+    lastMouseXRef.current = currentX;
+    lastTimeRef.current = now;
+
+    positionRef.current = dragStartPositionRef.current + dx;
+
+    const W = singleSetWidthRef.current;
+    if (W > 0) {
+      while (positionRef.current <= -2 * W) positionRef.current += W;
+      while (positionRef.current > 0) positionRef.current -= W;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      handleInteractionEnd();
+    }
+  };
+
   return (
     <section className="relative w-full overflow-hidden py-16 bg-transparent transition-colors duration-300">
       
-      {/* Infinite Seamless Marquee CSS */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes marquee-horizontal {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquee-track {
-          display: flex;
-          gap: 20px;
-          width: max-content;
-          animation: marquee-horizontal 35s linear infinite;
-        }
-        .animate-marquee-track:hover {
-          animation-play-state: paused;
-        }
-      `}} />
-
       {/* Title block remains aligned with parent margins */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center max-w-3xl mb-12">
         <motion.div 
@@ -193,16 +405,30 @@ export const OccasionGallery = ({ items: propItems, activeCollection, onCollecti
       </div>
 
       {/* Full-width Carousel Track (no margins, edge-to-edge width) */}
-      <div className="w-full overflow-hidden py-4 relative z-10">
-        <div className="animate-marquee-track">
-          {/* Double items array for seamless looping visual alignment */}
-          {[...items, ...items].map((item, index) => (
+      <div 
+        ref={trackContainerRef}
+        className="w-full overflow-hidden py-4 relative z-10 select-none touch-pan-y cursor-grab active:cursor-grabbing"
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseEnter={() => { isHoveredRef.current = true; }}
+        onMouseLeave={() => { isHoveredRef.current = false; }}
+      >
+        <div 
+          ref={trackRef} 
+          className="flex gap-5 pointer-events-auto"
+          style={{ gap: '20px', width: 'max-content' }}
+        >
+          {/* Triple items array for seamless looping visual alignment */}
+          {[...items, ...items, ...items].map((item, index) => (
             <ParallaxOccasionCard 
               key={`${item.id}-${index}`} 
               item={item} 
               onExpand={setSelectedItem} 
               onCollectionClick={onCollectionClick}
               index={index} 
+              hasDraggedRef={hasDraggedRef}
             />
           ))}
         </div>
@@ -234,14 +460,23 @@ export const OccasionGallery = ({ items: propItems, activeCollection, onCollecti
 
               {/* Left Side: Occasion Canvas */}
               <div className="md:w-3/5 h-[40vh] md:h-auto relative overflow-hidden bg-slate-900 flex items-center justify-center border-b md:border-b-0 md:border-r border-slate-800">
-                <motion.img
-                  src={selectedItem.image}
-                  alt={selectedItem.title}
-                  className="w-full h-full object-cover saturate-[1.1] brightness-[0.95]"
-                  initial={{ scale: 1.15 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.8 }}
-                />
+                {selectedItem.image ? (
+                  <motion.img
+                    src={selectedItem.image}
+                    alt={selectedItem.title}
+                    className="w-full h-full object-cover saturate-[1.1] brightness-[0.95]"
+                    initial={{ scale: 1.15 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.8 }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#1B0B26] via-[#3F1D5A] to-[#0F071A] flex flex-col items-center justify-center p-6 text-center">
+                    <Sparkles className="h-12 w-12 text-[#D4A75F] animate-pulse mb-3" />
+                    <span className="text-[#D4A75F] text-sm font-serif font-bold uppercase tracking-widest">
+                      {selectedItem.title}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Right Side: Styling Tips & Description */}

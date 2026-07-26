@@ -68,8 +68,8 @@ export const ProductManagementTab = ({
           return (
             <div key={p._id || p.id} className="border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/20 rounded-2xl p-4.5 flex flex-col justify-between hover:shadow-lg transition-all duration-300 relative">
               <div>
-                {/* Product Image, Category and Delete Button Header Row */}
-                <div className="flex items-start justify-between gap-3 mb-3">
+                {/* Desktop/Tablet Header Row (Hidden on mobile < 768px, visible on md+) */}
+                <div className="hidden md:flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="h-16 w-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-955 border border-slate-100 dark:border-slate-800 flex-shrink-0">
                       <img src={p.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'} alt={p.name} className="h-full w-full object-cover" />
@@ -89,6 +89,36 @@ export const ProductManagementTab = ({
                   >
                     <Trash2 className="h-4 w-4 text-white" />
                   </button>
+                </div>
+
+                {/* Mobile Header Layout (Visible on mobile < 768px, hidden on md+) */}
+                <div className="block md:hidden mb-3">
+                  {/* Top row: Image & Category */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-16 w-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-955 border border-slate-100 dark:border-slate-800 flex-shrink-0">
+                      <img src={p.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'} alt={p.name} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">{p.category}</span>
+                    </div>
+                  </div>
+
+                  {/* Title row */}
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 break-words mt-1 mb-2.5" title={p.name}>
+                    {p.name}
+                  </h4>
+
+                  {/* Delete Button Row (Right aligned, between Title and Pricing Box, 8-12px spacing) */}
+                  <div className="flex justify-end my-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setProductToDelete(p)}
+                      title="Delete Product"
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-md shadow-red-500/20 hover:scale-105 transition-all duration-200 cursor-pointer flex-shrink-0 z-30"
+                    >
+                      <Trash2 className="h-4 w-4 text-white" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Price / Discount History */}

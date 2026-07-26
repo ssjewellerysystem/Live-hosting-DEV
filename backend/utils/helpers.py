@@ -84,9 +84,37 @@ def verify_otp(identifier, submitted_otp):
         
     return False
 
+def normalize_email(email):
+    """
+    Normalizes an email address by stripping leading/trailing whitespace and converting to lowercase.
+    If input is None or not a string, returns as is.
+    """
+    if not email or not isinstance(email, str):
+        return email
+    return email.strip().lower()
+
 def is_valid_email(email):
     """
     Simple email validation.
     """
+    if not email or not isinstance(email, str):
+        return False
+    clean_email = email.strip().lower()
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
-    return re.match(pattern, email) is not None
+    return re.match(pattern, clean_email) is not None
+
+def is_allowed_email_domain(email):
+    """
+    Validates if an email address belongs to an allowed domain (@gmail.com or @outlook.com).
+    Case-insensitive.
+    """
+    if not email or not isinstance(email, str):
+        return False
+    clean_email = email.strip().lower()
+    parts = clean_email.split('@')
+    if len(parts) != 2:
+        return False
+    domain = '@' + parts[1]
+    return domain in ('@gmail.com', '@outlook.com')
+
+

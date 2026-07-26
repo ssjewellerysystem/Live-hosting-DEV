@@ -104,6 +104,20 @@ class ProductModel(db.Model):
         coll_name = self.collection.name if hasattr(self, 'collection') and self.collection else None
         coll_id = str(self.collection_id) if hasattr(self, 'collection_id') and self.collection_id else None
 
+        if hasattr(self, '_prefetched_review_count'):
+            review_count = self._prefetched_review_count
+        else:
+            try:
+                from sqlalchemy import inspect as sqla_inspect
+                insp = sqla_inspect(self)
+                if insp and hasattr(insp, 'unloaded') and 'reviews' not in insp.unloaded:
+                    review_count = len(self.reviews) if self.reviews else 0
+                else:
+                    from backend.models.review import ReviewModel
+                    review_count = db.session.query(db.func.count(ReviewModel.id)).filter_by(product_id=self.id).scalar() or 0
+            except Exception:
+                review_count = 0
+
         return {
             "id": str(self.id),
             "_id": str(self.id),
@@ -122,7 +136,7 @@ class ProductModel(db.Model):
             "collection_name": coll_name,
             "category_attributes": attributes_list,
             "ratings": float(self.ratings) if self.ratings is not None else 5.0,
-            "review_count": len(self.reviews) if self.reviews else 0,
+            "review_count": review_count,
             "variants": variants_list,
             "created_at": format_iso_datetime(self.created_at),
             "updated_at": format_iso_datetime(self.updated_at),
@@ -148,21 +162,14 @@ class ProductModel(db.Model):
         }
 
     @staticmethod
-    def get_all(category=None, search_query=None, homepage_only=False, collection=None):
-        from backend.utils.cache import products_cache
-        cache_key = f"all_{category or 'None'}_{collection or 'None'}_{search_query or 'None'}_{homepage_only}"
-        cached_val = products_cache.get(cache_key)
-        if cached_val is not None:
-            return cached_val
-
-        from sqlalchemy.orm import joinedload
+    def get_all(category=None, search_query=None, homepage_only=False, collection=None, page=None, limit=None):
+        from sqlalchemy.orm import joinedload, selectinload
         from backend.models.collection import CollectionModel
         query = ProductModel.query.options(
             joinedload(ProductModel.category),
             joinedload(ProductModel.collection),
-            joinedload(ProductModel.product_images),
-            joinedload(ProductModel.variants),
-            joinedload(ProductModel.reviews)
+            selectinload(ProductModel.product_images),
+            selectinload(ProductModel.variants)
         )
         
         if homepage_only:
@@ -173,30 +180,69 @@ class ProductModel(db.Model):
             query = query.join(Category).filter(Category.name == category)
 
         if collection and collection != 'All':
-            if str(collection).isdigit():
-                query = query.filter(ProductModel.collection_id == int(collection))
+            coll_str = str(collection).strip()
+            if coll_str.isdigit():
+                query = query.filter(ProductModel.collection_id == int(coll_str))
             else:
+                from sqlalchemy import func
+                coll_lower = coll_str.lower()
+                coll_slug_lower = coll_lower.replace(' ', '-')
                 query = query.outerjoin(CollectionModel).filter(
-                    (CollectionModel.name == collection) | (CollectionModel.slug == collection)
+                    (func.lower(CollectionModel.name) == coll_lower) | 
+                    (func.lower(CollectionModel.slug) == coll_lower) |
+                    (func.lower(CollectionModel.slug) == coll_slug_lower)
                 )
             
         if search_query:
             from backend.models.category import Category
             query = query.outerjoin(Category).outerjoin(CollectionModel).filter(
-                (ProductModel.name.like(f"%{search_query}%")) |
-                (ProductModel.name_en.like(f"%{search_query}%")) |
-                (ProductModel.name_hi.like(f"%{search_query}%")) |
-                (ProductModel.description.like(f"%{search_query}%")) |
-                (ProductModel.description_en.like(f"%{search_query}%")) |
-                (ProductModel.description_hi.like(f"%{search_query}%")) |
-                (Category.name.like(f"%{search_query}%")) |
-                (CollectionModel.name.like(f"%{search_query}%"))
+                (ProductModel.name.ilike(f"%{search_query}%")) |
+                (ProductModel.name_en.ilike(f"%{search_query}%")) |
+                (ProductModel.name_hi.ilike(f"%{search_query}%")) |
+                (ProductModel.description.ilike(f"%{search_query}%")) |
+                (ProductModel.description_en.ilike(f"%{search_query}%")) |
+                (ProductModel.description_hi.ilike(f"%{search_query}%")) |
+                (Category.name.ilike(f"%{search_query}%")) |
+                (CollectionModel.name.ilike(f"%{search_query}%"))
             )
-            
+
+        query = query.order_by(ProductModel.created_at.desc())
+
+        if page is not None or limit is not None:
+            from backend.utils.pagination import paginate_query
+            res = paginate_query(query, page=page, limit=limit)
+            if res.get("items"):
+                raw_items = query.offset((res["current_page"] - 1) * res["page_size"]).limit(res["page_size"]).all()
+                p_ids = [p.id for p in raw_items]
+                if p_ids:
+                    from backend.models.review import ReviewModel
+                    from sqlalchemy import func
+                    counts = dict(
+                        db.session.query(ReviewModel.product_id, func.count(ReviewModel.id))
+                        .filter(ReviewModel.product_id.in_(p_ids))
+                        .group_by(ReviewModel.product_id)
+                        .all()
+                    )
+                    for p in raw_items:
+                        p._prefetched_review_count = counts.get(p.id, 0)
+                res["items"] = [p.to_dict() for p in raw_items]
+            return res
+
         products = query.all()
-        result = [p.to_dict() for p in products]
-        products_cache.set(cache_key, result)
-        return result
+        if products:
+            p_ids = [p.id for p in products]
+            from backend.models.review import ReviewModel
+            from sqlalchemy import func
+            counts = dict(
+                db.session.query(ReviewModel.product_id, func.count(ReviewModel.id))
+                .filter(ReviewModel.product_id.in_(p_ids))
+                .group_by(ReviewModel.product_id)
+                .all()
+            )
+            for p in products:
+                p._prefetched_review_count = counts.get(p.id, 0)
+
+        return [p.to_dict() for p in products]
 
     @staticmethod
     def find_by_id(product_id):

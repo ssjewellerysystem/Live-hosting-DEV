@@ -6,6 +6,7 @@ import { Footer } from './components/Footer';
 import { LiveChat } from './components/LiveChat';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LanguageSelectionModal } from './components/LanguageSelectionModal';
+import { HighDemandOverlay } from './components/HighDemandOverlay';
 
 import { Home } from './pages/Home';
 import { GlobalVideoFooter } from './components/GlobalVideoFooter';
@@ -85,9 +86,12 @@ function App() {
       // Filter out small interface images, icons, logos, etc.
       if (
         img.src.includes('logo.svg') ||
+        img.src.includes('navbar-logo') ||
         img.src.includes('avatar') ||
         img.src.includes('flag') ||
         img.src.includes('cat_') ||
+        img.closest('nav') ||
+        img.closest('.brand-typography-wrapper') ||
         img.classList.contains('no-zoom') ||
         img.closest('.no-zoom') ||
         img.closest('.category-item-link') ||
@@ -286,6 +290,7 @@ function App() {
             </motion.div>
           )}
         </AnimatePresence>
+        <HighDemandOverlay />
       </div>
     </>
   );

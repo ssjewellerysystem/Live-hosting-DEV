@@ -4,6 +4,7 @@ import axios from 'axios';
 import { CreditCard, Truck, ShieldCheck, Mail, Key, ShoppingBag, CheckCircle, ArrowRight, ArrowLeft, ShieldAlert, X, Plus, Edit2, Trash2, MapPin, Check, Home, Briefcase } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
+import { isAllowedEmailDomain, ALLOWED_EMAIL_DOMAIN_ERROR } from '../utils/emailValidator';
 import { useMaintenance } from '../context/MaintenanceContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatPrice } from '../utils/priceFormatter';
@@ -502,6 +503,7 @@ export const Checkout = () => {
         shippingDetails.phone.replace(/\D/g, '').length === 10 &&
         shippingDetails.email?.trim() &&
         isEmailValid(shippingDetails.email) &&
+        isAllowedEmailDomain(shippingDetails.email) &&
         shippingDetails.house_number?.trim() &&
         shippingDetails.street?.trim() &&
         shippingDetails.area?.trim() &&
@@ -583,6 +585,10 @@ export const Checkout = () => {
       }
       if (!isEmailValid(shippingDetails.email)) {
         setError('Please enter a valid email address.');
+        return;
+      }
+      if (!isAllowedEmailDomain(shippingDetails.email)) {
+        setError(ALLOWED_EMAIL_DOMAIN_ERROR);
         return;
       }
     }
@@ -1272,6 +1278,11 @@ export const Checkout = () => {
                     {shippingDetails.email && !isEmailValid(shippingDetails.email) && (
                       <p className="mt-1 text-[11px] text-[#EF4444] font-semibold">
                         Please enter a valid email address.
+                      </p>
+                    )}
+                    {shippingDetails.email && isEmailValid(shippingDetails.email) && !isAllowedEmailDomain(shippingDetails.email) && (
+                      <p className="mt-1 text-[11px] text-[#EF4444] font-semibold">
+                        {ALLOWED_EMAIL_DOMAIN_ERROR}
                       </p>
                     )}
                   </div>

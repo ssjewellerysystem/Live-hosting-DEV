@@ -2,7 +2,8 @@ from flask import Blueprint, jsonify, request
 from backend.extensions import db
 from backend.models.gold_rate import GoldRateModel
 from backend.models.settings import SiteSettingModel
-from datetime import date
+from backend.utils.gold_rate_scheduler import IST, format_official_update_timestamp
+from datetime import datetime
 import json
 
 gold_rate_bp = Blueprint('gold_rate', __name__)
@@ -16,7 +17,8 @@ def get_gold_rate():
     The frontend calls ONLY this endpoint (never external APIs directly).
     """
     try:
-        today_str = date.today().strftime("%Y-%m-%d")
+        now_ist = datetime.now(IST)
+        today_str = now_ist.strftime("%Y-%m-%d")
         
         # 1. Query latest records from `gold_rates` table
         latest_records = GoldRateModel.query.filter_by(is_latest=True).all()
@@ -37,7 +39,7 @@ def get_gold_rate():
             silver_g = silver_rec.rate_per_gram if silver_rec and silver_rec.rate_per_gram else 245.0
 
             effective_dt = (gold_rec.effective_date if gold_rec else None) or today_str
-            fetched_time = gold_rec.fetched_at.strftime("%d %B %Y, %I:%M %p IST") if gold_rec and gold_rec.fetched_at else "Today"
+            official_timestamp = format_official_update_timestamp(effective_dt)
 
             data_payload = {
                 "city": gold_rec.city if gold_rec else "Jaipur",
@@ -56,7 +58,7 @@ def get_gold_rate():
                     "currency": silver_rec.currency if silver_rec else "INR"
                 },
                 "rate_date": effective_dt,
-                "updated_at": fetched_time,
+                "updated_at": official_timestamp,
                 "is_fallback": is_historical_fallback,
                 "source": "database"
             }
@@ -73,6 +75,7 @@ def get_gold_rate():
         if setting and setting.value:
             data = json.loads(setting.value)
             data["source"] = "database_settings"
+            data["updated_at"] = format_official_update_timestamp(data.get("rate_date") or today_str)
             return jsonify({
                 "success": True,
                 "message": "Rates fetched successfully from database.",
@@ -97,7 +100,7 @@ def get_gold_rate():
                 "currency": "INR"
             },
             "rate_date": today_str,
-            "updated_at": "Today, 9:00 AM IST",
+            "updated_at": format_official_update_timestamp(today_str),
             "source": "default_fallback"
         }
         return jsonify({
@@ -121,7 +124,7 @@ def manual_refresh_gold_rate():
     """
     try:
         from backend.utils.gold_rate_scheduler import fetch_and_store_metal_rates
-        result = fetch_and_store_metal_rates()
+        result = fetch_and_store_metal_rates(force=True)
 
         if result["success"]:
             return jsonify({

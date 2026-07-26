@@ -39,8 +39,10 @@ def get_maintenance_config():
             "enabled_at": ""
         }
 
-@maintenance_bp.route('/status', methods=['GET'])
+@maintenance_bp.route('/status', methods=['GET', 'OPTIONS'])
 def get_maintenance_status():
+    if request.method == 'OPTIONS':
+        return jsonify({"success": True}), 200
     """
     Public endpoint to check maintenance mode status (used for 30s auto-refresh polling).
     """
@@ -53,9 +55,11 @@ def get_maintenance_status():
         "enabled_at": config["enabled_at"]
     }), 200
 
-@maintenance_bp.route('/toggle', methods=['POST'])
+@maintenance_bp.route('/toggle', methods=['POST', 'OPTIONS'])
 @admin_required
 def toggle_maintenance_mode():
+    if request.method == 'OPTIONS':
+        return jsonify({"success": True}), 200
     """
     Admin-only endpoint to enable or disable website maintenance mode.
     Only authenticated admins can execute this operation.

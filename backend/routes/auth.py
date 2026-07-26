@@ -7,10 +7,11 @@ import json
 from flask import Blueprint, request, jsonify, redirect
 import jwt
 import bcrypt
+from sqlalchemy import func
 from backend.extensions import db
 from backend.models.user import UserModel, DeliveryAddress
 from backend.models.otp_verification import OTPVerification
-from backend.utils.helpers import generate_otp, verify_otp, is_valid_email
+from backend.utils.helpers import generate_otp, verify_otp, is_valid_email, is_allowed_email_domain, normalize_email
 from backend.utils.email_service import send_email
 from backend.utils.timezone import format_iso_datetime, get_ist_time
 from backend.utils.security import mask_email, mask_name
@@ -28,42 +29,58 @@ def register():
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json() or {}
-    email = data.get("email") or data.get("name")
+    raw_email = data.get("email") or data.get("name")
     password = data.get("password") or data.get("mobile")
     
-    if not email or not password:
+    if not raw_email or not password:
         return jsonify({"message": "Please provide both email/mobile and password."}), 400
+
+    email = normalize_email(raw_email) if is_valid_email(raw_email) else str(raw_email).strip()
         
-    if (email == 'admin' or email == 'admin@SSJewellery.com') and password == 'admin123':
-        from backend.utils.audit import log_admin_action
-        log_admin_action("Admin Login", "Admin Authentication", "Admin login successful")
-        try:
-            from backend.models.admin import add_admin_notification
-            add_admin_notification(
-                title="Admin Login",
-                message="Administrator has logged in successfully.",
-                type="admin_login"
-            )
-        except Exception as ex:
-            print(f"Error adding admin login notification: {ex}")
-        payload = {
-            "user_id": "admin_user",
-            "is_admin": True,
-            "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
-        }
-        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-        return jsonify({
-            "message": "Admin login successful!",
-            "token": token,
-            "user": {
-                "id": "admin_user",
-                "name": "Administrator",
-                "email": "admin@SSJewellery.com",
-                "mobile": "N/A",
+    # 1. Database-driven Admin authentication via AdminModel
+    from backend.models.admin import AdminModel
+    admin_record = AdminModel.query.filter(
+        (AdminModel.username == str(raw_email).strip()) | 
+        (func.lower(AdminModel.username) == str(raw_email).strip().lower())
+    ).first()
+
+    if admin_record:
+        password_valid = False
+        if admin_record.password.startswith("$2b$") or admin_record.password.startswith("$2a$"):
+            try:
+                password_valid = bcrypt.checkpw(password.encode('utf-8'), admin_record.password.encode('utf-8'))
+            except Exception:
+                password_valid = False
+        else:
+            password_valid = (admin_record.password == password)
+
+        if password_valid:
+            from backend.utils.audit import log_admin_action
+            log_admin_action("Admin Login", "Admin Authentication", f"Admin '{admin_record.username}' logged in successfully")
+            admin_email_str = admin_record.username if "@" in admin_record.username else f"{admin_record.username}@admin.local"
+            payload = {
+                "admin_id": str(admin_record.id),
+                "user_id": str(admin_record.id),
+                "username": admin_record.username,
+                "email": admin_email_str,
                 "is_admin": True,
-                "role": "admin"
+                "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
             }
-        }), 200
+            token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+            return jsonify({
+                "message": "Admin login successful!",
+                "token": token,
+                "user": {
+                    "id": str(admin_record.id),
+                    "_id": str(admin_record.id),
+                    "name": admin_record.username,
+                    "username": admin_record.username,
+                    "email": admin_email_str,
+                    "mobile": "N/A",
+                    "is_admin": True,
+                    "role": "admin"
+                }
+            }), 200
 
     import re
     is_email = is_valid_email(email)
@@ -71,6 +88,9 @@ def login():
     
     if not is_email and not is_mobile:
         return jsonify({"message": "Invalid email or mobile number."}), 400
+        
+    if is_email and not is_allowed_email_domain(email):
+        return jsonify({"message": "Only Gmail (@gmail.com) and Outlook (@outlook.com) email addresses are supported."}), 400
         
     try:
         user_obj = UserModel.query.filter(
@@ -129,7 +149,8 @@ def login():
 @auth_bp.route('/send-otp', methods=['POST'])
 def send_otp_route():
     data = request.get_json() or {}
-    email = data.get("email")
+    raw_email = data.get("email")
+    email = normalize_email(raw_email) if raw_email else raw_email
     name = data.get("name")
     mobile = data.get("mobile")
     password = data.get("password")
@@ -140,6 +161,9 @@ def send_otp_route():
         
     if not is_valid_email(email):
         return jsonify({"message": "Invalid email format."}), 400
+
+    if not is_allowed_email_domain(email):
+        return jsonify({"message": "Only Gmail (@gmail.com) and Outlook (@outlook.com) email addresses are supported."}), 400
         
     # Check if duplicate registration
     existing_user = UserModel.query.filter_by(email=email).first()
@@ -230,7 +254,8 @@ SSJewellery Team"""
 @auth_bp.route('/verify-otp', methods=['POST'])
 def verify_otp_route():
     data = request.get_json() or {}
-    email = data.get("email")
+    raw_email = data.get("email")
+    email = normalize_email(raw_email) if raw_email else raw_email
     otp = data.get("otp")
     
     if not email or not otp:
@@ -323,7 +348,8 @@ def verify_otp_route():
 @auth_bp.route('/resend-otp', methods=['POST'])
 def resend_otp_route():
     data = request.get_json() or {}
-    email = data.get("email")
+    raw_email = data.get("email")
+    email = normalize_email(raw_email) if raw_email else raw_email
     if not email:
         return jsonify({"message": "Email is required."}), 400
         
@@ -395,33 +421,58 @@ SSJewellery Team"""
 @auth_bp.route('/user-login', methods=['POST'])
 def user_login_route():
     data = request.get_json() or {}
-    name = data.get("name")
-    mobile = data.get("mobile")
+    raw_name = data.get("name")
+    mobile = data.get("password") or data.get("mobile")
     
-    if not name or not mobile:
+    if not raw_name or not mobile:
         return jsonify({"message": "Please provide both email/mobile and password."}), 400
+
+    name = normalize_email(raw_name) if is_valid_email(raw_name) else str(raw_name).strip()
         
-    if (name == 'admin' or name == 'admin@SSJewellery.com') and mobile == 'admin123':
-        from backend.utils.audit import log_admin_action
-        log_admin_action("Admin Login", "Admin Authentication", "Admin login successful")
-        payload = {
-            "user_id": "admin_user",
-            "is_admin": True,
-            "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
-        }
-        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-        return jsonify({
-            "message": "Admin login successful!",
-            "token": token,
-            "user": {
-                "id": "admin_user",
-                "name": "Administrator",
-                "email": "admin@SSJewellery.com",
-                "mobile": "N/A",
+    # Database-driven Admin authentication check for user-login endpoint
+    from backend.models.admin import AdminModel
+    admin_record = AdminModel.query.filter(
+        (AdminModel.username == str(raw_name).strip()) | 
+        (func.lower(AdminModel.username) == str(raw_name).strip().lower())
+    ).first()
+
+    if admin_record:
+        password_valid = False
+        if admin_record.password.startswith("$2b$") or admin_record.password.startswith("$2a$"):
+            try:
+                password_valid = bcrypt.checkpw(mobile.encode('utf-8'), admin_record.password.encode('utf-8'))
+            except Exception:
+                password_valid = False
+        else:
+            password_valid = (admin_record.password == mobile)
+
+        if password_valid:
+            from backend.utils.audit import log_admin_action
+            log_admin_action("Admin Login", "Admin Authentication", f"Admin '{admin_record.username}' logged in successfully")
+            admin_email_str = admin_record.username if "@" in admin_record.username else f"{admin_record.username}@admin.local"
+            payload = {
+                "admin_id": str(admin_record.id),
+                "user_id": str(admin_record.id),
+                "username": admin_record.username,
+                "email": admin_email_str,
                 "is_admin": True,
-                "role": "admin"
+                "exp": datetime.datetime.now(pytz.utc) + datetime.timedelta(hours=24)
             }
-        }), 200
+            token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+            return jsonify({
+                "message": "Admin login successful!",
+                "token": token,
+                "user": {
+                    "id": str(admin_record.id),
+                    "_id": str(admin_record.id),
+                    "name": admin_record.username,
+                    "username": admin_record.username,
+                    "email": admin_email_str,
+                    "mobile": "N/A",
+                    "is_admin": True,
+                    "role": "admin"
+                }
+            }), 200
 
     import re
     is_email = is_valid_email(name)
@@ -429,6 +480,9 @@ def user_login_route():
     
     if not is_email and not is_mobile:
         return jsonify({"message": "Invalid email or mobile number."}), 400
+        
+    if is_email and not is_allowed_email_domain(name):
+        return jsonify({"message": "Only Gmail (@gmail.com) and Outlook (@outlook.com) email addresses are supported."}), 400
         
     user_obj = UserModel.query.filter(
         (UserModel.email == name) | (UserModel.phone == name)
@@ -481,10 +535,15 @@ def user_login_route():
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
     data = request.get_json() or {}
-    email_or_mobile = data.get("email") or data.get("email_or_mobile")
+    raw_input = data.get("email") or data.get("email_or_mobile")
     
-    if not email_or_mobile:
+    if not raw_input:
         return jsonify({"message": "Please provide your registered email or mobile number."}), 400
+
+    email_or_mobile = normalize_email(raw_input) if is_valid_email(raw_input) else str(raw_input).strip()
+        
+    if is_valid_email(email_or_mobile) and not is_allowed_email_domain(email_or_mobile):
+        return jsonify({"message": "Only Gmail (@gmail.com) and Outlook (@outlook.com) email addresses are supported."}), 400
         
     user_obj = UserModel.query.filter(
         (UserModel.email == email_or_mobile) | (UserModel.phone == email_or_mobile)
@@ -564,11 +623,13 @@ SSJewellery Team"""
 @auth_bp.route('/verify-reset-otp', methods=['POST'])
 def verify_reset_otp():
     data = request.get_json() or {}
-    email_or_mobile = data.get("email") or data.get("email_or_mobile")
+    raw_input = data.get("email") or data.get("email_or_mobile")
     otp = data.get("otp")
     
-    if not email_or_mobile or not otp:
+    if not raw_input or not otp:
         return jsonify({"message": "Please provide email/mobile and OTP."}), 400
+
+    email_or_mobile = normalize_email(raw_input) if is_valid_email(raw_input) else str(raw_input).strip()
         
     user_obj = UserModel.query.filter(
         (UserModel.email == email_or_mobile) | (UserModel.phone == email_or_mobile)
@@ -616,9 +677,11 @@ def verify_reset_otp():
 @auth_bp.route('/resend-reset-otp', methods=['POST'])
 def resend_reset_otp():
     data = request.get_json() or {}
-    email_or_mobile = data.get("email") or data.get("email_or_mobile")
-    if not email_or_mobile:
+    raw_input = data.get("email") or data.get("email_or_mobile")
+    if not raw_input:
         return jsonify({"message": "Email is required."}), 400
+
+    email_or_mobile = normalize_email(raw_input) if is_valid_email(raw_input) else str(raw_input).strip()
         
     user_obj = UserModel.query.filter(
         (UserModel.email == email_or_mobile) | (UserModel.phone == email_or_mobile)
@@ -690,11 +753,13 @@ SSJewellery Team"""
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password():
     data = request.get_json() or {}
-    email_or_mobile = data.get("email") or data.get("email_or_mobile")
+    raw_input = data.get("email") or data.get("email_or_mobile")
     new_password = data.get("new_password")
     
-    if not email_or_mobile or not new_password:
+    if not raw_input or not new_password:
         return jsonify({"message": "Please provide email/mobile and new password."}), 400
+
+    email_or_mobile = normalize_email(raw_input) if is_valid_email(raw_input) else str(raw_input).strip()
         
     user_obj = UserModel.query.filter(
         (UserModel.email == email_or_mobile) | (UserModel.phone == email_or_mobile)
@@ -737,11 +802,18 @@ def checkout_login_route():
     data = request.get_json() or {}
     name = data.get("name")
     phone = data.get("phone")
-    email = data.get("email")
+    raw_email = data.get("email")
+    email = normalize_email(raw_email) if raw_email else raw_email
     address = data.get("address", {})
     
     if not name or not phone:
         return jsonify({"message": "Name and phone are required for checkout registration."}), 400
+        
+    if email:
+        if not is_valid_email(email):
+            return jsonify({"message": "Invalid email format."}), 400
+        if not is_allowed_email_domain(email):
+            return jsonify({"message": "Only Gmail (@gmail.com) and Outlook (@outlook.com) email addresses are supported."}), 400
         
     user_obj = UserModel.query.filter(
         (UserModel.phone == phone) | (UserModel.email == email) if email else (UserModel.phone == phone)
@@ -911,7 +983,8 @@ def get_profile_route(current_user):
 def update_profile_route(current_user):
     data = request.get_json() or {}
     name = data.get("name")
-    email = data.get("email")
+    raw_email = data.get("email")
+    email = normalize_email(raw_email) if raw_email else raw_email
     mobile = data.get("mobile")
     address = data.get("address", {})
     
@@ -1155,6 +1228,25 @@ def get_notifications(current_user):
         return jsonify([]), 200
     notifications = user.get("notifications", [])
     notifications = sorted(notifications, key=lambda x: x.get("created_at", ""), reverse=True)
+    page_arg = request.args.get('page')
+    limit_arg = request.args.get('limit') or request.args.get('page_size')
+    if page_arg or limit_arg or request.args.get('paginate') == 'true':
+        import math
+        from backend.utils.pagination import parse_pagination_params
+        p_num, p_limit = parse_pagination_params()
+        total_records = len(notifications)
+        total_pages = math.ceil(total_records / p_limit) if total_records > 0 else 1
+        offset = (p_num - 1) * p_limit
+        items = notifications[offset:offset + p_limit]
+        return jsonify({
+            "items": items,
+            "total_records": total_records,
+            "total_pages": total_pages,
+            "current_page": p_num,
+            "page_size": p_limit,
+            "has_next": p_num < total_pages,
+            "has_previous": p_num > 1
+        }), 200
     return jsonify(notifications), 200
 
 @auth_bp.route('/notifications/<notification_id>/read', methods=['PUT'])
@@ -1944,14 +2036,14 @@ def update_preferred_language(current_user):
     if not pref_lang or pref_lang not in ['en', 'hi']:
         return jsonify({"message": "Invalid language preference"}), 400
     
-    if current_user.get("_id") == "admin_user":
+    if current_user.get("is_admin"):
         return jsonify({
             "message": "Language preference saved successfully",
             "user": {
-                "id": "admin_user",
-                "_id": "admin_user",
-                "name": "Administrator",
-                "email": "admin@SSJewellery.com",
+                "id": str(current_user.get("id") or current_user.get("_id")),
+                "_id": str(current_user.get("_id") or current_user.get("id")),
+                "name": current_user.get("name") or current_user.get("username") or "Administrator",
+                "email": current_user.get("email") or "admin@admin.local",
                 "is_admin": True,
                 "preferred_language": pref_lang
             }

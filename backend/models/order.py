@@ -158,27 +158,39 @@ class OrderModel(db.Model):
             db.session.flush()
         return order.to_dict()
     @staticmethod
-    def find_by_user_id(user_id):
+    def find_by_user_id(user_id, page=None, limit=None):
         try:
             uid = int(user_id)
             from sqlalchemy.orm import selectinload, joinedload
-            orders = OrderModel.query.options(
+            query = OrderModel.query.options(
                 selectinload(OrderModel.items),
                 joinedload(OrderModel.user)
-            ).filter_by(user_id=uid).order_by(OrderModel.created_at.desc()).all()
+            ).filter_by(user_id=uid).order_by(OrderModel.created_at.desc())
+
+            if page is not None or limit is not None:
+                from backend.utils.pagination import paginate_query
+                return paginate_query(query, page=page, limit=limit)
+
+            orders = query.all()
             return [o.to_dict() for o in orders]
         except Exception:
             return []
 
     @staticmethod
-    def find_all():
+    def find_all(page=None, limit=None):
         try:
             from backend.models.user import UserModel
             from sqlalchemy.orm import selectinload, joinedload
-            orders = OrderModel.query.outerjoin(UserModel, OrderModel.user_id == UserModel.id).options(
+            query = OrderModel.query.outerjoin(UserModel, OrderModel.user_id == UserModel.id).options(
                 selectinload(OrderModel.items),
                 joinedload(OrderModel.user)
-            ).order_by(OrderModel.created_at.desc()).all()
+            ).order_by(OrderModel.created_at.desc())
+
+            if page is not None or limit is not None:
+                from backend.utils.pagination import paginate_query
+                return paginate_query(query, page=page, limit=limit)
+
+            orders = query.all()
             return [o.to_dict() for o in orders]
         except Exception:
             return []

@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useCallback, useRef } from '
 import axios from 'axios';
 
 import { API_BASE_URL, SERVER_BASE_URL } from '../config/env';
+import { normalizeEmail } from '../utils/emailValidator';
 
 export { API_BASE_URL, SERVER_BASE_URL };
 export const AuthContext = createContext();
@@ -102,7 +103,9 @@ export const AuthProvider = ({ children }) => {
 
   const userLogin = async (name, mobile) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/user-login`, { name, mobile });
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(name?.trim() || '') || name?.includes('@');
+      const normalizedName = isEmail ? normalizeEmail(name) : name?.trim();
+      const response = await axios.post(`${API_BASE_URL}/auth/user-login`, { name: normalizedName, mobile });
       const { user: userData, token: userToken } = response.data;
       
       setUser(userData);
@@ -210,10 +213,11 @@ export const AuthProvider = ({ children }) => {
 
   const checkoutLogin = async (shippingDetails) => {
     try {
+      const normalizedEmail = shippingDetails.email ? normalizeEmail(shippingDetails.email) : shippingDetails.email;
       const response = await axios.post(`${API_BASE_URL}/auth/checkout-login`, {
         name: shippingDetails.name,
         phone: shippingDetails.phone,
-        email: shippingDetails.email,
+        email: normalizedEmail,
         address: {
           house_number: shippingDetails.house_number,
           building_name: shippingDetails.building_name,
@@ -257,8 +261,27 @@ export const AuthProvider = ({ children }) => {
   const isAdmin = !!(user?.is_admin);
   const isAuthenticated = !!user;
 
+  const contextValue = React.useMemo(() => ({
+    user,
+    token,
+    login,
+    userLogin,
+    microsoftLogin,
+    oauthLogin,
+    checkoutLogin,
+    adminLogin,
+    logout,
+    updateUser,
+    loading,
+    isAdmin,
+    isAuthenticated,
+    language,
+    changeLanguage,
+    savePreferredLanguage
+  }), [user, token, loading, isAdmin, isAuthenticated, language]);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, userLogin, microsoftLogin, oauthLogin, checkoutLogin, adminLogin, logout, updateUser, loading, isAdmin, isAuthenticated, language, changeLanguage, savePreferredLanguage }}>
+    <AuthContext.Provider value={contextValue}>
       {!loading && children}
     </AuthContext.Provider>
   );

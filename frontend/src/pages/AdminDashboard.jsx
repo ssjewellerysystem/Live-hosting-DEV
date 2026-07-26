@@ -7,6 +7,7 @@ import {
   AlertTriangle, Check, RefreshCw, Calendar, DollarSign, Clock, MapPin, Lock, Unlock, Shield, Search, Image, Bell, Mail
 } from 'lucide-react';
 import { AuthContext, API_BASE_URL, SERVER_BASE_URL } from '../context/AuthContext';
+import { HighDemandButton } from '../components/admin/HighDemandButton';
 import { MaintenanceButton } from '../components/admin/MaintenanceButton';
 import { formatPrice } from '../utils/priceFormatter';
 import { translateCategory } from '../utils/categoryTranslations';
@@ -1398,6 +1399,7 @@ export const AdminDashboard = () => {
             <p className="text-xs text-slate-400 mt-1">Manage catalog products, handle orders, and check live service metrics.</p>
           </div>
           <div className="mt-4 sm:mt-0 flex items-center gap-3">
+            <HighDemandButton />
             <MaintenanceButton />
             <button
               onClick={loadDashboardData}
@@ -1467,40 +1469,40 @@ export const AdminDashboard = () => {
             <div className="flex flex-wrap gap-1 md:space-x-2 border-b border-slate-200 dark:border-slate-800 pb-px mb-8">
               <button
                 onClick={() => handleTabChange('overview')}
-                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all ${
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all duration-200 ${
                   activeTab === 'overview'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                 }`}
               >
                 Analytics
               </button>
               <button
                 onClick={() => handleTabChange('products')}
-                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all ${
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all duration-200 ${
                   activeTab === 'products'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                 }`}
               >
                 Products
               </button>
               <button
                 onClick={() => handleTabChange('orders')}
-                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all ${
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all duration-200 ${
                   activeTab === 'orders'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                 }`}
               >
                 Orders
               </button>
               <button
                 onClick={() => handleTabChange('buy-requests')}
-                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all flex items-center gap-1.5 ${
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all duration-200 flex items-center gap-1.5 ${
                   activeTab === 'buy-requests'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                 }`}
               >
                 <span>Buy Requests</span>
@@ -1512,40 +1514,40 @@ export const AdminDashboard = () => {
               </button>
               <button
                 onClick={() => handleTabChange('users')}
-                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all ${
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all duration-200 ${
                   activeTab === 'users'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                 }`}
               >
                 Users
               </button>
               <button
                 onClick={() => handleTabChange('support')}
-                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all ${
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all duration-200 ${
                   activeTab === 'support'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                 }`}
               >
                 Messages
               </button>
               <button
                 onClick={() => handleTabChange('audit')}
-                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all ${
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all duration-200 ${
                   activeTab === 'audit'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                 }`}
               >
                 Audit Trail
               </button>
               <button
                 onClick={() => handleTabChange('notifications')}
-                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all flex items-center gap-1.5 ${
+                className={`pb-3 px-3 md:px-4 text-xs md:text-sm border-b-2 transition-all duration-200 flex items-center gap-1.5 ${
                   activeTab === 'notifications'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                 }`}
               >
                 <span>Notifications</span>

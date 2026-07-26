@@ -741,23 +741,16 @@ const BannerSlider = React.memo(({
 });
 
 const DEFAULT_CATEGORIES = [
-  { name: "Rings", label: "Rings", img: "/cat_rings.png" },
-  { name: "Necklaces", label: "Necklaces", img: "/cat_necklaces.png" },
-  { name: "Earrings", label: "Earrings", img: "/cat_earrings.png" },
-  { name: "Bracelets", label: "Bracelets", img: "/cat_bracelets.png" },
-  { name: "Bridal Collection", label: "Bridal Collection", img: "/cat_bridal.png" }
+  { name: "Rings", label: "Rings", img: null },
+  { name: "Necklaces", label: "Necklaces", img: null },
+  { name: "Earrings", label: "Earrings", img: null },
+  { name: "Bracelets", label: "Bracelets", img: null },
+  { name: "Bridal Collection", label: "Bridal Collection", img: null }
 ];
 
 const getCategoryDefaultImg = (name, img) => {
-  if (img && img !== '/logo.svg') return img;
-  if (!name) return '/logo.svg';
-  const lower = name.toLowerCase();
-  if (lower.includes('ring')) return '/cat_rings.png';
-  if (lower.includes('necklace')) return '/cat_necklaces.png';
-  if (lower.includes('earring')) return '/cat_earrings.png';
-  if (lower.includes('bracelet') || lower.includes('bangle')) return '/cat_bracelets.png';
-  if (lower.includes('bridal')) return '/cat_bridal.png';
-  return '/logo.svg';
+  if (img && img !== '/logo.svg' && !img.includes('cat_')) return img;
+  return null;
 };
 
 const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCategoryClick }) => {
@@ -846,17 +839,23 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
                         height: '76px'
                       }}
                     >
-                      <LuxuryImage
-                        src={cat.img}
-                        alt={translateCategory(cat.name, language)}
-                        width="76"
-                        height="76"
-                        wrapperClassName="rounded-full"
-                        className={`w-full h-full object-cover rounded-full transition-all duration-500 no-zoom ${isActive
-                          ? 'opacity-100 saturate-120 brightness-105 contrast-105'
-                          : 'opacity-50 saturate-30 brightness-90 contrast-90 group-hover:opacity-100 group-hover:saturate-100 group-hover:brightness-100 group-hover:contrast-100'
-                          }`}
-                      />
+                      {cat.img ? (
+                        <LuxuryImage
+                          src={cat.img}
+                          alt={translateCategory(cat.name, language)}
+                          width="76"
+                          height="76"
+                          wrapperClassName="rounded-full"
+                          className={`w-full h-full object-cover rounded-full transition-all duration-500 no-zoom ${isActive
+                            ? 'opacity-100 saturate-120 brightness-105 contrast-105'
+                            : 'opacity-50 saturate-30 brightness-90 contrast-90 group-hover:opacity-100 group-hover:saturate-100 group-hover:brightness-100 group-hover:contrast-100'
+                            }`}
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-[#1B0B26] via-[#3F1D5A] to-[#2E1442] flex flex-col items-center justify-center text-center p-1 border border-[#D4A75F]/30">
+                          <Sparkles className="w-5 h-5 text-[#D4A75F] animate-pulse" />
+                        </div>
+                      )}
                     </div>
 
                     <span className={`mt-2 text-xs md:text-sm font-bold tracking-wide transition-colors duration-300 text-center w-full px-0.5 ${isActive
@@ -915,17 +914,23 @@ const CategoryGrid = React.memo(({ activeCategory, loading: parentLoading, onCat
                         height: '68px'
                       }}
                     >
-                      <LuxuryImage
-                        src={cat.img}
-                        alt={translateCategory(cat.name, language)}
-                        width="68"
-                        height="68"
-                        wrapperClassName="rounded-full"
-                        className={`w-full h-full object-cover rounded-full transition-all duration-500 no-zoom ${isActive
-                          ? 'opacity-100 saturate-120 brightness-105 contrast-105'
-                          : 'opacity-50 saturate-30 brightness-90 contrast-90 group-hover:opacity-100 group-hover:saturate-100 group-hover:brightness-100 group-hover:contrast-100'
-                          }`}
-                      />
+                      {cat.img ? (
+                        <LuxuryImage
+                          src={cat.img}
+                          alt={translateCategory(cat.name, language)}
+                          width="68"
+                          height="68"
+                          wrapperClassName="rounded-full"
+                          className={`w-full h-full object-cover rounded-full transition-all duration-500 no-zoom ${isActive
+                            ? 'opacity-100 saturate-120 brightness-105 contrast-105'
+                            : 'opacity-50 saturate-30 brightness-90 contrast-90 group-hover:opacity-100 group-hover:saturate-100 group-hover:brightness-100 group-hover:contrast-100'
+                            }`}
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-[#1B0B26] via-[#3F1D5A] to-[#2E1442] flex flex-col items-center justify-center text-center p-1 border border-[#D4A75F]/30">
+                          <Sparkles className="w-4 h-4 text-[#D4A75F] animate-pulse" />
+                        </div>
+                      )}
                     </div>
 
                     <span className={`mt-2 text-[10px] sm:text-xs font-bold tracking-wide transition-colors duration-300 text-center w-full px-0.5 ${isActive
@@ -957,88 +962,20 @@ const matchesCollection = (product, collectionName) => {
   if (!collectionName || collectionName === 'All') return true;
   if (!product) return false;
 
-  const target = collectionName.toLowerCase().trim();
+  const prodColl = (product.collection || product.collection_name || '').toString().trim().toLowerCase();
+  const prodCollId = (product.collection_id || '').toString().trim().toLowerCase();
+  const target = collectionName.toString().trim().toLowerCase();
 
-  if (product.collection && String(product.collection).toLowerCase().includes(target)) return true;
-  if (product.occasion && String(product.occasion).toLowerCase().includes(target)) return true;
+  if (!prodColl && !prodCollId) return false;
 
-  const searchFields = [
-    product.name,
-    product.description,
-    product.category,
-    product.name_en,
-    product.name_hi,
-    product.description_en,
-    product.description_hi,
-    product.features_en,
-    product.features_hi,
-    product.specifications_en,
-    product.specifications_hi
-  ].filter(Boolean).map(s => String(s).toLowerCase());
+  const prodCollSlug = prodColl.replace(/\s+/g, '-');
+  const targetSlug = target.replace(/\s+/g, '-');
 
-  const fullText = searchFields.join(' ');
-
-  if (target.includes('wedding') || target.includes('शादी')) {
-    return (
-      fullText.includes('wedding') ||
-      fullText.includes('bridal') ||
-      fullText.includes('kundan') ||
-      fullText.includes('dulhan') ||
-      fullText.includes('shaadi') ||
-      fullText.includes('royal') ||
-      fullText.includes('choker') ||
-      fullText.includes('heavy') ||
-      fullText.includes('polki') ||
-      fullText.includes('gold')
-    );
-  }
-
-  if (target.includes('office') || target.includes('ऑफिस')) {
-    return (
-      fullText.includes('office') ||
-      fullText.includes('stud') ||
-      fullText.includes('minimal') ||
-      fullText.includes('sleek') ||
-      fullText.includes('daily') ||
-      fullText.includes('light') ||
-      fullText.includes('work') ||
-      fullText.includes('solitaire') ||
-      fullText.includes('earring')
-    );
-  }
-
-  if (target.includes('daily') || target.includes('दैनिक')) {
-    return (
-      fullText.includes('daily') ||
-      fullText.includes('bangle') ||
-      fullText.includes('chain') ||
-      fullText.includes('ring') ||
-      fullText.includes('simple') ||
-      fullText.includes('comfort') ||
-      fullText.includes('casual') ||
-      fullText.includes('bracelet')
-    );
-  }
-
-  if (target.includes('date') || target.includes('डिनर')) {
-    return (
-      fullText.includes('date') ||
-      fullText.includes('night') ||
-      fullText.includes('necklace') ||
-      fullText.includes('layered') ||
-      fullText.includes('pendant') ||
-      fullText.includes('diamond') ||
-      fullText.includes('heart') ||
-      fullText.includes('fancy')
-    );
-  }
-
-  if (target.includes('new') || target.includes('नया')) {
-    return true;
-  }
-
-  const keywords = target.split(/\s+/);
-  return keywords.some(kw => fullText.includes(kw));
+  return (
+    prodColl === target ||
+    prodCollId === target ||
+    prodCollSlug === targetSlug
+  );
 };
 
 export const Home = () => {
@@ -1339,6 +1276,43 @@ export const Home = () => {
   const activeCollection = searchParams.get('collection') || searchParams.get('occasion') || 'All';
   const activeSearch = searchParams.get('search') || '';
 
+  const heroBannerRef = React.useRef(null);
+  const isInitialMount = React.useRef(true);
+  const prevCategoryRef = React.useRef(activeCategory);
+  const prevCollectionRef = React.useRef(activeCollection);
+  const prevSearchRef = React.useRef(activeSearch);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevCategoryRef.current = activeCategory;
+      prevCollectionRef.current = activeCollection;
+      prevSearchRef.current = activeSearch;
+      return;
+    }
+
+    const categoryChanged = prevCategoryRef.current !== activeCategory;
+    const collectionChanged = prevCollectionRef.current !== activeCollection;
+    const searchChanged = prevSearchRef.current !== activeSearch;
+
+    if (categoryChanged || collectionChanged || searchChanged) {
+      prevCategoryRef.current = activeCategory;
+      prevCollectionRef.current = activeCollection;
+      prevSearchRef.current = activeSearch;
+
+      setTimeout(() => {
+        if (heroBannerRef.current) {
+          heroBannerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  }, [activeCategory, activeCollection, activeSearch]);
+
   const handleCategoryClick = useCallback((categoryName, source = 'grid') => {
     const newParams = new URLSearchParams(searchParams);
     if (categoryName === 'All') {
@@ -1347,14 +1321,6 @@ export const Home = () => {
       newParams.set('category', categoryName);
     }
     setSearchParams(newParams, { preventScrollReset: true });
-
-    // Smooth scroll down to show the products immediately
-    setTimeout(() => {
-      const allProductsHeading = document.getElementById('all-products-heading');
-      if (allProductsHeading) {
-        allProductsHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
   }, [searchParams, setSearchParams]);
 
   const handleCollectionClick = useCallback((collectionName) => {
@@ -1366,13 +1332,6 @@ export const Home = () => {
       newParams.set('collection', collectionName);
     }
     setSearchParams(newParams, { preventScrollReset: true });
-
-    setTimeout(() => {
-      const allProductsHeading = document.getElementById('all-products-heading');
-      if (allProductsHeading) {
-        allProductsHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
   }, [searchParams, setSearchParams]);
 
   const handleClearAllFilters = useCallback(() => {
@@ -1384,42 +1343,7 @@ export const Home = () => {
   }, [searchParams, setSearchParams]);
 
   // Banner Management States
-  const [slides, setSlides] = useState([
-    {
-      title: "The Solitaire Diamond Collection",
-      subtitle: "Eternal Brilliance, Handcrafted Elegance",
-      desc: "Explore our signature 18k yellow gold and white gold diamond solitaire rings. Perfect for weddings, proposals, and lifetime memories.",
-      badge: "Rings Special",
-      gradient: "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
-      accent: "text-[#D4A75F]",
-      btnText: "Shop Solitaires",
-      btnLink: "/?category=Rings",
-      catFilter: "Rings",
-      image_url: "/luxury_solitaire_ring.png"
-    },
-    {
-      title: "The Royal Empress Collection",
-      subtitle: "Ornate Emerald & Pearl Artistry",
-      desc: "Adorn yourself with masterfully crafted necklaces, chokers, and bridal neckwear set in solid 22k gold and premium gemstones.",
-      badge: "Necklaces Special",
-      gradient: "from-[#3F1D5A] via-[#5C2E7E] to-[#3F1D5A]",
-      accent: "text-[#D4A75F]",
-      btnText: "Shop Necklaces",
-      catFilter: "Necklaces",
-      image_url: "/luxury_emerald_necklace.png"
-    },
-    {
-      title: "Imperial Bridal Heirlooms",
-      subtitle: "Maang Tikkas, Polki Sets & Rubies",
-      desc: "Celebrate your grand day with timeless heirloom bridal sets, meticulously set with uncut Polki diamonds and fine rubies.",
-      badge: "Bridal Special",
-      gradient: "from-[#1B0B26] via-[#3F1D5A] to-[#1B0B26]",
-      accent: "text-[#D4A75F]",
-      btnText: "Explore Bridal Set",
-      catFilter: "Bridal Collection",
-      image_url: "/luxury_bridal_set.png"
-    }
-  ]);
+  const [slides, setSlides] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
   const [bannersLoading, setBannersLoading] = useState(true);
   const [bannerRefreshTrigger, setBannerRefreshTrigger] = useState(0);
@@ -1511,25 +1435,26 @@ export const Home = () => {
     }
   };
 
-  // Fetch active banners from backend
+  // Fetch active banners from backend database
   useEffect(() => {
     const fetchActiveBanners = async () => {
       setBannersLoading(true);
       try {
         const response = await axios.get(`${API_BASE_URL}/banners`);
-        if (response.data && response.data.length > 0) {
+        if (response.data && Array.isArray(response.data)) {
           const mapped = response.data.map(b => {
             let img = b.image_url;
             if (!img) {
-              if (b.title.includes("Solitaire") || b.category === "Rings") img = "/luxury_solitaire_ring.png";
-              else if (b.title.includes("Empress") || b.category === "Necklaces") img = "/luxury_emerald_necklace.png";
-              else if (b.title.includes("Bridal") || b.category === "Bridal Collection") img = "/luxury_bridal_set.png";
+              if (b.title && (b.title.includes("Solitaire") || b.category === "Rings")) img = "/luxury_solitaire_ring.png";
+              else if (b.title && (b.title.includes("Empress") || b.category === "Necklaces")) img = "/luxury_emerald_necklace.png";
+              else if (b.title && (b.title.includes("Bridal") || b.category === "Bridal Collection")) img = "/luxury_bridal_set.png";
+              else img = "/loading-logo.jpg";
             }
             return {
               id: b.id,
               title: b.title,
-              subtitle: b.subtitle,
-              desc: b.description,
+              subtitle: b.subtitle || "",
+              desc: b.description || "",
               badge: b.category || "Offer",
               gradient: b.background_style || "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
               accent: "text-[#D4A75F]",
@@ -1541,44 +1466,6 @@ export const Home = () => {
           });
           setSlides(mapped);
         } else {
-          setSlides([
-            {
-              title: "The Solitaire Diamond Collection",
-              subtitle: "Eternal Brilliance, Handcrafted Elegance",
-              desc: "Explore our signature 18k yellow gold and white gold diamond solitaire rings. Perfect for weddings, proposals, and lifetime memories.",
-              badge: "Rings Special",
-              gradient: "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
-              accent: "text-[#D4A75F]",
-              btnText: "Shop Solitaires",
-              btnLink: "/?category=Rings",
-              catFilter: "Rings",
-              image_url: "/luxury_solitaire_ring.png"
-            },
-            {
-              title: "The Royal Empress Collection",
-              subtitle: "Ornate Emerald & Pearl Artistry",
-              desc: "Adorn yourself with masterfully crafted necklaces, chokers, and bridal neckwear set in solid 22k gold and premium gemstones.",
-              badge: "Necklaces Special",
-              gradient: "from-[#3F1D5A] via-[#5C2E7E] to-[#3F1D5A]",
-              accent: "text-[#D4A75F]",
-              btnText: "Shop Necklaces",
-              btnLink: "/?category=Necklaces",
-              catFilter: "Necklaces",
-              image_url: "/luxury_emerald_necklace.png"
-            },
-            {
-              title: "Imperial Bridal Heirlooms",
-              subtitle: "Maang Tikkas, Polki Sets & Rubies",
-              desc: "Celebrate your grand day with timeless heirloom bridal sets, meticulously set with uncut Polki diamonds and fine rubies.",
-              badge: "Bridal Special",
-              gradient: "from-[#1B0B26] via-[#3F1D5A] to-[#1B0B26]",
-              accent: "text-[#D4A75F]",
-              btnText: "Explore Bridal Set",
-              btnLink: "/?category=Bridal Collection",
-              catFilter: "Bridal Collection",
-              image_url: "/luxury_bridal_set.png"
-            }
-          ]);
         }
       } catch (err) {
         console.error("Error fetching active banners from backend:", err);
@@ -1649,12 +1536,12 @@ export const Home = () => {
 
       let res;
       if (editingBannerId) {
-        res = await axios.put(`${API_BASE_URL}/admin/banners/${editingBannerId}`, payload, {
+        res = await axios.put(`${API_BASE_URL}/banners/${editingBannerId}`, payload, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         setBannerSuccess("Banner slide updated successfully!");
       } else {
-        res = await axios.post(`${API_BASE_URL}/admin/banners`, payload, {
+        res = await axios.post(`${API_BASE_URL}/banners`, payload, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         setBannerSuccess("Banner slide created successfully!");
@@ -1694,7 +1581,7 @@ export const Home = () => {
     setBannerSuccess(null);
     try {
       const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}/admin/banners/${id}`, {
+      await axios.delete(`${API_BASE_URL}/banners/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setBannerSuccess("Banner deleted successfully!");
@@ -1771,7 +1658,7 @@ export const Home = () => {
   const isAdminPincodeInvalid = isAdminAddressEmpty ? false : addUserForm.pincode?.trim().length !== 6;
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-16">
+    <div ref={heroBannerRef} className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-16">
 
       {!activeSearch && activeCategory === 'All' ? (
         <BannerSlider
@@ -1944,9 +1831,15 @@ export const Home = () => {
             <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto text-slate-400">
               <ShoppingBag className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-bold mt-4">No Products Found</h3>
+            <h3 className="text-lg font-bold mt-4 text-slate-800 dark:text-slate-100">
+              {activeCollection !== 'All' 
+                ? (language === 'hi' ? 'इस संग्रह में कोई उत्पाद नहीं है' : 'No products have been added to this collection yet.')
+                : 'No Products Found'}
+            </h3>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-              We couldn't find any products matching your current category filter or search query.
+              {activeCollection !== 'All'
+                ? (language === 'hi' ? 'कृपया बाद में पुनः प्रयास करें।' : 'Please check back later.')
+                : "We couldn't find any products matching your current category filter or search query."}
             </p>
             <button
               onClick={(e) => {
@@ -2618,7 +2511,7 @@ export const Home = () => {
                     {allBanners.length === 0 ? (
                       <div className="text-center py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl text-slate-400">
                         <span className="text-3xl block mb-2">📭</span>
-                        <p className="text-xs">No custom banners created yet. The homepage will display standard seeded/fallback slides.</p>
+                        <p className="text-xs">No banners created yet. Click 'Add Banner' above to create one.</p>
                       </div>
                     ) : (
                       allBanners.map((banner) => (

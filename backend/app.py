@@ -42,6 +42,7 @@ from backend.routes.banners import banners_bp
 from backend.routes.collections import collections_bp
 from backend.routes.gold_rate import gold_rate_bp
 from backend.routes.maintenance import maintenance_bp
+from backend.routes.high_demand import high_demand_bp
 from backend.middleware.maintenance import check_maintenance_mode
 
 # Run startup environment validation
@@ -52,7 +53,40 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # Enable CORS for frontend requests
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+import gzip
+import io
+
+@app.after_request
+def add_cors_and_compress(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+
+    # Gzip response payload compression for text/JSON responses
+    if (
+        response.status_code >= 200
+        and response.status_code < 300
+        and 'Content-Encoding' not in response.headers
+        and not response.direct_passthrough
+    ):
+        accept_encoding = request.headers.get('Accept-Encoding', '')
+        if 'gzip' in accept_encoding.lower():
+            mimetype = response.mimetype or ''
+            if any(t in mimetype for t in ['application/json', 'text/html', 'text/css', 'text/javascript', 'application/javascript']):
+                response_data = response.get_data()
+                if len(response_data) >= 500:
+                    gzip_buffer = io.BytesIO()
+                    with gzip.GzipFile(mode='wb', fileobj=gzip_buffer) as gzip_file:
+                        gzip_file.write(response_data)
+                    compressed_data = gzip_buffer.getvalue()
+                    response.set_data(compressed_data)
+                    response.headers['Content-Encoding'] = 'gzip'
+                    response.headers['Content-Length'] = len(compressed_data)
+                    response.headers['Vary'] = 'Accept-Encoding'
+
+    return response
 
 # Allow flexible trailing slashes across all blueprint routes
 app.url_map.strict_slashes = False
@@ -76,6 +110,7 @@ app.register_blueprint(banners_bp, url_prefix='/api/banners')
 app.register_blueprint(collections_bp, url_prefix='/api/collections')
 app.register_blueprint(gold_rate_bp, url_prefix='/api/gold-rate')
 app.register_blueprint(maintenance_bp, url_prefix='/api/maintenance')
+app.register_blueprint(high_demand_bp, url_prefix='/api/high-demand')
 
 from flask import request
 from backend.utils.helpers import generate_otp, verify_otp, is_valid_email
@@ -150,12 +185,14 @@ def root_verify_otp():
         "success": True
     }), 200
 
-# Ensure static upload directory is served
+# Ensure static upload directory is served with long-term browser caching
 @app.route('/static/uploads/<path:filename>')
 def serve_uploads(filename):
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
     from flask import send_from_directory
-    return send_from_directory(upload_dir, filename)
+    res = send_from_directory(upload_dir, filename)
+    res.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    return res
 
 @app.errorhandler(404)
 def not_found(error):
@@ -232,78 +269,7 @@ def seed_database():
         else:
             print("[SEED] Coupons already exist. Skipping seed.")
             
-        # Seed default banners if empty
-        from backend.models.banner import BannerModel
-        # Check if there are any old categories in banners
-        has_old_banners = False
-        old_banner_categories = ["Electronics", "Fashion", "Grocery", "Books", "Home & Kitchen", "Home Decor"]
-        for old_cat in old_banner_categories:
-            if BannerModel.query.filter_by(category=old_cat).count() > 0:
-                has_old_banners = True
-                break
-        if BannerModel.query.filter(BannerModel.title.like("%BharatBasket%")).count() > 0 or BannerModel.query.filter(BannerModel.title.like("%SSJewelry%")).count() > 0:
-            has_old_banners = True
-            
-        if BannerModel.query.count() == 0:
-            print("[SEED] Seeding default banners into MySQL...")
-            # BannerModel.query.delete() -- DISABLED to prevent automatic truncation of data.
-            # db.session.commit() -- DISABLED to prevent automatic truncation of data.
-            default_banners = [
-                {
-                    "title": "The Solitaire Diamond Collection",
-                    "subtitle": "Eternal Brilliance, Handcrafted Elegance",
-                    "description": "Explore our signature 18k yellow gold and white gold diamond solitaire rings. Perfect for weddings, proposals, and lifetime memories.",
-                    "button_text": "Shop Solitaires",
-                    "button_link": "/?category=Rings",
-                    "image_url": "",
-                    "background_style": "from-[#3F1D5A] via-[#2C143F] to-[#1B0B26]",
-                    "category": "Rings",
-                    "display_order": 1,
-                    "is_active": True
-                },
-                {
-                    "title": "The Royal Empress Collection",
-                    "subtitle": "Ornate Emerald & Pearl Artistry",
-                    "description": "Adorn yourself with masterfully crafted necklaces, chokers, and bridal neckwear set in solid 22k gold and premium gemstones.",
-                    "button_text": "Shop Necklaces",
-                    "button_link": "/?category=Necklaces",
-                    "image_url": "",
-                    "background_style": "from-[#3F1D5A] via-[#5C2E7E] to-[#3F1D5A]",
-                    "category": "Necklaces",
-                    "display_order": 2,
-                    "is_active": True
-                },
-                {
-                    "title": "Imperial Bridal Heirlooms",
-                    "subtitle": "Maang Tikkas, Polki Sets & Rubies",
-                    "description": "Celebrate your grand day with timeless heirloom bridal sets, meticulously set with uncut Polki diamonds and fine rubies.",
-                    "button_text": "Explore Bridal Set",
-                    "button_link": "/?category=Bridal%20Collection",
-                    "image_url": "",
-                    "background_style": "from-[#1B0B26] via-[#3F1D5A] to-[#1B0B26]",
-                    "category": "Bridal Collection",
-                    "display_order": 3,
-                    "is_active": True
-                }
-            ]
-            for b_data in default_banners:
-                b = BannerModel(
-                    title=b_data["title"],
-                    subtitle=b_data["subtitle"],
-                    description=b_data["description"],
-                    button_text=b_data["button_text"],
-                    button_link=b_data["button_link"],
-                    image_url=b_data["image_url"],
-                    background_style=b_data["background_style"],
-                    category=b_data["category"],
-                    display_order=b_data["display_order"],
-                    is_active=b_data["is_active"]
-                )
-                db.session.add(b)
-            db.session.commit()
-            print("[SEED] Successfully seeded banners.")
-        else:
-            print("[SEED] Banners already exist. Skipping seed.")
+
 
         # Seed Collections
         from backend.models.collection import CollectionModel
@@ -313,35 +279,35 @@ def seed_database():
                     "name": "Wedding Wear",
                     "slug": "wedding-wear",
                     "description": "Regal Heritage Kundan bridal sets and royal elegance",
-                    "thumbnail_image": "/cat_bridal.png",
+                    "thumbnail_image": None,
                     "display_order": 1
                 },
                 {
                     "name": "Daily Wear",
                     "slug": "daily-wear",
                     "description": "Versatile Chic Bangles and daily gold bands",
-                    "thumbnail_image": "/cat_bracelets.png",
+                    "thumbnail_image": None,
                     "display_order": 2
                 },
                 {
                     "name": "Office Wear",
                     "slug": "office-wear",
                     "description": "Minimalistic Luxury Studs and sleek executive items",
-                    "thumbnail_image": "/cat_earrings.png",
+                    "thumbnail_image": None,
                     "display_order": 3
                 },
                 {
                     "name": "Date Night",
                     "slug": "date-night",
                     "description": "Elegance & Layered Statements under candlelit tables",
-                    "thumbnail_image": "/cat_necklaces.png",
+                    "thumbnail_image": None,
                     "display_order": 4
                 },
                 {
                     "name": "New Collection",
                     "slug": "new-collection",
                     "description": "Fresh Masterpieces & Diamond Solitaires",
-                    "thumbnail_image": "/luxury_solitaire_ring.png",
+                    "thumbnail_image": None,
                     "display_order": 5
                 }
             ]

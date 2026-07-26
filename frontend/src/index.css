@@ -683,3 +683,16 @@ html.dark .secondary-text {
   color: #FFFFFF !important;
   opacity: 1 !important;
 }
+
+/* ==========================================================================
+   GOLD & SILVER CALCULATOR SECTION HEADINGS (HIGH CONTRAST IN LIGHT MODE)
+   ========================================================================== */
+html:not(.dark) .calculator-section-label,
+html:not(.dark) .calc-section-heading {
+  color: #FFFFFF !important;
+}
+
+.dark .calculator-section-label,
+.dark .calc-section-heading {
+  color: #cbd5e1;
+}

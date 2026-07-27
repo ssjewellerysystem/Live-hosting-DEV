@@ -11,3 +11,5 @@ from backend.models.banner import BannerModel
 from backend.models.notification import NotificationModel
 from backend.models.settings import SiteSettingModel
 from backend.models.collection import CollectionModel
+from backend.models.transaction import TransactionModel
+

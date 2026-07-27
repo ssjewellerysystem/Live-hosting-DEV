@@ -16,16 +16,8 @@ class OrderItem(db.Model):
     name = db.Column(db.String(255), nullable=False)
     image = db.Column(db.String(500), nullable=True)
 
-class Transaction(db.Model):
-    __tablename__ = 'transactions'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('orders.id', ondelete='CASCADE'), unique=True, nullable=False)
-    transaction_id = db.Column(db.String(100), unique=True, nullable=False)
-    amount = db.Column(db.Numeric(10, 2), nullable=False)
-    payment_method = db.Column(db.String(50), default='Online')
-    status = db.Column(db.String(50), default='Success')
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
+from backend.models.transaction import TransactionModel
+Transaction = TransactionModel
 
 class OrderModel(db.Model):
     __tablename__ = 'orders'
@@ -49,7 +41,8 @@ class OrderModel(db.Model):
     
     # Relationships
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan', lazy=True)
-    transaction = db.relationship('Transaction', backref='order', uselist=False, cascade='all, delete-orphan')
+    transaction = db.relationship('TransactionModel', primaryjoin="foreign(TransactionModel.order_id) == OrderModel.order_id", uselist=False, viewonly=True)
+
 
     def to_dict(self):
         item_list = []
@@ -320,3 +313,6 @@ class OrderModel(db.Model):
         except Exception:
             db.session.rollback()
             return False
+
+Order = OrderModel
+

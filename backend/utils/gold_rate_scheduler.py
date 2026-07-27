@@ -21,9 +21,9 @@ from datetime import datetime, date
 from backend.extensions import db
 from backend.models.settings import SiteSettingModel
 from backend.models.gold_rate import GoldRateModel
+from backend.config import Config
 
 # Configuration
-RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY", "035bac519fmsh0a6d0f6755a8814p16eab0jsn9e0527c5c3d0")
 RAPIDAPI_HOST = "gold-silver-live-price-india.p.rapidapi.com"
 CITY = "Jaipur"
 STATE = "Rajasthan"
@@ -34,6 +34,10 @@ FETCH_MINUTE_IST = 0
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
 _last_processed_date = None
+
+
+def get_rapid_api_key():
+    return Config.RAPID_API_KEY or os.environ.get("RAPIDAPI_KEY", "035bac519fmsh0a6d0f6755a8814p16eab0jsn9e0527c5c3d0")
 
 
 def format_official_update_timestamp(eff_date=None):
@@ -59,8 +63,7 @@ def _parse_gold_response(data_json, city=CITY):
     Parses 24K and 22K gold rates per gram from RapidAPI response dictionary or list.
     Returns (price_24k, price_22k) as floats if valid, or (None, None).
     """
-    g24 = None
-    g22 = None
+    g24, g22 = None, None
 
     if isinstance(data_json, list) and len(data_json) > 0:
         target = None
@@ -77,9 +80,14 @@ def _parse_gold_response(data_json, city=CITY):
     if isinstance(data_json, dict):
         city_clean = city.strip()
         keys_24k = [
-            f"{city_clean}_24k", f"{city_clean.lower()}_24k", "24k", "24K",
-            "price_24k", "gold_24k", "gold24k", "rate_24k", "24k_per_gram", "gold_24k_per_gram"
+            f"{city_clean}_24k", f"{city_clean.lower()}_24k", f"{city_clean}_gold_24k",
+            "24k", "gold_24k", "price_24k", "24_carat", "rate_24k", "per_gram_24k"
         ]
+        keys_22k = [
+            f"{city_clean}_22k", f"{city_clean.lower()}_22k", f"{city_clean}_gold_22k",
+            "22k", "gold_22k", "price_22k", "22_carat", "rate_22k", "per_gram_22k"
+        ]
+
         for k in keys_24k:
             if k in data_json and data_json[k] is not None:
                 try:
@@ -90,10 +98,6 @@ def _parse_gold_response(data_json, city=CITY):
                 except (ValueError, TypeError):
                     pass
 
-        keys_22k = [
-            f"{city_clean}_22k", f"{city_clean.lower()}_22k", "22k", "22K",
-            "price_22k", "gold_22k", "gold22k", "rate_22k", "22k_per_gram", "gold_22k_per_gram"
-        ]
         for k in keys_22k:
             if k in data_json and data_json[k] is not None:
                 try:
@@ -153,14 +157,18 @@ def _parse_silver_response(data_json, city=CITY):
 def fetch_and_store_metal_rates(force=False):
     """
     Fetches live metal rates from RapidAPI and updates PostgreSQL database within a SINGLE atomic transaction.
-    No fake or hardcoded values are inserted into the database. If fetching or parsing fails,
-    the transaction is rolled back and existing database records remain intact.
+    Respects Config.ENABLE_RAPID_API feature flag.
     """
+    if not Config.ENABLE_RAPID_API:
+        print(f"[GOLD-SCHEDULER LOG] RapidAPI fetch skipped: ENABLE_RAPID_API feature flag is OFF in {Config.ENVIRONMENT} mode.")
+        return {"success": False, "error": "RapidAPI disabled by feature flag"}
+
     now_ist = datetime.now(IST)
     today_str = now_ist.strftime("%Y-%m-%d")
     
     print(f"\n[GOLD-SCHEDULER LOG] ============================================================")
     print(f"[GOLD-SCHEDULER LOG] Execution Time: {now_ist.strftime('%Y-%m-%d %H:%M:%S')} IST")
+    print(f"[GOLD-SCHEDULER LOG] Environment: {Config.ENVIRONMENT}")
     print(f"[GOLD-SCHEDULER LOG] Timezone: Asia/Kolkata (IST)")
     print(f"[GOLD-SCHEDULER LOG] City: {CITY}, State: {STATE}")
     print(f"[GOLD-SCHEDULER LOG] Force Update: {force}")
@@ -171,7 +179,7 @@ def fetch_and_store_metal_rates(force=False):
         "city": CITY,
         "required-date-yyyy-mm-dd": today_str,
         "x-rapidapi-host": RAPIDAPI_HOST,
-        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-key": get_rapid_api_key(),
     }
 
     g24_val, g22_val, silver_val = None, None, None

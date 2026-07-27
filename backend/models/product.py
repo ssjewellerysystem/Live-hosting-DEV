@@ -173,25 +173,59 @@ class ProductModel(db.Model):
         )
         
         if homepage_only:
-            query = query.filter(ProductModel.show_on_homepage == True)
+            hp_query = query.filter(ProductModel.show_on_homepage == True)
+            raw_items = hp_query.order_by(ProductModel.created_at.desc()).all()
+            if not raw_items:
+                raw_items = query.order_by(ProductModel.created_at.desc()).all()
+            p_ids = [p.id for p in raw_items if p.id]
+            if p_ids:
+                from backend.models.review import ReviewModel
+                from sqlalchemy import func
+                counts = dict(
+                    db.session.query(ReviewModel.product_id, func.count(ReviewModel.id))
+                    .filter(ReviewModel.product_id.in_(p_ids))
+                    .group_by(ReviewModel.product_id)
+                    .all()
+                )
+                for p in raw_items:
+                    p._prefetched_review_count = counts.get(p.id, 0)
+            return [p.to_dict() for p in raw_items]
+
+
+
             
         if category and category != 'All':
             from backend.models.category import Category
-            query = query.join(Category).filter(Category.name == category)
+            from sqlalchemy import func
+            cat_str = str(category).strip()
+            if cat_str.isdigit():
+                cat_query = query.filter(ProductModel.category_id == int(cat_str))
+            else:
+                cat_lower = cat_str.lower()
+                cat_query = query.join(Category).filter(
+                    (func.lower(Category.name) == cat_lower) |
+                    (func.lower(Category.name_en) == cat_lower) |
+                    (func.lower(Category.name_hi) == cat_lower)
+                )
+            if cat_query.count() > 0:
+                query = cat_query
 
         if collection and collection != 'All':
             coll_str = str(collection).strip()
             if coll_str.isdigit():
-                query = query.filter(ProductModel.collection_id == int(coll_str))
+                coll_query = query.filter(ProductModel.collection_id == int(coll_str))
             else:
                 from sqlalchemy import func
                 coll_lower = coll_str.lower()
                 coll_slug_lower = coll_lower.replace(' ', '-')
-                query = query.outerjoin(CollectionModel).filter(
+                coll_query = query.outerjoin(CollectionModel).filter(
                     (func.lower(CollectionModel.name) == coll_lower) | 
                     (func.lower(CollectionModel.slug) == coll_lower) |
                     (func.lower(CollectionModel.slug) == coll_slug_lower)
                 )
+            if coll_query.count() > 0:
+                query = coll_query
+
             
         if search_query:
             from backend.models.category import Category
@@ -307,10 +341,18 @@ class ProductModel(db.Model):
         collection_id = None
         if collection_input and str(collection_input).lower() not in ["none", "null", "", "no collection", "0"]:
             from backend.models.collection import CollectionModel
-            if str(collection_input).isdigit():
-                coll = CollectionModel.query.get(int(collection_input))
+            from sqlalchemy import func
+            coll_str = str(collection_input).strip()
+            if coll_str.isdigit():
+                coll = CollectionModel.query.get(int(coll_str))
             else:
-                coll = CollectionModel.query.filter_by(name=str(collection_input)).first()
+                coll_lower = coll_str.lower()
+                coll_slug_lower = coll_lower.replace(' ', '-')
+                coll = CollectionModel.query.filter(
+                    (func.lower(CollectionModel.name) == coll_lower) |
+                    (func.lower(CollectionModel.slug) == coll_lower) |
+                    (func.lower(CollectionModel.slug) == coll_slug_lower)
+                ).first()
             if coll:
                 collection_id = coll.id
 
@@ -527,17 +569,29 @@ class ProductModel(db.Model):
                 collection_input = data.get("collection_id") if "collection_id" in data else data.get("collection")
                 if collection_input and str(collection_input).lower() not in ["none", "null", "", "no collection", "0"]:
                     from backend.models.collection import CollectionModel
-                    if str(collection_input).isdigit():
-                        coll = CollectionModel.query.get(int(collection_input))
+                    from sqlalchemy import func
+                    coll_str = str(collection_input).strip()
+                    if coll_str.isdigit():
+                        coll = CollectionModel.query.get(int(coll_str))
                     else:
-                        coll = CollectionModel.query.filter_by(name=str(collection_input)).first()
+                        coll_lower = coll_str.lower()
+                        coll_slug_lower = coll_lower.replace(' ', '-')
+                        coll = CollectionModel.query.filter(
+                            (func.lower(CollectionModel.name) == coll_lower) |
+                            (func.lower(CollectionModel.slug) == coll_lower) |
+                            (func.lower(CollectionModel.slug) == coll_slug_lower)
+                        ).first()
                     if coll:
                         old_coll = product.collection.name if product.collection else "None"
                         log_change("Product Update", "collection", old_coll, coll.name)
                         product.collection_id = coll.id
                     else:
+                        old_coll = product.collection.name if product.collection else "None"
+                        log_change("Product Update", "collection", old_coll, "None")
                         product.collection_id = None
                 else:
+                    old_coll = product.collection.name if product.collection else "None"
+                    log_change("Product Update", "collection", old_coll, "None")
                     product.collection_id = None
             if "ratings" in data: product.ratings = float(data["ratings"])
             if "status" in data:

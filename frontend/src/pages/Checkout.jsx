@@ -18,13 +18,13 @@ export const Checkout = () => {
   const { t } = useTranslation();
 
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment/OTP, 3: Success Receipt
-  
+
   const queryParams = new URLSearchParams(location.search);
   const buyRequestId = queryParams.get('buy_request_id');
   const isBuyRequestCheckout = !!buyRequestId;
   const [buyRequestData, setBuyRequestData] = useState(null);
   const [buyRequestLoading, setBuyRequestLoading] = useState(false);
-  
+
   // Address states for logged-in user
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
@@ -97,7 +97,7 @@ export const Checkout = () => {
       addr.state,
       addr.country
     ];
-    
+
     fields.forEach(field => {
       if (field !== undefined && field !== null) {
         const val = String(field).trim();
@@ -129,7 +129,7 @@ export const Checkout = () => {
         const res = await axios.get(`${API_BASE_URL}/auth/addresses`);
         const fetched = res.data.addresses || [];
         setAddresses(fetched);
-        
+
         // Select default or first address if none selected yet
         const def = fetched.find(a => a.is_default);
         if (def) {
@@ -196,16 +196,16 @@ export const Checkout = () => {
       axios.get(`${API_BASE_URL}/auth/buy-requests/${buyRequestId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      .then(res => {
-        setBuyRequestData(res.data);
-      })
-      .catch(err => {
-        console.error("Failed to fetch buy request details:", err);
-        setError("Failed to load buy request details.");
-      })
-      .finally(() => {
-        setBuyRequestLoading(false);
-      });
+        .then(res => {
+          setBuyRequestData(res.data);
+        })
+        .catch(err => {
+          console.error("Failed to fetch buy request details:", err);
+          setError("Failed to load buy request details.");
+        })
+        .finally(() => {
+          setBuyRequestLoading(false);
+        });
     }
   }, [buyRequestId, token]);
 
@@ -248,7 +248,7 @@ export const Checkout = () => {
   };
 
   const [validationError, setValidationError] = useState('');
-  
+
   const isEmailValid = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
@@ -275,7 +275,7 @@ export const Checkout = () => {
     e.preventDefault();
     setError('');
     setValidationError('');
-    
+
     if (
       !addressForm.house_number?.trim() ||
       !addressForm.street?.trim() ||
@@ -316,7 +316,7 @@ export const Checkout = () => {
           await axios.put(`${API_BASE_URL}/auth/addresses/${newAddr.id}/default`);
         }
       }
-      
+
       setShowAddressForm(false);
       setEditingAddressId(null);
       setAddressForm({
@@ -389,7 +389,7 @@ export const Checkout = () => {
 
   // Payment selection state
   const [paymentMethod, setPaymentMethod] = useState('COD'); // COD or OnlineCard
-  
+
   // Card payment simulator states
   const [cardName, setCardName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -399,9 +399,9 @@ export const Checkout = () => {
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [otpCountdown, setOtpCountdown] = useState(0);
-  
+
   const [placingOrder, setPlacingOrder] = useState(false);
-  
+
   const [error, setError] = useState('');
   const [successOrder, setSuccessOrder] = useState(null);
 
@@ -479,10 +479,10 @@ export const Checkout = () => {
       }
       const activeAddress = addresses.find(a => a.id === selectedAddressId);
       if (!activeAddress) return false;
-      
+
       const house = activeAddress.house_number || activeAddress.house;
       const street = activeAddress.street || activeAddress.address;
-      
+
       return !!(
         shippingDetails.name?.trim() &&
         shippingDetails.phone?.trim() &&
@@ -520,7 +520,7 @@ export const Checkout = () => {
   // Form validations
   const handleNextStep = (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    
+
     if (user) {
       if (addresses.length === 0) {
         setError("Please add and select a complete delivery address before continuing.");
@@ -537,7 +537,7 @@ export const Checkout = () => {
         setError("Please add and select a complete delivery address before continuing.");
         return;
       }
-      
+
       const house = activeAddress.house_number || activeAddress.house;
       const street = activeAddress.street || activeAddress.address;
       const country = activeAddress.country || 'India';
@@ -556,7 +556,7 @@ export const Checkout = () => {
         setError("Please add and select a complete delivery address before continuing.");
         return;
       }
-      
+
       if (showAddressForm) {
         setError(t('checkout_page.save_address_first', { defaultValue: 'Please save your address details first.' }));
         return;
@@ -639,7 +639,7 @@ export const Checkout = () => {
       }
 
       const orderRes = await axios.post(
-        `${API_BASE_URL}/orders`, 
+        `${API_BASE_URL}/orders`,
         payload,
         {
           headers: tokenToUse ? { 'Authorization': `Bearer ${tokenToUse}` } : {}
@@ -657,7 +657,7 @@ export const Checkout = () => {
           }
         });
       }
-      
+
       if (!isBuyRequestCheckout) {
         clearCart(); // Flush frontend state
       }
@@ -665,7 +665,7 @@ export const Checkout = () => {
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || err.message || "Failed to finalize order. Check details or stock availability.");
-      
+
       // If payment / order placement fails for a buy request, notify the backend to reset status to 'Awaiting Payment'
       if (isBuyRequestCheckout) {
         axios.put(`${API_BASE_URL}/auth/buy-requests/${buyRequestId}/payment-failed`, {}, {
@@ -680,7 +680,7 @@ export const Checkout = () => {
   // Dynamic checkout items and totals
   let checkoutItems = [];
   let checkoutTotal = 0;
-  
+
   if (isBuyRequestCheckout) {
     if (buyRequestData) {
       const { buy_request, product } = buyRequestData;
@@ -760,27 +760,24 @@ export const Checkout = () => {
   return (
     <div className="bg-slate-50 dark:bg-slate-955 text-slate-800 dark:text-slate-100 min-h-screen pb-16 font-sans">
       <div className="max-w-[97%] mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        
+
         {/* Checkout Header Wizard Tracker */}
         <div className="flex items-center justify-center space-x-2 sm:space-x-4 mb-8">
           <div className="flex items-center space-x-1.5">
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              step >= 1 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-850'
-            }`}>1</span>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-850'
+              }`}>1</span>
             <span className={`text-xs sm:text-sm font-semibold ${step === 1 ? 'text-slate-850 dark:text-slate-50 font-bold' : 'text-slate-400'}`}>{t('checkout_page.shipping')}</span>
           </div>
           <span className="h-[1px] w-8 sm:w-16 bg-slate-200 dark:bg-slate-800" />
           <div className="flex items-center space-x-1.5">
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              step >= 2 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-850'
-            }`}>2</span>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-850'
+              }`}>2</span>
             <span className={`text-xs sm:text-sm font-semibold ${step === 2 ? 'text-slate-850 dark:text-slate-50 font-bold' : 'text-slate-400'}`}>{t('checkout_page.payment')}</span>
           </div>
           <span className="h-[1px] w-8 sm:w-16 bg-slate-200 dark:bg-slate-800" />
           <div className="flex items-center space-x-1.5">
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              step >= 3 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-855'
-            }`}>3</span>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 3 ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-855'
+              }`}>3</span>
             <span className={`text-xs sm:text-sm font-semibold ${step === 3 ? 'text-slate-850 dark:text-slate-50 font-bold' : 'text-slate-400'}`}>{t('checkout_page.receipt')}</span>
           </div>
         </div>
@@ -796,7 +793,7 @@ export const Checkout = () => {
         {step === 1 && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-              
+
               {/* Profile Details (Read-only) */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4 text-left">
                 <h2 className="text-lg font-bold border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
@@ -866,11 +863,10 @@ export const Checkout = () => {
                           setEditingAddressId(null);
                           setShowAddressForm(true);
                         }}
-                        className={`flex items-center gap-1 text-xs font-bold transition-all px-3 py-1.5 rounded-xl ${
-                          addresses.length === 0
+                        className={`flex items-center gap-1 text-xs font-bold transition-all px-3 py-1.5 rounded-xl ${addresses.length === 0
                             ? 'bg-emerald-500 text-white animate-pulse shadow-md'
                             : 'text-emerald-500 hover:text-emerald-600'
-                        }`}
+                          }`}
                       >
                         <Plus className="h-4 w-4" />
                         <span>Add New Address</span>
@@ -884,7 +880,7 @@ export const Checkout = () => {
                       <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">
                         {editingAddressId ? 'Edit Address' : 'Add New Address'}
                       </h3>
-                      
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-400 mb-1">House / Flat / Ward Number *</label>
@@ -892,7 +888,7 @@ export const Checkout = () => {
                             type="text"
                             required
                             value={addressForm.house_number}
-                            onChange={(e) => setAddressForm({...addressForm, house_number: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, house_number: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                             placeholder="e.g. House No. 15"
                           />
@@ -902,7 +898,7 @@ export const Checkout = () => {
                           <input
                             type="text"
                             value={addressForm.building_name}
-                            onChange={(e) => setAddressForm({...addressForm, building_name: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, building_name: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                             placeholder="e.g. Green Residency"
                           />
@@ -916,7 +912,7 @@ export const Checkout = () => {
                             type="text"
                             required
                             value={addressForm.street}
-                            onChange={(e) => setAddressForm({...addressForm, street: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                             placeholder="e.g. MG Road"
                           />
@@ -927,7 +923,7 @@ export const Checkout = () => {
                             type="text"
                             required
                             value={addressForm.area}
-                            onChange={(e) => setAddressForm({...addressForm, area: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, area: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                             placeholder="e.g. Vaishali Nagar"
                           />
@@ -941,7 +937,7 @@ export const Checkout = () => {
                             type="text"
                             required
                             value={addressForm.landmark}
-                            onChange={(e) => setAddressForm({...addressForm, landmark: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                             placeholder="e.g. Near Hanuman Temple"
                           />
@@ -957,7 +953,7 @@ export const Checkout = () => {
                             value={addressForm.pincode}
                             onChange={(e) => {
                               const numericVal = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-                              setAddressForm({...addressForm, pincode: numericVal});
+                              setAddressForm({ ...addressForm, pincode: numericVal });
                             }}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-850 dark:text-slate-105"
                             placeholder="e.g. 302021"
@@ -991,7 +987,7 @@ export const Checkout = () => {
                             value={addressForm.alternate_mobile_number || ''}
                             onChange={(e) => handleAlternateMobileChange(e.target.value)}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4A75F]/50 text-slate-800 dark:text-slate-100"
-                            placeholder="e.g. 9829276750"
+                            placeholder="e.g. 9876543210"
                           />
                           {addressForm.alternate_mobile_number && (
                             <div className="mt-1">
@@ -1016,7 +1012,7 @@ export const Checkout = () => {
                             type="text"
                             required
                             value={addressForm.city}
-                            onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                             placeholder="e.g. Jaipur"
                           />
@@ -1027,7 +1023,7 @@ export const Checkout = () => {
                             type="text"
                             required
                             value={addressForm.state}
-                            onChange={(e) => setAddressForm({...addressForm, state: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                             placeholder="e.g. Rajasthan"
                           />
@@ -1038,7 +1034,7 @@ export const Checkout = () => {
                             type="text"
                             required
                             value={addressForm.country}
-                            onChange={(e) => setAddressForm({...addressForm, country: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                             placeholder="e.g. India"
                           />
@@ -1047,7 +1043,7 @@ export const Checkout = () => {
                           <label className="block text-xs font-semibold text-slate-400 mb-1">Address Type *</label>
                           <select
                             value={addressForm.address_type}
-                            onChange={(e) => setAddressForm({...addressForm, address_type: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, address_type: e.target.value })}
                             className="w-full px-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-105 font-medium"
                           >
                             <option value="Home">Home</option>
@@ -1062,7 +1058,7 @@ export const Checkout = () => {
                           type="checkbox"
                           id="form-is-default"
                           checked={addressForm.is_default}
-                          onChange={(e) => setAddressForm({...addressForm, is_default: e.target.checked})}
+                          onChange={(e) => setAddressForm({ ...addressForm, is_default: e.target.checked })}
                           className="h-4 w-4 accent-emerald-500 rounded cursor-pointer"
                         />
                         <label htmlFor="form-is-default" className="text-xs text-slate-600 dark:text-slate-350 select-none cursor-pointer">
@@ -1113,35 +1109,33 @@ export const Checkout = () => {
                               <div
                                 key={addr.id}
                                 onClick={() => setSelectedAddressId(addr.id)}
-                                className={`p-4 rounded-2xl border-2 text-left cursor-pointer transition-all relative flex flex-col justify-between ${
-                                  isSelected
+                                className={`p-4 rounded-2xl border-2 text-left cursor-pointer transition-all relative flex flex-col justify-between ${isSelected
                                     ? 'border-emerald-500 bg-emerald-500/5 shadow-sm'
                                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
+                                  }`}
                               >
                                 <div>
                                   <div className="flex justify-between items-start mb-2">
                                     <div className="flex gap-1.5 flex-wrap">
-                                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                                        addr.address_type === 'Home'
+                                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 ${addr.address_type === 'Home'
                                           ? 'bg-blue-105 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400'
                                           : addr.address_type === 'Work'
-                                          ? 'bg-amber-105 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400'
-                                          : 'bg-purple-105 dark:bg-purple-900/35 text-purple-600 dark:text-purple-400'
-                                      }`}>
+                                            ? 'bg-amber-105 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400'
+                                            : 'bg-purple-105 dark:bg-purple-900/35 text-purple-600 dark:text-purple-400'
+                                        }`}>
                                         {addr.address_type === 'Home' && <Home className="h-2.5 w-2.5" />}
                                         {addr.address_type === 'Work' && <Briefcase className="h-2.5 w-2.5" />}
                                         {addr.address_type === 'Other' && <MapPin className="h-2.5 w-2.5" />}
                                         {addr.address_type}
                                       </span>
-                                      
+
                                       {addr.is_default && (
                                         <span className="text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">
                                           Default
                                         </span>
                                       )}
                                     </div>
-                                    
+
                                     {isSelected && (
                                       <span className="bg-emerald-500 text-white rounded-full p-0.5">
                                         <Check className="h-3 w-3" />
@@ -1239,7 +1233,7 @@ export const Checkout = () => {
                         type="text"
                         required
                         value={shippingDetails.name}
-                        onChange={(e) => setShippingDetails({...shippingDetails, name: e.target.value})}
+                        onChange={(e) => setShippingDetails({ ...shippingDetails, name: e.target.value })}
                         className="w-full px-4 py-3 text-base bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                       />
                     </div>
@@ -1272,7 +1266,7 @@ export const Checkout = () => {
                       type="email"
                       required
                       value={shippingDetails.email}
-                      onChange={(e) => setShippingDetails({...shippingDetails, email: e.target.value})}
+                      onChange={(e) => setShippingDetails({ ...shippingDetails, email: e.target.value })}
                       className="w-full px-4 py-3 text-base bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100"
                     />
                     {shippingDetails.email && !isEmailValid(shippingDetails.email) && (
@@ -1476,7 +1470,7 @@ export const Checkout = () => {
         {step === 2 && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-              
+
               {/* Payment Methods */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                 <h3 className="text-base font-bold mb-4 flex items-center gap-2">
@@ -1485,11 +1479,10 @@ export const Checkout = () => {
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                    paymentMethod === 'COD' 
-                      ? 'border-emerald-500 bg-emerald-500/5' 
+                  <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${paymentMethod === 'COD'
+                      ? 'border-emerald-500 bg-emerald-500/5'
                       : 'border-slate-200 dark:border-slate-800 hover:border-slate-350'
-                  }`}>
+                    }`}>
                     <input
                       type="radio"
                       name="payment"
@@ -1503,11 +1496,10 @@ export const Checkout = () => {
                     </div>
                   </label>
 
-                  <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                    paymentMethod === 'Card' 
-                      ? 'border-emerald-500 bg-emerald-500/5' 
+                  <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${paymentMethod === 'Card'
+                      ? 'border-emerald-500 bg-emerald-500/5'
                       : 'border-slate-200 dark:border-slate-800 hover:border-slate-350'
-                  }`}>
+                    }`}>
                     <input
                       type="radio"
                       name="payment"
@@ -1609,8 +1601,8 @@ export const Checkout = () => {
                   className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-md flex items-center justify-center gap-1.5"
                 >
                   <span>
-                    {placingOrder 
-                      ? t('checkout_page.placing_order') 
+                    {placingOrder
+                      ? t('checkout_page.placing_order')
                       : (paymentMethod === 'Card' ? 'Pay & Verify OTP' : t('checkout_page.place_order'))
                     }
                   </span>
@@ -1651,7 +1643,7 @@ export const Checkout = () => {
             <div className="bg-green-500/10 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto text-green-500">
               <CheckCircle className="h-12 w-12" />
             </div>
-            
+
             <h2 className="text-2xl font-black mt-6 tracking-tight">{t('checkout_page.order_success')}</h2>
             <p className="text-xs text-slate-450 mt-1">{t('checkout_page.thank_you')}</p>
             <span className="inline-block mt-2 px-3 py-1 bg-slate-100 dark:bg-slate-950 font-mono font-bold text-sm tracking-wider rounded border dark:border-slate-800 text-slate-800 dark:text-slate-100">
@@ -1686,7 +1678,7 @@ export const Checkout = () => {
               >
                 {t('cart_page.continue_shopping')}
               </button>
-              
+
               <button
                 onClick={() => navigate('/orders')}
                 className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md transition-colors"
@@ -1776,11 +1768,10 @@ export const Checkout = () => {
                     setStep(2);
                     setShowTermsModal(false);
                   }}
-                  className={`flex-1 py-2.5 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1.5 ${
-                    checkboxChecked 
-                      ? 'bg-emerald-500 hover:bg-emerald-600 shadow-md cursor-pointer' 
+                  className={`flex-1 py-2.5 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1.5 ${checkboxChecked
+                      ? 'bg-emerald-500 hover:bg-emerald-600 shadow-md cursor-pointer'
                       : 'bg-slate-300 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
-                  }`}
+                    }`}
                 >
                   <span>{t('checkout_page.continue_payment')}</span>
                   <ArrowRight className="h-3.5 w-3.5" />

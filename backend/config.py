@@ -6,12 +6,31 @@ load_dotenv()
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 import socket
 
-# Environment Detection
-ENV = (os.environ.get("FLASK_ENV") or os.environ.get("ENV") or os.environ.get("APP_ENV") or "development").lower()
-IS_PRODUCTION = (ENV == "production")
+# Environment Detection & Normalization
+raw_env = (
+    os.environ.get("ENVIRONMENT")
+    or os.environ.get("ENV")
+    or os.environ.get("APP_ENV")
+    or os.environ.get("FLASK_ENV")
+    or "DEV"
+).strip().upper()
+
+if raw_env in ("DEVELOPMENT", "DEV"):
+    ENVIRONMENT = "DEV"
+elif raw_env in ("QA", "TESTING", "STAGING"):
+    ENVIRONMENT = "QA"
+elif raw_env in ("PRODUCTION", "PROD"):
+    ENVIRONMENT = "PROD"
+else:
+    ENVIRONMENT = "DEV"
+
+IS_DEV = (ENVIRONMENT == "DEV")
+IS_QA = (ENVIRONMENT == "QA")
+IS_PROD = (ENVIRONMENT == "PROD")
+IS_PRODUCTION = IS_PROD  # Backward compatibility alias
 
 # Centralized Frontend URL
-FRONTEND_URL = (os.environ.get("FRONTEND_URL") or ("http://localhost:5173" if not IS_PRODUCTION else "")).rstrip('/')
+FRONTEND_URL = (os.environ.get("FRONTEND_URL") or ("http://localhost:5173" if not IS_PROD else "")).rstrip('/')
 
 def resolve_neon_uri(uri):
     if not uri:
@@ -19,7 +38,7 @@ def resolve_neon_uri(uri):
     try:
         parsed = urlparse(uri)
         if parsed.hostname and (parsed.hostname.endswith('.neon.tech') or 'neon' in parsed.hostname):
-            # Force IPv4 lookup
+            # Force IPv4 lookup for Neon Postgres poolers
             addrinfo = socket.getaddrinfo(parsed.hostname, parsed.port or 5432, socket.AF_INET, socket.SOCK_STREAM)
             if addrinfo:
                 ipv4 = addrinfo[0][4][0]
@@ -44,29 +63,64 @@ def resolve_neon_uri(uri):
         pass
     return uri
 
-database_uri = os.environ.get("DATABASE_URI") or os.environ.get("DATABASE_URL")
+# Dynamic Database URI resolution based on ENVIRONMENT
+base_dir = os.path.dirname(os.path.abspath(__file__))
+sqlite_dev_path = os.path.join(base_dir, 'dev.db').replace('\\', '/')
 
-if not database_uri:
-    if IS_PRODUCTION:
-        raw_uri = None
-    else:
-        # Fallback to the Neon PostgreSQL database URI in development
-        raw_uri = "postgresql://neondb_owner:npg_GOsy48HeAJhP@ep-bold-base-ao7v7l2l-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+if ENVIRONMENT == "DEV":
+    # 1. DEVELOPMENT Database URL
+    raw_uri = (
+        os.environ.get("DEV_DATABASE_URL")
+        or os.environ.get("DATABASE_URI")
+        or os.environ.get("DATABASE_URL")
+        or "postgresql://neondb_owner:npg_GOsy48HeAJhP@ep-bold-base-ao7v7l2l-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+    )
+elif ENVIRONMENT == "QA":
+    # 2. QA Database URL (Paste your QA Database link inside quotes below)
+    raw_uri = (
+        os.environ.get("QA_DATABASE_URL")
+        or os.environ.get("DATABASE_URI")
+        or os.environ.get("DATABASE_URL")
+        or f"sqlite:///{sqlite_dev_path}"
+    )
 else:
-    raw_uri = database_uri
+    # 3. PRODUCTION Database URL (Paste your Production Database link inside quotes below)
+    raw_uri = (
+        os.environ.get("PROD_DATABASE_URL")
+        or os.environ.get("DATABASE_URI")
+        or os.environ.get("DATABASE_URL")
+        or f"sqlite:///{sqlite_dev_path}"
+    )
+
+
+
 
 if raw_uri and raw_uri.startswith("postgres://"):
     raw_uri = raw_uri.replace("postgres://", "postgresql://", 1)
 
+def _get_bool_env(var_name, default_bool):
+    val = os.environ.get(var_name)
+    if val is None:
+        return default_bool
+    return str(val).strip().lower() in ("true", "1", "yes", "on", "enabled")
+
 class Config:
-    ENV = ENV
+    ENVIRONMENT = ENVIRONMENT
+    ENV = ENVIRONMENT.lower()
+    IS_DEV = IS_DEV
+    IS_QA = IS_QA
+    IS_PROD = IS_PROD
     IS_PRODUCTION = IS_PRODUCTION
     FRONTEND_URL = FRONTEND_URL
+    
+    # Secrets
     JWT_SECRET = os.environ.get("JWT_SECRET", "supersecret_SSJewellery_key_123")
     SECRET_KEY = os.environ.get("SECRET_KEY", JWT_SECRET)
+    
+    # Database
     SQLALCHEMY_DATABASE_URI = resolve_neon_uri(raw_uri) if raw_uri else None
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ECHO = not IS_PRODUCTION
+    SQLALCHEMY_ECHO = IS_DEV
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 280,
@@ -74,6 +128,43 @@ class Config:
         "pool_size": 10,
         "max_overflow": 5,
     }
+
+    # Centralized Feature Flags (Defaults derived automatically from ENVIRONMENT)
+    # DEV: Off by default for isolation
+    # QA & PROD: On by default
+    default_feature_flag = not IS_DEV
+    
+    ENABLE_PAYMENT = _get_bool_env("ENABLE_PAYMENT", default_feature_flag)
+    ENABLE_SMS = _get_bool_env("ENABLE_SMS", default_feature_flag)
+    ENABLE_OTP = _get_bool_env("ENABLE_OTP", default_feature_flag)
+    ENABLE_EMAIL = _get_bool_env("ENABLE_EMAIL", default_feature_flag)
+    ENABLE_ORDER_CONFIRMATION = _get_bool_env("ENABLE_ORDER_CONFIRMATION", default_feature_flag)
+    ENABLE_PUSH_NOTIFICATIONS = _get_bool_env("ENABLE_PUSH_NOTIFICATIONS", default_feature_flag)
+    ENABLE_WEBHOOKS = _get_bool_env("ENABLE_WEBHOOKS", default_feature_flag)
+    ENABLE_ANALYTICS = _get_bool_env("ENABLE_ANALYTICS", default_feature_flag)
+    ENABLE_RAPID_API = _get_bool_env("ENABLE_RAPID_API", default_feature_flag)
+
+    # Logging Level
+    LOGGING_LEVEL = os.environ.get("LOG_LEVEL") or ("DEBUG" if IS_DEV else ("INFO" if IS_QA else "WARNING"))
+
+    # Rapid API Configuration (Auto-resolves based on environment)
+    if IS_DEV:
+        RAPID_API_KEY = os.environ.get("DEV_RAPID_API_KEY") or os.environ.get("RAPID_API_KEY")
+    elif IS_QA:
+        RAPID_API_KEY = os.environ.get("QA_RAPID_API_KEY") or os.environ.get("RAPID_API_KEY")
+    else:
+        RAPID_API_KEY = os.environ.get("PROD_RAPID_API_KEY") or os.environ.get("RAPID_API_KEY")
+
+    # Payment Gateway Credentials (Auto-resolves based on environment)
+    if IS_DEV:
+        RAZORPAY_KEY_ID = None
+        RAZORPAY_KEY_SECRET = None
+    elif IS_QA:
+        RAZORPAY_KEY_ID = os.environ.get("QA_RAZORPAY_KEY_ID") or os.environ.get("RAZORPAY_KEY_ID")
+        RAZORPAY_KEY_SECRET = os.environ.get("QA_RAZORPAY_KEY_SECRET") or os.environ.get("RAZORPAY_KEY_SECRET")
+    else:  # PROD
+        RAZORPAY_KEY_ID = os.environ.get("PROD_RAZORPAY_KEY_ID") or os.environ.get("RAZORPAY_KEY_ID")
+        RAZORPAY_KEY_SECRET = os.environ.get("PROD_RAZORPAY_KEY_SECRET") or os.environ.get("RAZORPAY_KEY_SECRET")
 
     # Flask-Mail Configuration
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
@@ -83,7 +174,6 @@ class Config:
     MAIL_USERNAME = os.environ.get("MAIL_USERNAME") or os.environ.get("EMAIL_ADDRESS")
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD") or os.environ.get("EMAIL_APP_PASSWORD")
     
-    # Calculate MAIL_DEFAULT_SENDER
     _default_user = os.environ.get("MAIL_USERNAME") or os.environ.get("EMAIL_ADDRESS")
     MAIL_DEFAULT_SENDER = os.environ.get("SMTP_FROM") or (f"SSJewellery <{_default_user}>" if _default_user else "SSJewellery <no-reply@SSJewellery.com>")
 
@@ -93,42 +183,52 @@ class Config:
     MICROSOFT_CLIENT_ID = os.environ.get("MICROSOFT_CLIENT_ID")
     MICROSOFT_CLIENT_SECRET = os.environ.get("MICROSOFT_CLIENT_SECRET")
 
-    # Cloudinary Credentials
-    CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME")
-    CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY")
-    CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET")
-
-    # Razorpay Credentials
-    RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
-    RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
+    # Storage Credentials (Cloudinary)
+    if IS_DEV:
+        CLOUDINARY_CLOUD_NAME = os.environ.get("DEV_CLOUDINARY_CLOUD_NAME") or os.environ.get("CLOUDINARY_CLOUD_NAME")
+        CLOUDINARY_API_KEY = os.environ.get("DEV_CLOUDINARY_API_KEY") or os.environ.get("CLOUDINARY_API_KEY")
+        CLOUDINARY_API_SECRET = os.environ.get("DEV_CLOUDINARY_API_SECRET") or os.environ.get("CLOUDINARY_API_SECRET")
+    elif IS_QA:
+        CLOUDINARY_CLOUD_NAME = os.environ.get("QA_CLOUDINARY_CLOUD_NAME") or os.environ.get("CLOUDINARY_CLOUD_NAME")
+        CLOUDINARY_API_KEY = os.environ.get("QA_CLOUDINARY_API_KEY") or os.environ.get("CLOUDINARY_API_KEY")
+        CLOUDINARY_API_SECRET = os.environ.get("QA_CLOUDINARY_API_SECRET") or os.environ.get("CLOUDINARY_API_SECRET")
+    else:
+        CLOUDINARY_CLOUD_NAME = os.environ.get("PROD_CLOUDINARY_CLOUD_NAME") or os.environ.get("CLOUDINARY_CLOUD_NAME")
+        CLOUDINARY_API_KEY = os.environ.get("PROD_CLOUDINARY_API_KEY") or os.environ.get("CLOUDINARY_API_KEY")
+        CLOUDINARY_API_SECRET = os.environ.get("PROD_CLOUDINARY_API_SECRET") or os.environ.get("CLOUDINARY_API_SECRET")
 
 def validate_environment():
     """
     Startup environment validation module for backend.
-    In Development mode: Allows localhost fallbacks.
-    In Production mode: Stops startup immediately with a clear RuntimeError if
-    required environment variables are missing or pointing to localhost.
+    Validates active ENVIRONMENT (DEV, QA, PROD) configuration.
     """
-    if not IS_PRODUCTION:
-        print(f"[CONFIG SUCCESS] Environment validation passed in DEVELOPMENT mode (FRONTEND_URL: {FRONTEND_URL or 'http://localhost:5173'}).")
+    print(f"\n[CONFIG] Initializing Enterprise Environment Architecture...")
+    print(f"[CONFIG] Active Environment: {ENVIRONMENT}")
+    print(f"[CONFIG] Feature Flags: PAYMENT={Config.ENABLE_PAYMENT}, SMS={Config.ENABLE_SMS}, OTP={Config.ENABLE_OTP}, EMAIL={Config.ENABLE_EMAIL}, ORDER_CONF={Config.ENABLE_ORDER_CONFIRMATION}, RAPID_API={Config.ENABLE_RAPID_API}, ANALYTICS={Config.ENABLE_ANALYTICS}")
+    print(f"[CONFIG] Logging Level: {Config.LOGGING_LEVEL}\n")
+
+    if IS_DEV:
+        print(f"[CONFIG SUCCESS] Application initialized in DEVELOPMENT mode (FRONTEND_URL: {FRONTEND_URL or 'http://localhost:5173'}).")
         return
 
+    if IS_QA:
+        print(f"[CONFIG SUCCESS] Application initialized in QA mode.")
+        return
+
+    # Production Strict Checks
     missing = []
     invalid = []
 
-    # 1. FRONTEND_URL validation
     env_frontend = os.environ.get("FRONTEND_URL")
     if not env_frontend:
         missing.append("FRONTEND_URL")
     elif "localhost" in env_frontend or "127.0.0.1" in env_frontend:
         invalid.append("FRONTEND_URL cannot point to localhost/127.0.0.1 in production mode")
 
-    # 2. DATABASE_URL validation
-    env_db = os.environ.get("DATABASE_URI") or os.environ.get("DATABASE_URL")
+    env_db = Config.SQLALCHEMY_DATABASE_URI
     if not env_db:
-        missing.append("DATABASE_URL / DATABASE_URI")
+        missing.append("PROD_DATABASE_URL / DATABASE_URL / DATABASE_URI")
 
-    # 3. JWT_SECRET validation
     env_jwt = os.environ.get("JWT_SECRET") or os.environ.get("SECRET_KEY")
     if not env_jwt:
         missing.append("JWT_SECRET / SECRET_KEY")
@@ -157,3 +257,4 @@ def validate_environment():
         raise RuntimeError(error_msg)
 
     print("[CONFIG SUCCESS] Environment validation passed in PRODUCTION mode.")
+

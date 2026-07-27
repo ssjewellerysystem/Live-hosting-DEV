@@ -5,12 +5,16 @@ import {
   BarChart3, Plus, Edit2, Trash2, CheckCircle2, ShieldAlert, User,
   ArrowUpRight, Users, ShoppingBag, Package, MessageSquare, AlertCircle, Upload, Eye, X,
   AlertTriangle, Check, RefreshCw, Calendar, DollarSign, Clock, MapPin, Lock, Unlock, Shield, Search, Image,
-  Settings, Globe, Link as LinkIcon
+  Settings, Globe, Link as LinkIcon, Sparkles
 } from 'lucide-react';
 import { AuthContext, API_BASE_URL, SERVER_BASE_URL } from '../context/AuthContext';
+import { HighDemandButton } from '../components/admin/HighDemandButton';
 import { MaintenanceButton } from '../components/admin/MaintenanceButton';
 import { formatPrice } from '../utils/priceFormatter';
 import { translateCategory } from '../utils/categoryTranslations';
+
+const AdminPaymentManagement = React.lazy(() => import('../components/AdminPaymentManagement').then(m => ({ default: m.AdminPaymentManagement })));
+
 
 const ACTION_TYPES = [
   "Product Added",
@@ -712,65 +716,51 @@ export const AdminControl = () => {
 
   const fetchHomepageSettings = async () => {
     setHomepageLoading(true);
+    setHomepageError('');
     try {
       const response = await axios.get(`${API_BASE_URL}/admin/settings`);
       if (response.data) {
-        let galleryItems = [];
-        if (response.data.luxury_gallery_items) {
-          try {
-            galleryItems = JSON.parse(response.data.luxury_gallery_items);
-          } catch (e) {
-            console.error("Error parsing luxury gallery items:", e);
+        const safeParseJSON = (data, defaultVal) => {
+          if (data === null || data === undefined) return defaultVal;
+          if (typeof data === 'object') return data;
+          if (typeof data === 'string') {
+            try {
+              return JSON.parse(data);
+            } catch (e) {
+              console.error("JSON parse error:", e);
+              return defaultVal;
+            }
           }
-        }
-        let statsItems = [
+          return defaultVal;
+        };
+
+        const galleryItems = safeParseJSON(response.data.luxury_gallery_items, []);
+        const statsItems = safeParseJSON(response.data.owner_stats, [
           { label: 'Years of Craft', value: 25, suffix: '+' },
           { label: 'Unique Designs', value: 1200, suffix: '+' },
           { label: 'Happy Clients', value: 8500, suffix: '+' },
           { label: 'Awards Won', value: 18, suffix: '' }
-        ];
-        if (response.data.owner_stats) {
-          try {
-            statsItems = JSON.parse(response.data.owner_stats);
-          } catch (e) {
-            console.error("Error parsing owner stats:", e);
-          }
-        }
+        ]);
+        const badgesItems = safeParseJSON(response.data.owner_badges, [
+          'BIS Hallmark Certified', 'ISO 9001:2015', 'Rajasthan Ratna Awardee', 'GIA Member'
+        ]);
+        const occasionEn = safeParseJSON(response.data.occasion_items_en, []);
+        const occasionHi = safeParseJSON(response.data.occasion_items_hi, []);
+        let ownersList = safeParseJSON(response.data.owners_list, []);
 
-        let badgesItems = ['BIS Hallmark Certified', 'ISO 9001:2015', 'Rajasthan Ratna Awardee', 'GIA Member'];
-        if (response.data.owner_badges) {
-          try {
-            badgesItems = JSON.parse(response.data.owner_badges);
-          } catch (e) {
-            console.error("Error parsing owner badges:", e);
-          }
-        }
-
-        let occasionEn = [];
-        if (response.data.occasion_items_en) {
-          try {
-            occasionEn = JSON.parse(response.data.occasion_items_en);
-          } catch (e) {
-            console.error("Error parsing occasion items en:", e);
-          }
-        }
-
-        let occasionHi = [];
-        if (response.data.occasion_items_hi) {
-          try {
-            occasionHi = JSON.parse(response.data.occasion_items_hi);
-          } catch (e) {
-            console.error("Error parsing occasion items hi:", e);
-          }
-        }
-
-        let ownersList = [];
-        if (response.data.owners_list) {
-          try {
-            ownersList = JSON.parse(response.data.owners_list);
-          } catch (e) {
-            console.error("Error parsing owners list:", e);
-          }
+        if (!Array.isArray(ownersList) || ownersList.length === 0) {
+          ownersList = [{
+            id: 1,
+            name: response.data.owner_name || "Shri Suresh Soni",
+            title: response.data.owner_title || "Founder & Master Craftsman",
+            est: response.data.owner_est || "Est. 1999 · Jaipur, India",
+            bio1: response.data.owner_bio_1 || "",
+            bio2: response.data.owner_bio_2 || "",
+            quote: response.data.owner_quote || "",
+            image: response.data.owner_image || "/owner.png",
+            stats: Array.isArray(statsItems) ? statsItems : [],
+            badges: Array.isArray(badgesItems) ? badgesItems : []
+          }];
         }
 
         setHomepageSettings({
@@ -782,11 +772,11 @@ export const AdminControl = () => {
           owner_bio_2: response.data.owner_bio_2 || "",
           owner_quote: response.data.owner_quote || "",
           video_showcase_url: response.data.video_showcase_url || "/golden-stage.mp4",
-          luxury_gallery_items: galleryItems,
-          owner_stats: statsItems,
-          owner_badges: badgesItems,
-          occasion_items_en: occasionEn,
-          occasion_items_hi: occasionHi,
+          luxury_gallery_items: Array.isArray(galleryItems) ? galleryItems : [],
+          owner_stats: Array.isArray(statsItems) ? statsItems : [],
+          owner_badges: Array.isArray(badgesItems) ? badgesItems : [],
+          occasion_items_en: Array.isArray(occasionEn) ? occasionEn : [],
+          occasion_items_hi: Array.isArray(occasionHi) ? occasionHi : [],
           owners_list: ownersList
         });
       }
@@ -1096,6 +1086,7 @@ export const AdminControl = () => {
       } else if (activeConfigSubTab === 'homepage') {
         fetchHomepageSettings();
         fetchAdminCategories();
+        fetchCollections();
       }
     }
   }, [isAdmin, activeTab, activeConfigSubTab]);
@@ -2221,6 +2212,7 @@ export const AdminControl = () => {
       await axios.post(`${API_BASE_URL}/products`, {
         name: newProduct.name,
         category: newProduct.category,
+        collection: newProduct.collection || '',
         price: parseFloat(newProduct.price),
         discount: parseInt(newProduct.discount) || 0,
         stock: parseInt(newProduct.stock),
@@ -2243,6 +2235,7 @@ export const AdminControl = () => {
       setNewProduct({
         name: '',
         category: 'Rings',
+        collection: '',
         price: '',
         discount: 0,
         stock: '',
@@ -2258,6 +2251,7 @@ export const AdminControl = () => {
       setNewProductImages(INITIAL_IMAGE_SLOTS);
       setFormLang('en');
       fetchProducts();
+      fetchCollections();
       fetchStats();
     } catch (err) {
       console.error(err);
@@ -2278,6 +2272,7 @@ export const AdminControl = () => {
       await axios.put(`${API_BASE_URL}/products/${editingProduct._id}`, {
         name: editingProduct.name,
         category: editingProduct.category,
+        collection: editingProduct.collection || '',
         price: parseFloat(editingProduct.price),
         discount: parseInt(editingProduct.discount) || 0,
         stock: parseInt(editingProduct.stock),
@@ -2295,6 +2290,7 @@ export const AdminControl = () => {
       alert("Product updated successfully!");
       setEditingProduct(null);
       fetchProducts();
+      fetchCollections();
     } catch (err) {
       console.error(err);
       alert("Failed to update product details.");
@@ -2351,6 +2347,11 @@ export const AdminControl = () => {
       );
     }
 
+    const safeCategories = Array.isArray(adminCategories) ? adminCategories : [];
+    const safeCollections = Array.isArray(collectionsList) ? collectionsList : [];
+    const safeGalleryItems = Array.isArray(homepageSettings?.luxury_gallery_items) ? homepageSettings.luxury_gallery_items : [];
+    const safeOwnersList = Array.isArray(homepageSettings?.owners_list) ? homepageSettings.owners_list : [];
+
     return (
       <div className="space-y-12">
         {/* TOP MESSAGES */}
@@ -2399,48 +2400,62 @@ export const AdminControl = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/50 dark:divide-slate-800/50">
-                {adminCategories.map((cat) => (
-                  <tr key={cat.id} className="text-sm hover:bg-slate-50/50 dark:hover:bg-slate-850/30">
-                    <td className="py-3 pl-2">
-                      <img
-                        src={cat.image_url || "/logo.svg"}
-                        alt={cat.name}
-                        className="w-10 h-10 object-cover rounded-full border border-slate-200 dark:border-slate-800"
-                        onError={(e) => { e.target.src = "/logo.svg"; }}
-                      />
-                    </td>
-                    <td className="py-3 font-semibold text-slate-850 dark:text-slate-200">{cat.name}</td>
-                    <td className="py-3 text-slate-600 dark:text-slate-400">{cat.name_en || cat.name}</td>
-                    <td className="py-3 text-slate-600 dark:text-slate-400">{cat.name_hi || cat.name}</td>
-                    <td className="py-3 text-right pr-2">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => {
-                            setEditingCategory(cat);
-                            setCategoryForm({
-                              name: cat.name,
-                              name_en: cat.name_en || cat.name,
-                              name_hi: cat.name_hi || cat.name,
-                              image_url: cat.image_url || ''
-                            });
-                            setCategoryError('');
-                            setCategorySuccess('');
-                            setShowCategoryModal(true);
-                          }}
-                          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCategory(cat.id)}
-                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-400 hover:text-red-500 rounded-lg transition-all"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                {safeCategories.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-400 text-xs font-medium">
+                      No categories found.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  safeCategories.map((cat) => (
+                    <tr key={cat.id || cat.name} className="text-sm hover:bg-slate-50/50 dark:hover:bg-slate-850/30">
+                      <td className="py-3 pl-2">
+                        {cat.image_url && typeof cat.image_url === 'string' && cat.image_url !== '/logo.svg' && !cat.image_url.includes('cat_') ? (
+                          <img
+                            src={cat.image_url}
+                            alt={cat.name || 'Category'}
+                            className="w-10 h-10 object-cover rounded-full border border-slate-200 dark:border-slate-800"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1B0B26] to-[#3F1D5A] border border-[#D4A75F]/30 flex items-center justify-center text-[#D4A75F]">
+                            <Sparkles className="w-4 h-4 animate-pulse" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 font-semibold text-slate-850 dark:text-slate-200">{cat.name}</td>
+                      <td className="py-3 text-slate-600 dark:text-slate-400">{cat.name_en || cat.name}</td>
+                      <td className="py-3 text-slate-600 dark:text-slate-400">{cat.name_hi || cat.name}</td>
+                      <td className="py-3 text-right pr-2">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingCategory(cat);
+                              setCategoryForm({
+                                name: cat.name,
+                                name_en: cat.name_en || cat.name,
+                                name_hi: cat.name_hi || cat.name,
+                                image_url: cat.image_url || ''
+                              });
+                              setCategoryError('');
+                              setCategorySuccess('');
+                              setShowCategoryModal(true);
+                            }}
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-400 hover:text-red-500 rounded-lg transition-all"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -2453,7 +2468,7 @@ export const AdminControl = () => {
               <h4 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50 flex items-center gap-3">
                 <span>Collection Management</span>
                 <span className="px-3 py-0.5 text-xs font-bold bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30 rounded-full shadow-sm">
-                  {collectionsList.length}
+                  {safeCollections.length}
                 </span>
               </h4>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
@@ -2470,13 +2485,13 @@ export const AdminControl = () => {
             </button>
           </div>
 
-          {collectionsList.length === 0 ? (
+          {safeCollections.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-xs sm:text-sm font-medium">
               No collections found in database. Click "Add New Collection" to create one.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {collectionsList.map((coll, idx) => (
+              {safeCollections.map((coll, idx) => (
                 <div
                   key={coll.id || idx}
                   className="bg-white dark:bg-[#1A2235] border border-slate-200/80 dark:border-white/10 hover:border-[#D4AF37]/60 dark:hover:border-[#D4AF37]/60 rounded-[20px] p-5 sm:p-6 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_12px_28px_rgba(212,175,55,0.12)] hover:-translate-y-1 transition-all duration-250 ease-in-out group"
@@ -2484,18 +2499,24 @@ export const AdminControl = () => {
                   <div>
                     <div className="flex justify-between items-center gap-2 mb-4">
                       <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30 rounded-full">
-                        Order #{coll.display_order}
+                        Order #{coll.display_order ?? idx + 1}
                       </span>
                     </div>
 
                     <div className="flex gap-4 mb-4">
                       <div className="h-20 w-20 sm:h-22 sm:w-22 rounded-[16px] overflow-hidden bg-slate-100 dark:bg-[#0F172A] border border-slate-200/60 dark:border-white/10 flex-shrink-0 shadow-sm">
-                        <img
-                          src={coll.image || coll.image_url || '/cat_bridal.png'}
-                          alt={coll.name}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => { e.target.src = '/cat_bridal.png'; }}
-                        />
+                        {(coll.image || coll.image_url) && typeof (coll.image || coll.image_url) === 'string' && !(coll.image || coll.image_url).includes('cat_') ? (
+                          <img
+                            src={coll.image || coll.image_url}
+                            alt={coll.name || 'Collection'}
+                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="h-full w-full bg-gradient-to-br from-[#1B0B26] to-[#3F1D5A] flex items-center justify-center text-[#D4A75F]">
+                            <Sparkles className="w-6 h-6 animate-pulse" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-col justify-center min-w-0 flex-1">
                         <h4 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-[#D4AF37] transition-colors" title={coll.name}>
@@ -2565,7 +2586,7 @@ export const AdminControl = () => {
               onClick={() => {
                 const newOwner = {
                   id: Date.now(),
-                  name: `Owner ${(homepageSettings.owners_list || []).length + 1}`,
+                  name: `Owner ${safeOwnersList.length + 1}`,
                   title: "Title / Role",
                   est: "Est. 2026 · Jaipur, India",
                   bio1: "Biography paragraph 1...",
@@ -2582,9 +2603,9 @@ export const AdminControl = () => {
                 };
                 setHomepageSettings(prev => ({
                   ...prev,
-                  owners_list: [...(prev.owners_list || []), newOwner]
+                  owners_list: [...(Array.isArray(prev.owners_list) ? prev.owners_list : []), newOwner]
                 }));
-                setActiveOwnerIdx((homepageSettings.owners_list || []).length);
+                setActiveOwnerIdx(safeOwnersList.length);
               }}
               className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/25 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
             >
@@ -2594,9 +2615,9 @@ export const AdminControl = () => {
           </div>
 
           {/* Owner Tabs */}
-          {(homepageSettings.owners_list || []).length > 0 && (
-            <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-850">
-              {(homepageSettings.owners_list || []).map((owner, idx) => (
+          {safeOwnersList.length > 0 && (
+            <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 dark:bg-slate-955 rounded-2xl border border-slate-100 dark:border-slate-850">
+              {safeOwnersList.map((owner, idx) => (
                 <div
                   key={owner.id || idx}
                   onClick={() => setActiveOwnerIdx(idx)}
@@ -2612,7 +2633,7 @@ export const AdminControl = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         if (window.confirm(`Are you sure you want to delete ${owner.name || `Owner ${idx + 1}`}?`)) {
-                          const updated = (homepageSettings.owners_list || []).filter((_, i) => i !== idx);
+                          const updated = safeOwnersList.filter((_, i) => i !== idx);
                           setHomepageSettings(prev => ({ ...prev, owners_list: updated }));
                           setActiveOwnerIdx(0);
                         }
@@ -2628,34 +2649,40 @@ export const AdminControl = () => {
           )}
 
           {(() => {
-            const activeOwner = (homepageSettings.owners_list || [])[activeOwnerIdx] || {
-              name: "",
-              title: "",
-              est: "",
-              bio1: "",
-              bio2: "",
-              quote: "",
-              image: "/owner.png",
-              stats: [],
-              badges: []
+            const activeOwner = safeOwnersList[activeOwnerIdx] || safeOwnersList[0] || {
+              name: homepageSettings?.owner_name || "Shri Suresh Soni",
+              title: homepageSettings?.owner_title || "Founder & Master Craftsman",
+              est: homepageSettings?.owner_est || "Est. 1999 · Jaipur, India",
+              bio1: homepageSettings?.owner_bio_1 || "",
+              bio2: homepageSettings?.owner_bio_2 || "",
+              quote: homepageSettings?.owner_quote || "",
+              image: homepageSettings?.owner_image || "/owner.png",
+              stats: homepageSettings?.owner_stats || [],
+              badges: homepageSettings?.owner_badges || []
             };
 
             const handleUpdateOwnerField = (field, value) => {
-              const updated = [...(homepageSettings.owners_list || [])];
-              if (updated[activeOwnerIdx]) {
-                updated[activeOwnerIdx] = {
-                  ...updated[activeOwnerIdx],
+              const updated = [...safeOwnersList];
+              if (updated.length === 0) {
+                updated.push({ ...activeOwner, [field]: value });
+              } else {
+                const targetIdx = updated[activeOwnerIdx] ? activeOwnerIdx : 0;
+                updated[targetIdx] = {
+                  ...updated[targetIdx],
                   [field]: value
                 };
-                setHomepageSettings(prev => ({
-                  ...prev,
-                  owners_list: updated
-                }));
               }
+              setHomepageSettings(prev => ({
+                ...prev,
+                owners_list: updated
+              }));
             };
 
+            const activeStats = Array.isArray(activeOwner?.stats) ? activeOwner.stats : [];
+            const activeBadges = Array.isArray(activeOwner?.badges) ? activeOwner.badges : [];
+
             return (
-              <>
+              <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Left: Bio Info */}
                   <div className="space-y-4">
@@ -2685,7 +2712,7 @@ export const AdminControl = () => {
                         type="text"
                         value={activeOwner.est || ''}
                         onChange={(e) => handleUpdateOwnerField('est', e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
@@ -2693,9 +2720,9 @@ export const AdminControl = () => {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Biography Paragraph 1</label>
                       <textarea
                         rows={3}
-                        value={activeOwner.bio1 || ''}
+                        value={activeOwner.bio1 || activeOwner.bio_1 || ''}
                         onChange={(e) => handleUpdateOwnerField('bio1', e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 resize-none"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 resize-none"
                       />
                     </div>
 
@@ -2703,9 +2730,9 @@ export const AdminControl = () => {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Biography Paragraph 2</label>
                       <textarea
                         rows={3}
-                        value={activeOwner.bio2 || ''}
+                        value={activeOwner.bio2 || activeOwner.bio_2 || ''}
                         onChange={(e) => handleUpdateOwnerField('bio2', e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 resize-none"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 resize-none"
                       />
                     </div>
 
@@ -2715,7 +2742,7 @@ export const AdminControl = () => {
                         rows={3}
                         value={activeOwner.quote || ''}
                         onChange={(e) => handleUpdateOwnerField('quote', e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 resize-none font-serif italic"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 resize-none font-serif italic"
                       />
                     </div>
                   </div>
@@ -2723,7 +2750,7 @@ export const AdminControl = () => {
                   {/* Right: Owner Image */}
                   <div className="flex flex-col justify-start items-center space-y-4">
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 self-start">Founder Photo</label>
-                    <div className="relative group w-64 h-80 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50 dark:bg-slate-950 flex items-center justify-center shadow-inner">
+                    <div className="relative group w-64 h-80 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50 dark:bg-slate-955 flex items-center justify-center shadow-inner">
                       {activeOwner.image ? (
                         <>
                           <img
@@ -2767,85 +2794,87 @@ export const AdminControl = () => {
                       )}
                     </div>
                     <p className="text-[10px] text-slate-400 text-center">Recommended aspect ratio: 3:4. Format: JPG or PNG.</p>
-                    {/* Stats & Badges Editors (Only for first owner) */}
-                    {activeOwnerIdx === 0 && (
-                      <>
-                        {/* Stats Editor */}
-                        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-850">
-                          <h4 className="text-xs font-bold text-slate-850 dark:text-slate-200 mb-4 uppercase tracking-wider">Founder Showcase Metrics / Stats (4 Cards)</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            {Array.from({ length: 4 }).map((_, statIdx) => {
-                              const stat = (activeOwner.stats || [])[statIdx] || { label: '', value: 0, suffix: '' };
-                              const handleUpdateStat = (key, val) => {
-                                const newStats = Array.from({ length: 4 }).map((_, i) => (activeOwner.stats || [])[i] || { label: '', value: 0, suffix: '' });
-                                newStats[statIdx][key] = val;
-                                handleUpdateOwnerField('stats', newStats);
-                              };
-
-                              return (
-                                <div key={statIdx} className="p-4 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl space-y-3">
-                                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Card {statIdx + 1}</div>
-                                  <div>
-                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-505 mb-1">Value (e.g. 25)</label>
-                                    <input
-                                      type="number"
-                                      value={stat.value}
-                                      onChange={(e) => handleUpdateStat('value', Number(e.target.value))}
-                                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-505 mb-1">Label (e.g. Years of Craft)</label>
-                                    <input
-                                      type="text"
-                                      value={stat.label}
-                                      onChange={(e) => handleUpdateStat('label', e.target.value)}
-                                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-505 mb-1">Suffix (e.g. +)</label>
-                                    <input
-                                      type="text"
-                                      value={stat.suffix}
-                                      onChange={(e) => handleUpdateStat('suffix', e.target.value)}
-                                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Badges / Credentials Editor */}
-                        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-850">
-                          <h4 className="text-xs font-bold text-slate-850 dark:text-slate-200 mb-4 uppercase tracking-wider">Founder Showcase Credentials & Certifications (4 Badges)</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            {Array.from({ length: 4 }).map((_, badgeIdx) => {
-                              const badge = (activeOwner.badges || [])[badgeIdx] || '';
-                              return (
-                                <div key={badgeIdx} className="p-4 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl space-y-2">
-                                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Badge {badgeIdx + 1}</div>
-                                  <input
-                                    type="text"
-                                    value={badge}
-                                    onChange={(e) => {
-                                      const newBadges = Array.from({ length: 4 }).map((_, i) => (activeOwner.badges || [])[i] || '');
-                                      newBadges[badgeIdx] = e.target.value;
-                                      handleUpdateOwnerField('badges', newBadges);
-                                    }}
-                                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </>
-                    )}            </div>
+                  </div>
                 </div>
-              </>
+
+                {/* Stats & Badges Editors (For active owner) */}
+                <div className="space-y-8 pt-6 border-t border-slate-100 dark:border-slate-850">
+                  {/* Stats Editor */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-850 dark:text-slate-200 mb-4 uppercase tracking-wider">Founder Showcase Metrics / Stats (4 Cards)</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                      {Array.from({ length: 4 }).map((_, statIdx) => {
+                        const stat = activeStats[statIdx] || { label: '', value: 0, suffix: '' };
+                        const handleUpdateStat = (key, val) => {
+                          const newStats = Array.from({ length: 4 }).map((_, i) => ({
+                            label: '', value: 0, suffix: '', ...(activeStats[i] || {})
+                          }));
+                          newStats[statIdx][key] = val;
+                          handleUpdateOwnerField('stats', newStats);
+                        };
+
+                        return (
+                          <div key={statIdx} className="p-4 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl space-y-3">
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Card {statIdx + 1}</div>
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Value (e.g. 25)</label>
+                              <input
+                                type="number"
+                                value={stat.value ?? 0}
+                                onChange={(e) => handleUpdateStat('value', Number(e.target.value))}
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Label (e.g. Years of Craft)</label>
+                              <input
+                                type="text"
+                                value={stat.label || ''}
+                                onChange={(e) => handleUpdateStat('label', e.target.value)}
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Suffix (e.g. +)</label>
+                              <input
+                                type="text"
+                                value={stat.suffix || ''}
+                                onChange={(e) => handleUpdateStat('suffix', e.target.value)}
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Badges / Credentials Editor */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-850 dark:text-slate-200 mb-4 uppercase tracking-wider">Founder Showcase Credentials & Certifications (4 Badges)</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                      {Array.from({ length: 4 }).map((_, badgeIdx) => {
+                        const badge = activeBadges[badgeIdx] || '';
+                        return (
+                          <div key={badgeIdx} className="p-4 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl space-y-2">
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Badge {badgeIdx + 1}</div>
+                            <input
+                              type="text"
+                              value={badge}
+                              onChange={(e) => {
+                                const newBadges = Array.from({ length: 4 }).map((_, i) => activeBadges[i] || '');
+                                newBadges[badgeIdx] = e.target.value;
+                                handleUpdateOwnerField('badges', newBadges);
+                              }}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
             );
           })()}
 
@@ -2870,12 +2899,12 @@ export const AdminControl = () => {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-550 mb-1.5">Video File URL</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Video File URL</label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={homepageSettings.video_showcase_url}
-                  onChange={(e) => setHomepageSettings({ ...homepageSettings, video_showcase_url: e.target.value })}
+                  value={homepageSettings?.video_showcase_url || ''}
+                  onChange={(e) => setHomepageSettings(prev => ({ ...prev, video_showcase_url: e.target.value }))}
                   placeholder="/golden-stage.mp4"
                   className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                 />
@@ -2896,7 +2925,7 @@ export const AdminControl = () => {
               </div>
             </div>
 
-            {homepageSettings.video_showcase_url && (
+            {homepageSettings?.video_showcase_url && (
               <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black max-w-xl border border-slate-200 dark:border-slate-800">
                 <video
                   src={homepageSettings.video_showcase_url}
@@ -2940,7 +2969,7 @@ export const AdminControl = () => {
                 };
                 setHomepageSettings(prev => ({
                   ...prev,
-                  luxury_gallery_items: [...(prev.luxury_gallery_items || []), newCard]
+                  luxury_gallery_items: [...safeGalleryItems, newCard]
                 }));
               }}
               className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/25 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
@@ -2951,16 +2980,16 @@ export const AdminControl = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(homepageSettings.luxury_gallery_items || []).map((card, idx) => (
-              <div key={card.id || idx} className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-950/20 space-y-4">
+            {safeGalleryItems.map((card, idx) => (
+              <div key={card?.id || idx} className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-950/20 space-y-4">
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-850">
                   <span className="text-xs font-bold tracking-widest text-[#D4A75F] uppercase">Card #{idx + 1}</span>
-                  {(homepageSettings.luxury_gallery_items || []).length > 1 && (
+                  {safeGalleryItems.length > 1 && (
                     <button
                       type="button"
                       onClick={() => {
                         if (window.confirm("Are you sure you want to delete this card?")) {
-                          const updated = (homepageSettings.luxury_gallery_items || []).filter((_, i) => i !== idx);
+                          const updated = safeGalleryItems.filter((_, i) => i !== idx);
                           setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
                         }
                       }}
@@ -2972,9 +3001,9 @@ export const AdminControl = () => {
                 </div>
 
                 <div className="relative w-full h-40 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-850">
-                  {card.image ? (
+                  {card?.image ? (
                     <>
-                      <img src={card.image} alt={card.title} className="w-full h-full object-cover" />
+                      <img src={card.image} alt={card.title || 'Luxury Item'} className="w-full h-full object-cover" />
                       <label className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
                         <span className="bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1">
                           <Upload className="h-3 w-3" /> Change
@@ -3014,39 +3043,45 @@ export const AdminControl = () => {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Title</label>
                     <input
                       type="text"
-                      value={card.title}
+                      value={card?.title || ''}
                       onChange={(e) => {
-                        const updated = [...homepageSettings.luxury_gallery_items];
-                        updated[idx].title = e.target.value;
-                        setHomepageSettings({ ...homepageSettings, luxury_gallery_items: updated });
+                        const updated = [...safeGalleryItems];
+                        if (updated[idx]) {
+                          updated[idx] = { ...updated[idx], title: e.target.value };
+                          setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
+                        }
                       }}
                       className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-550 mb-1">Description</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Description</label>
                     <textarea
                       rows={3}
-                      value={card.description}
+                      value={card?.description || ''}
                       onChange={(e) => {
-                        const updated = [...homepageSettings.luxury_gallery_items];
-                        updated[idx].description = e.target.value;
-                        setHomepageSettings({ ...homepageSettings, luxury_gallery_items: updated });
+                        const updated = [...safeGalleryItems];
+                        if (updated[idx]) {
+                          updated[idx] = { ...updated[idx], description: e.target.value };
+                          setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
+                        }
                       }}
                       className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs resize-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-550 mb-1">Redirection Link</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Redirection Link</label>
                     <input
                       type="text"
-                      value={card.link || ''}
+                      value={card?.link || ''}
                       onChange={(e) => {
-                        const updated = [...homepageSettings.luxury_gallery_items];
-                        updated[idx].link = e.target.value;
-                        setHomepageSettings({ ...homepageSettings, luxury_gallery_items: updated });
+                        const updated = [...safeGalleryItems];
+                        if (updated[idx]) {
+                          updated[idx] = { ...updated[idx], link: e.target.value };
+                          setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
+                        }
                       }}
                       placeholder="/?category=Necklaces"
                       className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
@@ -3101,6 +3136,7 @@ export const AdminControl = () => {
             <p className="text-xs text-slate-400 mt-1">Perform product CRUD, modify user status, update orders, and review customer tickets.</p>
           </div>
           <div className="mt-4 sm:mt-0 flex items-center gap-3">
+            <HighDemandButton />
             <MaintenanceButton />
             <button
               onClick={loadDashboardData}
@@ -3170,54 +3206,64 @@ export const AdminControl = () => {
             <div className="flex space-x-2 border-b border-slate-200 dark:border-slate-800 pb-px mb-8 overflow-x-auto">
               <button
                 onClick={() => handleTabChange('products')}
-                className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === 'products'
+                className={`pb-3 px-4 text-sm border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === 'products'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                   }`}
               >
                 Product Management
               </button>
               <button
                 onClick={() => handleTabChange('users')}
-                className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === 'users'
+                className={`pb-3 px-4 text-sm border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === 'users'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                   }`}
               >
                 User Management
               </button>
               <button
                 onClick={() => handleTabChange('orders')}
-                className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === 'orders'
+                className={`pb-3 px-4 text-sm border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === 'orders'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                   }`}
               >
                 Orders Management
               </button>
               <button
-                onClick={() => handleTabChange('support')}
-                className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === 'support'
+                onClick={() => handleTabChange('payments')}
+                className={`pb-3 px-4 text-sm border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === 'payments'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
+                  }`}
+              >
+                Payment Management
+              </button>
+              <button
+                onClick={() => handleTabChange('support')}
+
+                className={`pb-3 px-4 text-sm border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === 'support'
+                    ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                   }`}
               >
                 Support Tickets
               </button>
               <button
                 onClick={() => handleTabChange('config')}
-                className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === 'config'
+                className={`pb-3 px-4 text-sm border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === 'config'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                   }`}
               >
                 Site Configuration
               </button>
               <button
                 onClick={() => handleTabChange('overview')}
-                className={`pb-3 px-4 text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === 'overview'
+                className={`pb-3 px-4 text-sm border-b-2 transition-all duration-200 whitespace-nowrap ${activeTab === 'overview'
                     ? 'bg-[rgba(212,167,95,0.15)] text-[#D4A75F] border-[#D4A75F] font-semibold'
-                    : 'border-transparent text-[#B0B7C3] hover:text-white font-normal'
+                    : 'border-transparent text-slate-600 dark:text-[#B0B7C3] hover:text-[#3F1D5A] dark:hover:text-white hover:bg-amber-500/10 dark:hover:bg-transparent rounded-t-lg font-normal'
                   }`}
               >
                 Analytics
@@ -3789,8 +3835,8 @@ export const AdminControl = () => {
                     return (
                       <div key={p._id || p.id} className="border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/20 rounded-xl md:rounded-2xl p-3 md:p-4.5 flex flex-col justify-between hover:shadow-lg transition-all duration-300 relative">
                         <div>
-                          {/* Product Image, Category and Delete Button Header Row */}
-                          <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
+                          {/* Desktop/Tablet Header Row (Hidden on mobile < 768px, visible on md+) */}
+                          <div className="hidden md:flex items-start justify-between gap-2 sm:gap-3 mb-3">
                             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                               <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-955 border border-slate-100 dark:border-slate-800 flex-shrink-0">
                                 <img src={p.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'} alt={p.name} className="h-full w-full object-cover" />
@@ -3810,6 +3856,36 @@ export const AdminControl = () => {
                             >
                               <Trash2 className="h-4 w-4 text-white" />
                             </button>
+                          </div>
+
+                          {/* Mobile Header Layout (Visible on mobile < 768px, hidden on md+) */}
+                          <div className="block md:hidden mb-3">
+                            {/* Top row: Image & Category */}
+                            <div className="flex items-center gap-2.5 mb-2">
+                              <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-955 border border-slate-100 dark:border-slate-800 flex-shrink-0">
+                                <img src={p.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'} alt={p.name} className="h-full w-full object-cover" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">{p.category}</span>
+                              </div>
+                            </div>
+
+                            {/* Title row */}
+                            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 break-words mt-1 mb-2.5" title={p.name}>
+                              {p.name}
+                            </h4>
+
+                            {/* Delete Button Row (Right aligned, between Title and Pricing Box, 8-12px spacing) */}
+                            <div className="flex justify-end my-2.5">
+                              <button
+                                type="button"
+                                onClick={() => setProductToDelete(p)}
+                                title="Delete Product"
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-md shadow-red-500/20 hover:scale-105 transition-all duration-200 cursor-pointer flex-shrink-0 z-30"
+                              >
+                                <Trash2 className="h-4 w-4 text-white" />
+                              </button>
+                            </div>
                           </div>
 
                           {/* Price / Discount History */}
@@ -4026,57 +4102,59 @@ export const AdminControl = () => {
                 </div>
 
                 {/* Nested Sub-tabs */}
-                <div className="flex space-x-1 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl mb-8 w-fit border border-slate-200/40 dark:border-slate-800">
-                  <button
-                    onClick={() => setActiveConfigSubTab('banners')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${activeConfigSubTab === 'banners'
-                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                      }`}
-                  >
-                    <Image className="h-3.5 w-3.5" />
-                    <span>Carousel Images</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveConfigSubTab('faqs')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${activeConfigSubTab === 'faqs'
-                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                      }`}
-                  >
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    <span>FAQs</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveConfigSubTab('support_links')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${activeConfigSubTab === 'support_links'
-                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                      }`}
-                  >
-                    <LinkIcon className="h-3.5 w-3.5" />
-                    <span>Support Links</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveConfigSubTab('reports')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${activeConfigSubTab === 'reports'
-                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                      }`}
-                  >
-                    <Settings className="h-3.5 w-3.5" />
-                    <span>Report Automation</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveConfigSubTab('homepage')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${activeConfigSubTab === 'homepage'
-                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                      }`}
-                  >
-                    <Globe className="h-3.5 w-3.5" />
-                    <span>Homepage Settings</span>
-                  </button>
+                <div className="w-full max-w-full overflow-x-auto rounded-2xl mb-8 border border-slate-200/40 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 p-1.5 scrollbar-none" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <div className="flex items-center space-x-1 w-max min-w-full">
+                    <button
+                      onClick={() => setActiveConfigSubTab('banners')}
+                      className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex-shrink-0 ${activeConfigSubTab === 'banners'
+                          ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        }`}
+                    >
+                      <Image className="h-3.5 w-3.5" />
+                      <span>Carousel Images</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveConfigSubTab('faqs')}
+                      className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex-shrink-0 ${activeConfigSubTab === 'faqs'
+                          ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        }`}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      <span>FAQs</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveConfigSubTab('support_links')}
+                      className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex-shrink-0 ${activeConfigSubTab === 'support_links'
+                          ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        }`}
+                    >
+                      <LinkIcon className="h-3.5 w-3.5" />
+                      <span>Support Links</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveConfigSubTab('reports')}
+                      className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex-shrink-0 ${activeConfigSubTab === 'reports'
+                          ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        }`}
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      <span>Report Automation</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveConfigSubTab('homepage')}
+                      className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex-shrink-0 ${activeConfigSubTab === 'homepage'
+                          ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        }`}
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      <span>Homepage Settings</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Sub-tab 1: Banners Management */}
@@ -4334,6 +4412,22 @@ export const AdminControl = () => {
             {activeTab === 'users' && (
               renderUsersManagement()
             )}
+
+            {/* TAB CONTENT: PAYMENT MANAGEMENT */}
+            {activeTab === 'payments' && (
+              <React.Suspense fallback={
+                <div className="p-12 text-center text-[#D4A75F] bg-[#1B0B26]/80 rounded-2xl border border-[#D4A75F]/20">
+                  <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-[#D4A75F]" />
+                  Loading Payment Management System...
+                </div>
+              }>
+                <AdminPaymentManagement 
+                  onNavigateToOrder={(ordId) => { setSelectedOrder(orders.find(o => o.order_id === ordId || o.id === ordId) || { order_id: ordId }); }}
+                  onNavigateToCustomer={(custId) => { handleTabChange('users'); }}
+                />
+              </React.Suspense>
+            )}
+
 
             {/* TAB CONTENT: AUDIT LOGS */}
             {activeTab === 'audit' && (

@@ -17,7 +17,7 @@ hardcoded_collections = [
         "name": "New Collection",
         "slug": "new-collection",
         "subtitle": "Fresh Masterpieces & Solitaires",
-        "image": "/luxury_solitaire_ring.png",
+        "image": None,
         "description": "Discover our latest exquisite handcrafted arrivals featuring modern solitaire designs and signature gold craft.",
         "tips": ["Pair with classic ensembles to stand out.", "Explore solitaire diamonds for timeless brilliance.", "Perfect as a memorable gift for special milestones."],
         "display_order": 1
@@ -27,7 +27,7 @@ hardcoded_collections = [
         "name": "Wedding Wear",
         "slug": "wedding-wear",
         "subtitle": "Regal Heritage Kundan",
-        "image": "/cat_bridal.png",
+        "image": None,
         "description": "Ornate traditional bridal choker sets, heavy designer jhumkas, and matching hand ornaments. Tailored for classic royal elegance.",
         "tips": ["Complement heavily embroidered outfits with choker-length sets.", "Style with matching maang-tika for classic look.", "Incorporate natural pearls for color balance."],
         "display_order": 2
@@ -37,7 +37,7 @@ hardcoded_collections = [
         "name": "Office Wear",
         "slug": "office-wear",
         "subtitle": "Minimalistic Luxury Studs",
-        "image": "/cat_earrings.png",
+        "image": None,
         "description": "Chic, lightweight, and modern daily-wear items. Understated solitaire bands, studs, and sleek bracelets designed for executive confidence.",
         "tips": ["Stick to one key statement piece (e.g. sleek studs or minimalist watch).", "Platinum/white-gold options work best with formal suits.", "Avoid noisy jingling bracelets."],
         "display_order": 3
@@ -47,7 +47,7 @@ hardcoded_collections = [
         "name": "Daily Wear",
         "slug": "daily-wear",
         "subtitle": "Versatile Chic Bangles",
-        "image": "/cat_bracelets.png",
+        "image": None,
         "description": "Comfortable, durable, yet elegant gold bands and bracelets. Built for regular wear while retaining luxurious gold textures.",
         "tips": ["Mix different gold karats for unique color play.", "Opt for smooth, snag-free lock styles.", "Great for layering alongside wristwatches."],
         "display_order": 4
@@ -57,7 +57,7 @@ hardcoded_collections = [
         "name": "Date Night",
         "slug": "date-night",
         "subtitle": "Elegance & Layered Statements",
-        "image": "/cat_necklaces.png",
+        "image": None,
         "description": "Perfect combinations of layered gold chains, subtle collar necklaces, and delicate hoops. Crafted to make statement memories under candlelit tables.",
         "tips": ["Pair with solid dark necklines to highlight gold textures.", "Layer 2-3 chains of varying lengths.", "Keep earrings minimal if layering necklaces."],
         "display_order": 5

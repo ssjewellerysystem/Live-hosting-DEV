@@ -30,8 +30,10 @@ def safe_print(*args, **kwargs):
             pass
 builtins.print = safe_print
 
+import logging
 from backend.extensions import db, migrate, mail
 from backend.config import Config, validate_environment, FRONTEND_URL
+from backend.models import TransactionModel
 from backend.routes.auth import auth_bp
 from backend.routes.products import products_bp
 from backend.routes.orders import orders_bp
@@ -43,6 +45,7 @@ from backend.routes.collections import collections_bp
 from backend.routes.gold_rate import gold_rate_bp
 from backend.routes.maintenance import maintenance_bp
 from backend.routes.high_demand import high_demand_bp
+from backend.routes.payments import payments_bp
 from backend.middleware.maintenance import check_maintenance_mode
 
 # Run startup environment validation
@@ -51,6 +54,12 @@ validate_environment()
 app = Flask(__name__)
 # Load configuration
 app.config.from_object(Config)
+
+# Configure Python logging based on active environment LOGGING_LEVEL
+log_level = getattr(logging, str(Config.LOGGING_LEVEL).upper(), logging.INFO)
+logging.basicConfig(level=log_level, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+app.logger.setLevel(log_level)
+
 
 # Enable CORS for frontend requests
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
@@ -104,6 +113,7 @@ app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(products_bp, url_prefix='/api/products')
 app.register_blueprint(orders_bp, url_prefix='/api/orders')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
+app.register_blueprint(payments_bp, url_prefix='/api/admin/payments')
 app.register_blueprint(support_bp, url_prefix='/api/support')
 app.register_blueprint(coupons_bp, url_prefix='/api/coupons')
 app.register_blueprint(banners_bp, url_prefix='/api/banners')
@@ -111,6 +121,7 @@ app.register_blueprint(collections_bp, url_prefix='/api/collections')
 app.register_blueprint(gold_rate_bp, url_prefix='/api/gold-rate')
 app.register_blueprint(maintenance_bp, url_prefix='/api/maintenance')
 app.register_blueprint(high_demand_bp, url_prefix='/api/high-demand')
+
 
 from flask import request
 from backend.utils.helpers import generate_otp, verify_otp, is_valid_email

@@ -937,7 +937,7 @@ export const Navbar = () => {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.95 }}
                             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                            className="absolute right-4 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-slate-900 border border-[#F2E8D9] dark:border-slate-850 rounded-2xl shadow-xl z-50 overflow-hidden origin-top-right"
+                            className="absolute right-0 sm:right-4 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-white dark:bg-slate-900 border border-[#F2E8D9] dark:border-slate-850 rounded-2xl shadow-xl z-50 overflow-hidden origin-top-right"
                           >
                             <div className="px-3 py-2.5 bg-white dark:bg-slate-900 border-b border-[#F2E8D9]/50 dark:border-slate-800/80 flex items-center justify-between">
                               <div className="flex items-center gap-1.5">
@@ -1138,7 +1138,7 @@ export const Navbar = () => {
                             initial={{ opacity: 0, y: 8, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                            className="absolute right-0 mt-2 w-56 bg-[#0d1b2a] border border-[rgba(212,167,95,0.30)] rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] py-2 z-50 origin-top-right overflow-hidden"
+                            className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-32px)] bg-[#0d1b2a] border border-[rgba(212,167,95,0.30)] rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] py-2 z-50 origin-top-right overflow-hidden"
                           >
                             <div className="px-4 py-2.5 border-b border-[rgba(212,167,95,0.18)]">
                               <p className="text-[10px] text-[#D4A75F] font-bold uppercase tracking-wider">{language === 'hi' ? 'पंजीकृत ईमेल' : 'Signed in as'}</p>

@@ -775,8 +775,10 @@ export const AdminDashboard = () => {
   };
 
   const getCategoryData = () => {
-    const categories = ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Bridal Collection'];
-    return categories.map(cat => {
+    const categoryNames = categoriesList && categoriesList.length > 0
+      ? categoriesList.map(c => c.name)
+      : Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+    return categoryNames.map(cat => {
       const filtered = products.filter(p => p.category === cat);
       const count = filtered.length;
       const value = filtered.reduce((sum, p) => sum + (p.price * p.stock), 0);
@@ -1321,6 +1323,7 @@ export const AdminDashboard = () => {
       await axios.put(`${API_BASE_URL}/products/${editingProduct._id}`, {
         name: editingProduct.name,
         category: editingProduct.category,
+        collection: editingProduct.collection || '',
         price: parseFloat(editingProduct.price),
         discount: parseInt(editingProduct.discount) || 0,
         stock: parseInt(editingProduct.stock),
@@ -1338,6 +1341,7 @@ export const AdminDashboard = () => {
       alert("Product updated successfully!");
       setEditingProduct(null);
       fetchProducts();
+      if (typeof fetchCollections === 'function') fetchCollections();
     } catch (err) {
       console.error(err);
       alert("Failed to update product details.");
@@ -1796,13 +1800,7 @@ export const AdminDashboard = () => {
                           </option>
                         ))
                       ) : (
-                        <>
-                          <option value="Rings">{translateCategory("Rings", editFormLang)}</option>
-                          <option value="Necklaces">{translateCategory("Necklaces", editFormLang)}</option>
-                          <option value="Earrings">{translateCategory("Earrings", editFormLang)}</option>
-                          <option value="Bracelets">{translateCategory("Bracelets", editFormLang)}</option>
-                          <option value="Bridal Collection">{translateCategory("Bridal Collection", editFormLang)}</option>
-                        </>
+                        <option value="">No categories available</option>
                       )}
                     </select>
                   </div>
@@ -2086,13 +2084,7 @@ export const AdminDashboard = () => {
                           </option>
                         ))
                       ) : (
-                        <>
-                          <option value="Rings">{translateCategory("Rings", formLang)}</option>
-                          <option value="Necklaces">{translateCategory("Necklaces", formLang)}</option>
-                          <option value="Earrings">{translateCategory("Earrings", formLang)}</option>
-                          <option value="Bracelets">{translateCategory("Bracelets", formLang)}</option>
-                          <option value="Bridal Collection">{translateCategory("Bridal Collection", formLang)}</option>
-                        </>
+                        <option value="">No categories available</option>
                       )}
                     </select>
                   </div>

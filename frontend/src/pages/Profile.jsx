@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
   User, Settings, Mail, Phone, MapPin, Key, LogOut, Package, ShoppingBag, 
   Heart, Bookmark, ChevronDown, ChevronUp, Download, Clock, Check, X, ShieldAlert,
-  Globe
+  Globe, Trash2
 } from 'lucide-react';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
@@ -76,6 +76,30 @@ export const Profile = () => {
   const [langLoading, setLangLoading] = useState(false);
   const [langMessage, setLangMessage] = useState('');
   const [langError, setLangError] = useState('');
+
+  // Account Deletion states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState('');
+
+  const handleDeleteAccount = async () => {
+    if (!token) return;
+    setIsDeletingAccount(true);
+    setDeleteAccountError('');
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      await axios.delete(`${API_BASE_URL}/auth/delete-account`, config);
+      setShowDeleteModal(false);
+      logout();
+      navigate('/');
+    } catch (err) {
+      console.error("Failed to delete account:", err);
+      setDeleteAccountError(err.response?.data?.message || "Failed to delete account. Please try again.");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
 
   // Orders states
   const [orders, setOrders] = useState([]);
@@ -714,6 +738,30 @@ export const Profile = () => {
               </form>
             </div>
 
+            {/* 5. Danger Zone */}
+            <div className="bg-white dark:bg-slate-900 border border-rose-200/80 dark:border-rose-900/50 rounded-3xl p-6 shadow-sm">
+              <div className="flex items-center space-x-2.5 mb-4 border-b border-rose-100 dark:border-rose-900/40 pb-3">
+                <ShieldAlert className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Danger Zone</h3>
+              </div>
+              
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+                Permanently delete your account and personal information. Your completed orders and payment records will be retained for business and audit purposes.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteAccountError('');
+                  setShowDeleteModal(true);
+                }}
+                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Delete My Account</span>
+              </button>
+            </div>
+
           </div>
 
           {/* RIGHT SIDE: My Orders, Wishlist, Buy Requests (5 Columns) */}
@@ -922,6 +970,61 @@ export const Profile = () => {
         </div>
 
       </div>
+
+      {/* Account Deletion Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-red-50 dark:bg-red-950/50 rounded-2xl text-red-600 dark:text-red-400">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                Delete Your Account?
+              </h3>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+              Are you sure you want to permanently delete your account? This action cannot be undone. Your profile and personal information will be removed, but your completed orders and payment records will be retained for business and audit purposes.
+            </p>
+
+            {deleteAccountError && (
+              <div className="bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900 text-red-650 dark:text-red-400 p-3 rounded-xl text-xs font-semibold mb-4 text-center">
+                {deleteAccountError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteAccountError('');
+                }}
+                disabled={isDeletingAccount}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center space-x-2"
+              >
+                {isDeletingAccount ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete My Account</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1801,8 +1801,10 @@ export const AdminControl = () => {
   };
 
   const getCategoryData = () => {
-    const categories = ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Bridal Collection'];
-    return categories.map(cat => {
+    const categoryNames = adminCategories && adminCategories.length > 0
+      ? adminCategories.map(c => c.name)
+      : Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+    return categoryNames.map(cat => {
       const filtered = products.filter(p => p.category === cat);
       const count = filtered.length;
       const value = filtered.reduce((sum, p) => sum + (p.price * p.stock), 0);
@@ -4570,13 +4572,7 @@ export const AdminControl = () => {
                             </option>
                           ))
                         ) : (
-                          <>
-                            <option value="Rings">{translateCategory("Rings", editFormLang)}</option>
-                            <option value="Necklaces">{translateCategory("Necklaces", editFormLang)}</option>
-                            <option value="Earrings">{translateCategory("Earrings", editFormLang)}</option>
-                            <option value="Bracelets">{translateCategory("Bracelets", editFormLang)}</option>
-                            <option value="Bridal Collection">{translateCategory("Bridal Collection", editFormLang)}</option>
-                          </>
+                          <option value="">No categories available</option>
                         )}
                       </select>
                     </div>
@@ -4859,13 +4855,7 @@ export const AdminControl = () => {
                             </option>
                           ))
                         ) : (
-                          <>
-                            <option value="Rings">{translateCategory("Rings", formLang)}</option>
-                            <option value="Necklaces">{translateCategory("Necklaces", formLang)}</option>
-                            <option value="Earrings">{translateCategory("Earrings", formLang)}</option>
-                            <option value="Bracelets">{translateCategory("Bracelets", formLang)}</option>
-                            <option value="Bridal Collection">{translateCategory("Bridal Collection", formLang)}</option>
-                          </>
+                          <option value="">No categories available</option>
                         )}
                       </select>
                     </div>

@@ -1749,6 +1749,8 @@ export const AdminDashboard = () => {
                   handleOpenOrdersModal={handleOpenOrdersModal}
                   handleOpenAnalyticsModal={handleOpenAnalyticsModal}
                   handleDeleteProduct={handleDeleteProduct}
+                  setIsAddModalOpen={setIsAddModalOpen}
+                  setIsAddImagesOpen={setIsAddImagesOpen}
                 />
               )}
 

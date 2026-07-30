@@ -42,7 +42,7 @@ class OrderModel(db.Model):
     
     # Relationships
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan', lazy=True)
-    transaction = db.relationship('TransactionModel', primaryjoin="foreign(TransactionModel.order_id) == OrderModel.order_id", uselist=False, viewonly=True)
+    transaction = db.relationship('TransactionModel', primaryjoin="foreign(TransactionModel.order_id) == OrderModel.id", uselist=False, viewonly=True)
 
 
     def to_dict(self):

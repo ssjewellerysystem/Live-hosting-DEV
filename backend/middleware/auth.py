@@ -91,15 +91,16 @@ def admin_required(f):
             
         try:
             data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            if data.get("is_admin", False) is True:
-                # Valid token containing admin flag bypasses ObjectId lookup
-                return f(*args, **kwargs)
-                
-            current_user = UserModel.find_by_id(data['user_id'])
-            if not current_user or not current_user.get("is_admin", False):
-                return jsonify({"message": "Access denied! Admin privileges required."}), 403
         except Exception as e:
             return jsonify({"message": "Access denied! Invalid authentication token."}), 403
+            
+        if data.get("is_admin", False) is True:
+            # Valid token containing admin flag bypasses ObjectId lookup
+            return f(*args, **kwargs)
+            
+        current_user = UserModel.find_by_id(data.get('user_id'))
+        if not current_user or not current_user.get("is_admin", False):
+            return jsonify({"message": "Access denied! Admin privileges required."}), 403
             
         return f(*args, **kwargs)
         

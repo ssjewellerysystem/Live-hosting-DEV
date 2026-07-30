@@ -312,8 +312,13 @@ def get_user_orders(current_user):
         from backend.utils.pagination import parse_pagination_params
         p_num, p_limit = parse_pagination_params()
         orders = OrderModel.find_by_user_id(current_user["_id"], page=p_num, limit=p_limit)
+        print(f"[DEBUG Customer API] User: {current_user.get('_id')} paginated orders response generated.")
         return jsonify(orders), 200
     orders = OrderModel.find_by_user_id(current_user["_id"])
+    print(f"[DEBUG Customer API] User: {current_user.get('_id')} returned {len(orders)} orders.")
+    for o in orders:
+        if isinstance(o, dict):
+            print(f"[DEBUG Customer API Order] order_id: '{o.get('order_id')}', tracking_id: '{o.get('tracking_id')}', tracking_url: '{o.get('tracking_url')}'")
     return jsonify(orders), 200
 
 @orders_bp.route('/all', methods=['GET'])
@@ -339,6 +344,8 @@ def update_order_status(id):
     carrier = data.get("carrier")
     tracking_id = data.get("tracking_id")
     tracking_url = data.get("tracking_url")
+    
+    print(f"[DEBUG Admin Save] Received update status for order '{id}': status='{status}', tracking_id='{tracking_id}', tracking_url='{tracking_url}'")
     
     if not status:
         return jsonify({"message": "Please provide the status parameter."}), 400
@@ -422,6 +429,8 @@ def update_order_tracking(id):
     tracking_url = data.get("tracking_url")
     tracking_id = data.get("tracking_id")
     carrier = data.get("carrier")
+    
+    print(f"[DEBUG Admin Save Tracking] Received update tracking for order '{id}': tracking_id='{tracking_id}', tracking_url='{tracking_url}'")
     
     if not tracking_url or not str(tracking_url).strip():
         return jsonify({"message": "Tracking URL is required."}), 400

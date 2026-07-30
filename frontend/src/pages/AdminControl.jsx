@@ -4064,73 +4064,109 @@ export const AdminControl = () => {
 
             {/* TAB CONTENT: ORDERS MANAGEMENT */}
             {activeTab === 'orders' && (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-x-auto">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm">
                 <h3 className="text-base font-bold mb-4">Customer Orders list ({orders.length})</h3>
 
-                <table className="w-full text-left text-xs min-w-[650px]">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase font-bold">
-                      <th className="py-2.5">Order ID</th>
-                      <th className="py-2.5">Date</th>
-                      <th className="py-2.5">Total Amount</th>
-                      <th className="py-2.5">Customer / Address</th>
-                      <th className="py-2.5">Status</th>
-                      <th className="py-2.5">Update Status</th>
-                      <th className="py-2.5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
-                    {orders.map(o => (
-                      <tr key={o._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20">
-                        <td className="py-3.5 font-mono font-bold text-slate-700 dark:text-slate-300">{o.order_id}</td>
-                        <td className="py-3.5 text-slate-500 admin-datetime-text">{formatTimestamp(o.created_at)}</td>
-                        <td className="py-3.5 font-bold text-slate-800 dark:text-slate-100 price-amount">₹{formatPrice(o.total_amount)}</td>
-                        <td className="py-3.5 max-w-[200px] truncate text-slate-550" title={o.shipping_address?.address}>
-                          {o.shipping_address?.name} - {o.shipping_address?.address}, {o.shipping_address?.city}
-                        </td>
-                        <td className="py-3.5">
-                          <span className={`px-[12px] py-[4px] rounded-full text-[10px] font-semibold border shadow-sm ${(o.status || '').toLowerCase() === 'pending'
-                              ? 'status-badge-pending'
-                              : (o.status || '').toLowerCase() === 'processing' || (o.status || '').toLowerCase() === 'confirmed' || (o.status || '').toLowerCase() === 'packed'
-                                ? 'bg-[#3B82F6] text-white border-[#2563EB]'
-                                : (o.status || '').toLowerCase() === 'shipped' || (o.status || '').toLowerCase() === 'dispatched'
+                <div className="overflow-x-auto scrollbar-thin">
+                  <table className="w-full text-center text-xs min-w-[780px] align-middle">
+                    <thead>
+                      <tr className="border-b border-slate-200/80 dark:border-slate-800 text-slate-400 uppercase font-bold text-[11px] tracking-wider">
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[120px]">Order ID</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[120px]">Date</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[120px]">Total Amount</th>
+                        <th className="py-3 px-4 text-center min-w-[180px]">Customer / Address</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[140px]">Status</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[150px]">Update Status</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                      {orders.map(o => {
+                        const renderOrderDate = (dateInput) => {
+                          if (!dateInput) return null;
+                          const d = new Date(dateInput);
+                          if (isNaN(d.getTime())) {
+                            return <span className="whitespace-nowrap">{dateInput}</span>;
+                          }
+                          const day = String(d.getDate()).padStart(2, '0');
+                          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                          const month = months[d.getMonth()];
+                          const year = d.getFullYear();
+                          let hours = d.getHours();
+                          const ampm = hours >= 12 ? 'PM' : 'AM';
+                          hours = hours % 12;
+                          hours = hours ? hours : 12;
+                          const hoursStr = String(hours).padStart(2, '0');
+                          const minutes = String(d.getMinutes()).padStart(2, '0');
+
+                          return (
+                            <div className="flex flex-col items-center justify-center whitespace-nowrap">
+                              <span className="font-bold text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap">{`${day} ${month} ${year}`}</span>
+                              <span className="text-[10px] font-medium text-slate-400 dark:text-slate-400 whitespace-nowrap mt-0.5">{`${hoursStr}:${minutes} ${ampm}`}</span>
+                            </div>
+                          );
+                        };
+
+                        return (
+                          <tr key={o._id} className="hover:bg-slate-50/70 dark:hover:bg-slate-850/30 transition-colors align-middle">
+                            <td className="py-3.5 px-4 font-mono font-bold text-slate-800 dark:text-slate-100 text-center whitespace-nowrap">
+                              {o.order_id}
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              {renderOrderDate(o.created_at)}
+                            </td>
+                            <td className="py-3.5 px-4 font-extrabold text-slate-900 dark:text-white price-amount text-center whitespace-nowrap">
+                              ₹{formatPrice(o.total_amount)}
+                            </td>
+                            <td className="py-3.5 px-4 max-w-[200px] truncate text-slate-600 dark:text-slate-300 text-center" title={o.shipping_address?.address}>
+                              {o.shipping_address?.name} - {o.shipping_address?.address}, {o.shipping_address?.city}
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-extrabold border shadow-2xs whitespace-nowrap min-w-[115px] text-center ${
+                                (o.status || '').toLowerCase() === 'pending'
+                                  ? 'status-badge-pending'
+                                  : (o.status || '').toLowerCase() === 'processing' || (o.status || '').toLowerCase() === 'confirmed' || (o.status || '').toLowerCase() === 'packed'
+                                  ? 'bg-[#3B82F6] text-white border-[#2563EB]'
+                                  : (o.status || '').toLowerCase() === 'shipped' || (o.status || '').toLowerCase() === 'dispatched'
                                   ? 'bg-[#06B6D4] text-white border-[#0891B2]'
                                   : (o.status || '').toLowerCase() === 'out for delivery'
-                                    ? 'bg-[#8B5CF6] text-white border-[#7C3AED]'
-                                    : (o.status || '').toLowerCase() === 'delivered'
-                                      ? 'status-badge-success'
-                                      : (o.status || '').toLowerCase() === 'cancelled'
-                                        ? 'bg-[#EF4444] text-white border-[#DC2626]'
-                                        : 'bg-[#6B7280] text-white border-[#4B5563]'
-                            }`}>
-                            {o.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5">
-                          <select
-                            value={o.status}
-                            onChange={(e) => handleOrderStatusUpdate(o._id, e.target.value)}
-                            className="text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-855 px-2 py-1 rounded-lg focus:outline-none text-slate-850 dark:text-slate-100"
-                          >
-                            <option value="Pending">Pending</option>
-                            <option value="Dispatched">Dispatched</option>
-                            <option value="Out for Delivery">Out for Delivery</option>
-                            <option value="Delivered">Delivered</option>
-                          </select>
-                        </td>
-                        <td className="py-3.5 text-right">
-                          <button
-                            onClick={() => setSelectedOrder(o)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-[#D4A75F]/10 dark:hover:bg-[#D4A75F]/15 dark:text-[#D4A75F] rounded-lg transition-colors font-bold"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>Details</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                                  ? 'bg-[#8B5CF6] text-white border-[#7C3AED]'
+                                  : (o.status || '').toLowerCase() === 'delivered'
+                                  ? 'status-badge-success'
+                                  : (o.status || '').toLowerCase() === 'cancelled'
+                                  ? 'bg-[#EF4444] text-white border-[#DC2626]'
+                                  : 'bg-[#6B7280] text-white border-[#4B5563]'
+                              }`}>
+                                {o.status}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <select
+                                value={o.status}
+                                onChange={(e) => handleOrderStatusUpdate(o._id, e.target.value)}
+                                className="text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4A75F]/30 text-slate-800 dark:text-slate-100 font-medium cursor-pointer mx-auto shadow-2xs"
+                              >
+                                <option value="Pending">Pending</option>
+                                <option value="Dispatched">Dispatched</option>
+                                <option value="Out for Delivery">Out for Delivery</option>
+                                <option value="Delivered">Delivered</option>
+                              </select>
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <button
+                                onClick={() => setSelectedOrder(o)}
+                                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-[#D4A75F]/15 dark:hover:bg-[#D4A75F]/25 dark:text-[#D4A75F] border border-emerald-200/60 dark:border-[#D4A75F]/30 rounded-xl transition-all font-bold text-xs shadow-2xs active:scale-95 cursor-pointer"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>Details</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
@@ -4518,47 +4554,49 @@ export const AdminControl = () => {
                   <span>Product Audit Trail Logs ({auditLogs.length})</span>
                 </h3>
 
-                <table className="w-full text-left text-xs min-w-[800px]">
+                <table className="w-full text-left text-xs min-w-[800px] border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase font-bold">
-                      <th className="py-2.5">Date & Time (IST)</th>
-                      <th className="py-2.5">Product</th>
-                      <th className="py-2.5">Admin ID</th>
-                      <th className="py-2.5">Action Type</th>
-                      <th className="py-2.5">Field Changed</th>
-                      <th className="py-2.5 text-right">Old Value</th>
-                      <th className="py-2.5 text-right">New Value</th>
+                    <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase font-bold align-middle">
+                      <th className="py-2.5 px-3 text-left align-middle">Date & Time (IST)</th>
+                      <th className="py-2.5 px-3 text-left align-middle">Product</th>
+                      <th className="py-2.5 px-3 text-center align-middle">Admin ID</th>
+                      <th className="py-2.5 px-3 text-center align-middle">Action Type</th>
+                      <th className="py-2.5 px-3 text-center align-middle">Field Changed</th>
+                      <th className="py-2.5 px-3 text-center align-middle">Old Value</th>
+                      <th className="py-2.5 px-3 text-center align-middle">New Value</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
                     {auditLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20">
-                        <td className="py-3.5 text-slate-500">
+                      <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20 h-12 align-middle">
+                        <td className="py-3.5 px-3 text-left align-middle text-slate-500 dark:text-slate-400 admin-timestamp-text whitespace-nowrap">
                           {log.created_at ? new Date(log.created_at).toLocaleString() : "N/A"}
                         </td>
-                        <td className="py-3.5 font-bold text-slate-800 dark:text-slate-100">
+                        <td className="py-3.5 px-3 text-left align-middle font-bold text-slate-800 dark:text-white">
                           {log.product_name}
                         </td>
-                        <td className="py-3.5 text-slate-500 font-mono">
+                        <td className="py-3.5 px-3 text-center align-middle text-slate-500 dark:text-white font-mono">
                           {log.admin_id || "N/A"}
                         </td>
-                        <td className="py-3.5">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${log.action_type?.includes("Creation")
-                              ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
-                              : log.action_type?.includes("Delete")
-                                ? 'text-rose-500 bg-rose-500/10 border-rose-500/20'
-                                : 'text-amber-500 bg-amber-500/10 border-amber-500/20'
-                            }`}>
-                            {log.action_type}
-                          </span>
+                        <td className="py-3.5 px-3 text-center align-middle">
+                          <div className="flex items-center justify-center">
+                            <span className={`inline-flex items-center justify-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold border w-auto ${log.action_type?.includes("Creation")
+                                ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
+                                : log.action_type?.includes("Delete")
+                                  ? 'text-rose-500 bg-rose-500/10 border-rose-500/20'
+                                  : 'text-amber-500 bg-amber-500/10 border-amber-500/20'
+                              }`}>
+                              {log.action_type}
+                            </span>
+                          </div>
                         </td>
-                        <td className="py-3.5 text-slate-500">
+                        <td className="py-3.5 px-3 text-center align-middle text-slate-500 dark:text-white">
                           {log.field_name || "N/A"}
                         </td>
-                        <td className="py-3.5 text-right text-rose-500 max-w-[150px] truncate" title={log.old_value}>
+                        <td className="py-3.5 px-3 text-center align-middle text-rose-500 dark:text-rose-400 max-w-[150px] truncate mx-auto" title={log.old_value}>
                           {log.old_value || "N/A"}
                         </td>
-                        <td className="py-3.5 text-right text-emerald-500 max-w-[150px] truncate" title={log.new_value}>
+                        <td className="py-3.5 px-3 text-center align-middle text-emerald-500 dark:text-emerald-400 max-w-[150px] truncate mx-auto" title={log.new_value}>
                           {log.new_value || "N/A"}
                         </td>
                       </tr>

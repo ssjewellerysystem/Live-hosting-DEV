@@ -147,9 +147,9 @@ export const HomeUserManagement = ({
                 setUserFilter(f.value);
                 setUserPage(1);
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${userFilter === f.value
-                  ? 'bg-slate-900 border-slate-900 text-white dark:bg-white dark:border-white dark:text-slate-900 shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-850'
+              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer ${userFilter === f.value
+                  ? 'bg-[#D4A75F]/15 border-[#D4A75F] text-[#D4A75F] dark:bg-[#D4A75F]/20 dark:border-[#D4A75F] dark:text-[#FFD700] shadow-[0_0_12px_rgba(212,167,95,0.25)] scale-[1.02]'
+                  : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800/80 dark:text-slate-400 dark:hover:bg-slate-850 dark:hover:text-slate-200'
                 }`}
             >
               {f.label}

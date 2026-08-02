@@ -899,10 +899,10 @@ export const AdminDashboard = () => {
     setSelectedAnalyticsProduct(product);
     setProductAnalyticsData(null);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/admin/analytics/product/${product._id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const rawToken = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      const token = (rawToken && rawToken !== 'null' && rawToken !== 'undefined') ? rawToken : null;
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const response = await fetch(`${API_BASE_URL}/admin/analytics/product/${product._id}`, { headers });
       const data = await response.json();
       if (response.ok) {
         setProductAnalyticsData(data);
@@ -3068,20 +3068,10 @@ export const AdminDashboard = () => {
                     </div>
                   ))}
                 </div>
-
-                {/* Chart Image */}
-                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 p-4 rounded-3xl flex flex-col justify-center items-center">
-                  <span className="text-xs font-bold text-slate-500 mb-2">Live Matplotlib Chart Report</span>
-                  <img 
-                    src={`${SERVER_BASE_URL}${productAnalyticsData.chart_url}`}
-                    alt="Sales Trend Chart" 
-                    className="max-h-[280px] w-auto object-contain rounded-xl"
-                  />
-                </div>
               </div>
             ) : (
               <div className="flex-grow flex items-center justify-center py-12 text-slate-400 text-xs">
-                Generating live Pandas & Matplotlib reports...
+                Loading product analytics data...
               </div>
             )}
           </div>

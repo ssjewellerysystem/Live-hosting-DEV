@@ -238,8 +238,16 @@ export const Navbar = () => {
 
   const handleLogoClick = (e) => {
     setMobileMenuOpen(false);
-    if (location.pathname === '/' || location.pathname === '') {
+    setSearchVal('');
+    if (location.pathname === '/' && (!location.search || location.search === '')) {
       e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    } else {
+      e.preventDefault();
+      navigate('/');
       window.scrollTo({
         top: 0,
         behavior: 'smooth'

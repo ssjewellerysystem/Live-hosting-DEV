@@ -262,7 +262,8 @@ def create_order(current_user):
     # 12. Post-commit workflows (non-critical notifications/emails)
     try:
         # Send order confirmation email
-        send_order_confirmation(current_user.get("email", f"{current_user.get('mobile', 'user')}@SSJewellery.com"), order)
+        recipient_email = current_user.get("email") or (shipping_address or {}).get("email") or f"{current_user.get('mobile', 'user')}@SSJewellery.com"
+        send_order_confirmation(recipient_email, order)
     except Exception as email_ex:
         print("Error sending order confirmation email:", email_ex)
         

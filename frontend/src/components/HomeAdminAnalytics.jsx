@@ -107,15 +107,17 @@ export const HomeAdminAnalytics = ({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md flex items-center gap-4 col-span-1 sm:col-span-2 lg:col-span-1">
-          <div className="bg-amber-500/10 p-3 rounded-xl text-amber-500">
-            <DollarSign className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Total Revenue</span>
-            <span className="text-xl font-black text-slate-855 dark:text-white mt-0.5 block price-amount">
-              ₹{formatPrice(usersAnalytics?.total_revenue ?? 0)}
-            </span>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm transition-all hover:shadow-md flex items-center justify-between gap-3 overflow-hidden col-span-2 sm:col-span-2 lg:col-span-1">
+          <div className="min-w-0 flex-1 flex items-center gap-3">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl text-amber-500 flex-shrink-0">
+              <DollarSign className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider truncate">Total Revenue</span>
+              <span className="text-lg sm:text-xl font-black text-slate-855 dark:text-white mt-0.5 block price-amount truncate">
+                ₹{formatPrice(usersAnalytics?.total_revenue ?? 0)}
+              </span>
+            </div>
           </div>
         </div>
       </div>

@@ -13,6 +13,9 @@ import { MaintenanceButton } from '../components/admin/MaintenanceButton';
 import { formatPrice } from '../utils/priceFormatter';
 import { translateCategory } from '../utils/categoryTranslations';
 import { TrackingInfoModal } from '../components/admin/TrackingInfoModal';
+import { CategoryBannerManagement } from '../components/admin/CategoryBannerManagement';
+import { CollectionBannerManagement } from '../components/admin/CollectionBannerManagement';
+
 
 const AdminPaymentManagement = React.lazy(() => import('../components/AdminPaymentManagement').then(m => ({ default: m.AdminPaymentManagement })));
 
@@ -1922,10 +1925,10 @@ export const AdminControl = () => {
     setSelectedAnalyticsProduct(product);
     setProductAnalyticsData(null);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/admin/analytics/product/${product._id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const rawToken = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      const token = (rawToken && rawToken !== 'null' && rawToken !== 'undefined') ? rawToken : null;
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const response = await fetch(`${API_BASE_URL}/admin/analytics/product/${product._id}`, { headers });
       const data = await response.json();
       if (response.ok) {
         setProductAnalyticsData(data);
@@ -2451,8 +2454,8 @@ export const AdminControl = () => {
         <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h4 className="text-lg font-bold text-slate-850 dark:text-slate-100">Category Management</h4>
-              <p className="text-xs text-slate-400">Add, edit translations, and change custom category cover images.</p>
+              <h4 className="text-lg font-bold text-slate-900 dark:text-white">Category Management</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">Add, edit translations, and change custom category cover images.</p>
             </div>
             <button
               onClick={() => {
@@ -2462,52 +2465,52 @@ export const AdminControl = () => {
                 setCategorySuccess('');
                 setShowCategoryModal(true);
               }}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>Add Category</span>
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto max-w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                  <th className="pb-3 pl-2">Cover</th>
-                  <th className="pb-3">System Name</th>
-                  <th className="pb-3">English Name</th>
-                  <th className="pb-3">Hindi Name</th>
-                  <th className="pb-3 text-right pr-2">Actions</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-300 font-extrabold whitespace-nowrap">
+                  <th className="pb-3.5 pl-4 pr-6">Cover</th>
+                  <th className="pb-3.5 px-4">System Name</th>
+                  <th className="pb-3.5 px-4">English Name</th>
+                  <th className="pb-3.5 px-4">Hindi Name</th>
+                  <th className="pb-3.5 pr-4 pl-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/50 dark:divide-slate-800/50">
                 {safeCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={5} className="py-8 text-center text-slate-500 dark:text-slate-300 text-xs font-medium">
                       No categories found.
                     </td>
                   </tr>
                 ) : (
                   safeCategories.map((cat) => (
                     <tr key={cat.id || cat.name} className="text-sm hover:bg-slate-50/50 dark:hover:bg-slate-850/30">
-                      <td className="py-3 pl-2">
+                      <td className="py-3.5 pl-4 pr-6 whitespace-nowrap">
                         {cat.image_url && typeof cat.image_url === 'string' && cat.image_url !== '/logo.svg' && !cat.image_url.includes('cat_') ? (
                           <img
                             src={cat.image_url}
                             alt={cat.name || 'Category'}
-                            className="w-10 h-10 object-cover rounded-full border border-slate-200 dark:border-slate-800"
+                            className="w-10 h-10 object-cover rounded-full border border-slate-200 dark:border-slate-700 shadow-sm"
                             onError={(e) => { e.target.style.display = 'none'; }}
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1B0B26] to-[#3F1D5A] border border-[#D4A75F]/30 flex items-center justify-center text-[#D4A75F]">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1B0B26] to-[#3F1D5A] border border-[#D4A75F]/40 flex items-center justify-center text-[#D4A75F] shadow-sm">
                             <Sparkles className="w-4 h-4 animate-pulse" />
                           </div>
                         )}
                       </td>
-                      <td className="py-3 font-semibold text-slate-850 dark:text-slate-200">{cat.name}</td>
-                      <td className="py-3 text-slate-600 dark:text-slate-400">{cat.name_en || cat.name}</td>
-                      <td className="py-3 text-slate-600 dark:text-slate-400">{cat.name_hi || cat.name}</td>
-                      <td className="py-3 text-right pr-2">
+                      <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white whitespace-nowrap">{cat.name}</td>
+                      <td className="py-3.5 px-4 text-slate-700 dark:text-slate-200 font-medium whitespace-nowrap">{cat.name_en || cat.name}</td>
+                      <td className="py-3.5 px-4 text-slate-700 dark:text-slate-200 font-medium whitespace-nowrap">{cat.name_hi || cat.name}</td>
+                      <td className="py-3.5 pr-4 pl-4 text-right whitespace-nowrap">
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => {
@@ -2522,13 +2525,13 @@ export const AdminControl = () => {
                               setCategorySuccess('');
                               setShowCategoryModal(true);
                             }}
-                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all"
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg transition-all cursor-pointer"
                           >
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(cat.id)}
-                            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-400 hover:text-red-500 rounded-lg transition-all"
+                            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-400 hover:text-red-500 rounded-lg transition-all cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -2974,23 +2977,23 @@ export const AdminControl = () => {
         {/* SECTION 3: VIDEO SHOWCASE */}
         <form onSubmit={handleSaveHomepageSettings} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
           <div>
-            <h4 className="text-lg font-bold text-slate-850 dark:text-slate-100">Video Showcase Settings</h4>
-            <p className="text-xs text-slate-400">Change the dynamic background video URL or upload a custom video file.</p>
+            <h4 className="text-lg font-bold text-slate-900 dark:text-white">Video Showcase Settings</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">Change the dynamic background video URL or upload a custom video file.</p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Video File URL</label>
-              <div className="flex gap-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Video File URL</label>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
                 <input
                   type="text"
                   value={homepageSettings?.video_showcase_url || ''}
                   onChange={(e) => setHomepageSettings(prev => ({ ...prev, video_showcase_url: e.target.value }))}
                   placeholder="/golden-stage.mp4"
-                  className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                  className="w-full sm:flex-1 px-3 py-2 sm:px-4 sm:py-3 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 min-h-[38px] sm:min-h-[44px]"
                 />
-                <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all border border-slate-200 dark:border-slate-800">
-                  <Upload className="h-4 w-4" />
+                <label className="w-full sm:w-auto cursor-pointer bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl text-xs font-bold flex items-center justify-center sm:justify-start gap-1.5 transition-all border border-slate-200 dark:border-slate-800 whitespace-nowrap min-h-[38px] sm:min-h-[44px]">
+                  <Upload className="h-4 w-4 flex-shrink-0" />
                   <span>Upload Video</span>
                   <input
                     type="file"
@@ -3022,7 +3025,7 @@ export const AdminControl = () => {
             <button
               type="submit"
               disabled={homepageUpdating}
-              className="flex items-center gap-1.5 px-5 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-5 py-2.5 sm:py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
             >
               {homepageUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               <span>Save Video Showcase</span>
@@ -3184,9 +3187,17 @@ export const AdminControl = () => {
             </button>
           </div>
         </form>
+
+        {/* SECTION 5: CATEGORY BANNER MANAGEMENT */}
+        <CategoryBannerManagement categories={safeCategories} />
+
+        {/* SECTION 6: COLLECTION BANNER MANAGEMENT */}
+        <CollectionBannerManagement collections={safeCollections} />
       </div>
     );
   };
+
+
 
   if (!user || !isAdmin) {
     return (
@@ -3555,13 +3566,19 @@ export const AdminControl = () => {
                           }
                         ].map(card => {
                           const IconComponent = card.icon;
+                          const isTotalRevenue = card.label === "Total Revenue";
                           return (
-                            <div key={card.label} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{card.label}</span>
-                                <span className={`text-xl font-black mt-1 block ${card.color} ${card.label === "Total Revenue" ? "price-amount" : ""}`}>{card.val}</span>
+                            <div
+                              key={card.label}
+                              className={`bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm flex items-center justify-between gap-3 overflow-hidden ${
+                                isTotalRevenue ? "col-span-2 sm:col-span-1 lg:col-span-1" : "col-span-1"
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">{card.label}</span>
+                                <span className={`text-lg sm:text-xl font-black mt-0.5 block truncate ${card.color} ${isTotalRevenue ? "price-amount" : ""}`}>{card.val}</span>
                               </div>
-                              <div className={`${card.bgColor} p-2.5 rounded-xl ${card.color}`}>
+                              <div className={`${card.bgColor} p-2.5 rounded-xl ${card.color} flex-shrink-0 flex items-center justify-center`}>
                                 <IconComponent className="h-5 w-5" />
                               </div>
                             </div>
@@ -3722,26 +3739,6 @@ export const AdminControl = () => {
                           </div>
                         </div>
                       )}
-                    </div>
-
-                    {/* Matplotlib Charts Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4">
-                      {[
-                        { title: "Revenue Trend (30 Days)", img: overviewAnalytics.charts.revenue_trend },
-                        { title: "Top Selling Products", img: overviewAnalytics.charts.top_selling_products },
-                        { title: "Low Stock Inventory Analytics", img: overviewAnalytics.charts.low_stock_inventory }
-                      ].map(chart => (
-                        <div key={chart.title} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col items-center">
-                          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 self-start">{chart.title}</h4>
-                          <div className="w-full bg-slate-50 dark:bg-slate-955/60 border border-slate-105 dark:border-slate-850 p-2 rounded-2xl flex justify-start items-center overflow-x-auto">
-                            <img
-                              src={`${SERVER_BASE_URL}${chart.img}`}
-                              alt={chart.title}
-                              className="max-h-[220px] min-w-[500px] lg:min-w-0 w-auto object-contain rounded-lg"
-                            />
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 )}
@@ -4181,11 +4178,11 @@ export const AdminControl = () => {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-4 mb-6 gap-4">
                   <div>
-                    <h3 className="text-base font-bold flex items-center gap-2 text-slate-800 dark:text-slate-150">
+                    <h3 className="text-base font-bold flex items-center gap-2 text-slate-800 dark:text-white">
                       <Settings className="h-5 w-5 text-emerald-500" />
                       <span>Site Configuration</span>
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">Manage carousel banners, FAQs, and support links shown across the website.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">Manage carousel banners, FAQs, and support links shown across the website.</p>
                   </div>
                 </div>
 
@@ -4430,10 +4427,10 @@ export const AdminControl = () => {
                     ) : supportLinks.length === 0 ? (
                       <p className="text-slate-400 italic text-xs py-6 text-center">No support links found.</p>
                     ) : (
-                      <div className="border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden text-xs">
-                        <table className="w-full text-left">
+                      <div className="border border-slate-150 dark:border-slate-800 rounded-2xl overflow-x-auto max-w-full text-xs" style={{ WebkitOverflowScrolling: 'touch' }}>
+                        <table className="w-full min-w-[600px] text-left">
                           <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-150 dark:border-slate-800 text-slate-500 font-bold">
+                            <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-150 dark:border-slate-800 text-slate-500 font-bold whitespace-nowrap">
                               <th className="p-3">Title</th>
                               <th className="p-3">Icon</th>
                               <th className="p-3">Destination Link / Value</th>
@@ -4445,19 +4442,19 @@ export const AdminControl = () => {
                             {supportLinks.map((link) => {
                               return (
                                 <tr key={link.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
-                                  <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">{link.title}</td>
-                                  <td className="p-3 text-slate-500">
+                                  <td className="p-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{link.title}</td>
+                                  <td className="p-3 text-slate-500 whitespace-nowrap">
                                     <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-[10px]">
                                       {link.icon}
                                     </span>
                                   </td>
                                   <td className="p-3 font-mono text-slate-600 dark:text-slate-400 max-w-xs truncate">{link.url}</td>
-                                  <td className="p-3">
+                                  <td className="p-3 whitespace-nowrap">
                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${link.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
                                       {link.is_active ? 'Active' : 'Inactive'}
                                     </span>
                                   </td>
-                                  <td className="p-3 text-right">
+                                  <td className="p-3 text-right whitespace-nowrap">
                                     <div className="flex justify-end gap-1.5">
                                       <button
                                         onClick={() => startEditSupportLink(link)}
@@ -5697,20 +5694,10 @@ export const AdminControl = () => {
                       </div>
                     ))}
                   </div>
-
-                  {/* Chart Image */}
-                  <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 p-4 rounded-3xl flex flex-col justify-center items-center">
-                    <span className="text-xs font-bold text-slate-500 mb-2">Live Matplotlib Chart Report</span>
-                    <img
-                      src={`${SERVER_BASE_URL}${productAnalyticsData.chart_url}`}
-                      alt="Sales Trend Chart"
-                      className="max-h-[280px] w-auto object-contain rounded-xl"
-                    />
-                  </div>
                 </div>
               ) : (
                 <div className="flex-grow flex items-center justify-center py-12 text-slate-400 text-xs">
-                  Generating live Pandas & Matplotlib reports...
+                  Loading product analytics data...
                 </div>
               )}
             </div>

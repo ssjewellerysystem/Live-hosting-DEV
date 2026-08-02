@@ -1092,7 +1092,7 @@ export const MyOrders = () => {
                         badgeClass = 'bg-[#3F1D5A] text-white border-[#D4A75F] dark:bg-[#D4A75F] dark:border-[#D4A75F]/80 animate-pulse';
                         statusText = language === 'hi' ? 'खरीद के लिए उपलब्ध!' : 'Available for Purchase!';
                       } else if (req.status === 'Purchased') {
-                        badgeClass = 'bg-slate-100 text-slate-700 border-slate-205 dark:bg-slate-800 dark:text-slate-405 dark:border-slate-700';
+                        badgeClass = 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60 font-bold';
                         statusText = language === 'hi' ? 'खरीदा गया ✔' : 'Purchased ✔';
                       } else {
                         badgeClass = 'bg-slate-105 text-slate-750 border-slate-205 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-750';
@@ -1116,8 +1116,8 @@ export const MyOrders = () => {
                         >
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/50">
                             <div>
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold font-mono">{language === 'hi' ? 'अनुरोध' : 'REQUEST'} #{req.id}</span>
-                              <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-105 mt-0.5">{req.product_name}</h4>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-400 font-bold font-mono">{language === 'hi' ? 'अनुरोध' : 'REQUEST'} #{req.id}</span>
+                              <h4 className="text-sm font-extrabold text-slate-800 dark:text-white mt-0.5">{req.product_name}</h4>
                               {req.status === 'Confirmed' && (
                                 <div className="text-[11px] text-blue-600 dark:text-blue-400 font-extrabold mt-1 flex items-center gap-1">
                                   <span>✔</span> {language === 'hi' ? 'एडमिन द्वारा पुष्टि की गई' : 'Confirmed by Admin'}
@@ -1131,49 +1131,49 @@ export const MyOrders = () => {
 
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                             <div>
-                              <span className="text-slate-400 block mb-0.5">{language === 'hi' ? 'अनुरोधित मात्रा' : 'Quantity Requested'}</span>
-                              <span className="font-bold text-slate-805 dark:text-slate-200">{req.quantity} {language === 'hi' ? 'यूनिट' : 'units'}</span>
+                              <span className="text-slate-500 dark:text-slate-400 block mb-0.5">{language === 'hi' ? 'अनुरोधित मात्रा' : 'Quantity Requested'}</span>
+                              <span className="font-bold text-slate-800 dark:text-white">{req.quantity} {language === 'hi' ? 'यूनिट' : 'units'}</span>
                             </div>
                             {req.city && (
                               <div>
-                                <span className="text-slate-400 block mb-0.5">{language === 'hi' ? 'स्थान' : 'Location'}</span>
-                                <span className="font-bold text-slate-805 dark:text-slate-200 secondary-text">{req.city}</span>
+                                <span className="text-slate-500 dark:text-slate-400 block mb-0.5">{language === 'hi' ? 'स्थान' : 'Location'}</span>
+                                <span className="font-bold text-slate-800 dark:text-white">{req.city}</span>
                               </div>
                             )}
                             {variantStr && (
                               <div className="col-span-2">
-                                <span className="text-slate-400 block mb-0.5">{language === 'hi' ? 'विशेष विवरण' : 'Specifications'}</span>
-                                <span className="font-bold text-slate-805 dark:text-slate-200">{variantStr}</span>
+                                <span className="text-slate-500 dark:text-slate-400 block mb-0.5">{language === 'hi' ? 'विशेष विवरण' : 'Specifications'}</span>
+                                <span className="font-bold text-slate-800 dark:text-white">{variantStr}</span>
                               </div>
                             )}
                           </div>
 
                           {/* Approval Details */}
                           {hasDetails && (
-                            <div className="bg-slate-50 dark:bg-slate-955 p-4 rounded-xl border border-slate-100 dark:border-slate-900 space-y-2 text-xs">
+                            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
                               {req.expected_delivery_date && (
                                 <div className="flex justify-between">
-                                  <span className="text-slate-400">{language === 'hi' ? 'अपेक्षित डिलीवरी तिथि' : 'Expected Delivery Date'}</span>
-                                  <span className="font-bold text-slate-805 dark:text-slate-205">{req.expected_delivery_date}</span>
+                                  <span className="text-slate-500 dark:text-slate-300">{language === 'hi' ? 'अपेक्षित डिलीवरी तिथि' : 'Expected Delivery Date'}</span>
+                                  <span className="font-bold text-slate-800 dark:text-white">{req.expected_delivery_date}</span>
                                 </div>
                               )}
                               {req.expected_availability_date && (
                                 <div className="flex justify-between">
-                                  <span className="text-slate-400">{language === 'hi' ? 'अपेक्षित उपलब्धता तिथि' : 'Expected Availability Date'}</span>
-                                  <span className="font-bold text-slate-805 dark:text-slate-205">{req.expected_availability_date}</span>
+                                  <span className="text-slate-500 dark:text-slate-300">{language === 'hi' ? 'अपेक्षित उपलब्धता तिथि' : 'Expected Availability Date'}</span>
+                                  <span className="font-bold text-slate-800 dark:text-white">{req.expected_availability_date}</span>
                                 </div>
                               )}
                               {req.admin_note && (
-                                <div className="pt-2 border-t border-slate-100 dark:border-slate-900/60 mt-1">
-                                  <span className="text-slate-400 block mb-0.5">{language === 'hi' ? 'एडमिन संदेश' : 'Admin Message'}</span>
-                                  <p className="text-slate-700 dark:text-slate-300 italic font-medium">{req.admin_note}</p>
+                                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 mt-1">
+                                  <span className="text-slate-500 dark:text-slate-300 block mb-0.5">{language === 'hi' ? 'एडमिन संदेश' : 'Admin Message'}</span>
+                                  <p className="text-slate-700 dark:text-slate-200 italic font-medium">{req.admin_note}</p>
                                 </div>
                               )}
                             </div>
                           )}
 
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
-                            <span className="text-[10px] text-slate-400 font-medium">{language === 'hi' ? 'सबमिट किया गया' : 'Submitted on'} {req.created_date} {language === 'hi' ? 'को' : 'at'} {req.created_time}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{language === 'hi' ? 'सबमिट किया गया' : 'Submitted on'} {req.created_date} {language === 'hi' ? 'को' : 'at'} {req.created_time}</span>
                             
                             {/* Action Buttons */}
                             {isApproved && (

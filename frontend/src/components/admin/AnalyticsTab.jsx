@@ -218,7 +218,7 @@ export const AnalyticsTab = ({
               getLowStockProducts().map(p => (
                 <div key={p.id} className="p-3 border border-slate-100 dark:border-slate-850 hover:border-slate-200 dark:hover:border-slate-750 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl flex items-center justify-between transition-all">
                   <div className="max-w-[70%]">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-250 block truncate">{p.name}</span>
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">{p.name}</span>
                     <span className="text-[10px] font-bold text-slate-400 block mt-0.5">{p.category} • <span className="price-amount">₹{formatPrice(p.price)}</span></span>
                   </div>
                   <div className="text-right">

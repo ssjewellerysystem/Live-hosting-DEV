@@ -3527,7 +3527,7 @@ export const AdminControl = () => {
                         <BarChart3 className="h-5 w-5 text-emerald-500" />
                         <span>Admin Analytics Summary Cards</span>
                       </h2>
-                      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch">
                         {[
                           {
                             label: "Total Registered",
@@ -3570,16 +3570,20 @@ export const AdminControl = () => {
                           return (
                             <div
                               key={card.label}
-                              className={`bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm flex items-center justify-between gap-3 overflow-hidden ${
+                              className={`bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-3 sm:p-5 rounded-2xl shadow-sm flex items-center justify-between gap-2.5 sm:gap-3 overflow-hidden min-w-0 h-full ${
                                 isTotalRevenue ? "col-span-2 sm:col-span-1 lg:col-span-1" : "col-span-1"
                               }`}
                             >
                               <div className="min-w-0 flex-1">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">{card.label}</span>
-                                <span className={`text-lg sm:text-xl font-black mt-0.5 block truncate ${card.color} ${isTotalRevenue ? "price-amount" : ""}`}>{card.val}</span>
+                                <span className="text-[clamp(9px,2.3vw,10px)] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight sm:tracking-wider block truncate leading-tight">
+                                  {card.label}
+                                </span>
+                                <span className={`text-[clamp(16px,4vw,20px)] sm:text-xl font-black mt-0.5 block truncate leading-none ${card.color} ${isTotalRevenue ? "price-amount" : ""}`}>
+                                  {card.val}
+                                </span>
                               </div>
-                              <div className={`${card.bgColor} p-2.5 rounded-xl ${card.color} flex-shrink-0 flex items-center justify-center`}>
-                                <IconComponent className="h-5 w-5" />
+                              <div className={`${card.bgColor} p-2 sm:p-2.5 rounded-xl ${card.color} flex-shrink-0 shrink-0 flex items-center justify-center`}>
+                                <IconComponent className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                               </div>
                             </div>
                           );
@@ -3766,7 +3770,7 @@ export const AdminControl = () => {
                         getLowStockProducts().map(p => (
                           <div key={p.id} className="p-3 border border-slate-100 dark:border-slate-850 hover:border-slate-200 dark:hover:border-slate-750 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl flex items-center justify-between transition-all">
                             <div className="max-w-[70%]">
-                              <span className="text-xs font-bold text-slate-800 dark:text-slate-250 block truncate">{p.name}</span>
+                              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">{p.name}</span>
                               <span className="text-[10px] font-bold text-slate-400 block mt-0.5">{p.category} • <span className="price-amount">₹{formatPrice(p.price)}</span></span>
                             </div>
                             <div className="text-right">

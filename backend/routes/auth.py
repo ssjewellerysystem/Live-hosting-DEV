@@ -13,6 +13,8 @@ from sqlalchemy import func
 from backend.extensions import db
 from backend.models.user import UserModel, DeliveryAddress
 from backend.models.otp_verification import OTPVerification
+from backend.models.user_attempt import UserAttempt
+from backend.models.user_login_attempt import UserLoginAttempt
 from backend.utils.helpers import generate_otp, verify_otp, is_valid_email, is_allowed_email_domain, normalize_email
 from backend.utils.email_service import send_email, send_forgot_password_otp, send_registration_otp
 from backend.utils.timezone import format_iso_datetime, get_ist_time
@@ -81,7 +83,7 @@ def login():
     from backend.models.admin import AdminModel
     admin_record = AdminModel.query.filter(
         (AdminModel.username == str(raw_email).strip()) | 
-        (func.lower(AdminModel.username) == str(raw_email).strip().lower())
+        (AdminModel.username == str(raw_email).strip().lower())
     ).first()
 
     if admin_record:
@@ -143,9 +145,30 @@ def login():
         if user_obj.is_blocked:
             return jsonify({"message": "Your account has been suspended by the administrator."}), 403
             
+        # Check login rate limit & account lock status BEFORE password verification
+        is_locked, attempt_record = UserAttempt.check_and_get_lock(user_obj.id)
+        if is_locked:
+            db.session.commit()
+            lock_msg = "Too many failed login attempts. Please try again after 15 minutes."
+            if attempt_record and attempt_record.reason == "FORGOT_PASSWORD_OTP_LIMIT":
+                lock_msg = "Too many OTP requests. Please try after 15 minutes."
+            return jsonify({
+                "message": lock_msg,
+                "error_code": "ACCOUNT_TEMPORARILY_LOCKED"
+            }), 429
+
         if not UserModel.verify_password(user_obj.password, password):
+            is_now_locked = UserAttempt.record_failed_attempt(user_obj.id, attempt_record)
+            if is_now_locked:
+                return jsonify({
+                    "message": "Too many failed login attempts. Please try again after 15 minutes.",
+                    "error_code": "ACCOUNT_TEMPORARILY_LOCKED"
+                }), 429
             return jsonify({"message": "Incorrect password. Please try again."}), 401
             
+        # Password is correct! Reset failed attempts counter.
+        UserAttempt.record_successful_login(user_obj.id, attempt_record)
+
         if not user_obj.email_verified:
             return jsonify({"message": "Please verify your email before logging in."}), 403
             
@@ -473,7 +496,7 @@ def user_login_route():
     from backend.models.admin import AdminModel
     admin_record = AdminModel.query.filter(
         (AdminModel.username == str(raw_name).strip()) | 
-        (func.lower(AdminModel.username) == str(raw_name).strip().lower())
+        (AdminModel.username == str(raw_name).strip().lower())
     ).first()
 
     if admin_record:
@@ -524,25 +547,51 @@ def user_login_route():
     if is_email and not is_allowed_email_domain(name):
         return jsonify({"message": "Only Gmail (@gmail.com) and Outlook (@outlook.com) email addresses are supported."}), 400
         
-    user_obj = UserModel.query.filter(
-        (UserModel.email == name) | (UserModel.phone == name)
-    ).first()
-    
-    if not user_obj:
-        return jsonify({"message": "Account not found. Please register first."}), 404
+    try:
+        user_obj = UserModel.query.filter(
+            (UserModel.email == name) | (UserModel.phone == name)
+        ).with_for_update().first()
         
-    if user_obj.is_blocked:
-        return jsonify({"message": "Your account has been suspended by the administrator."}), 403
-        
-    if not UserModel.verify_password(user_obj.password, mobile):
-        return jsonify({"message": "Incorrect password. Please try again."}), 401
-        
-    if not user_obj.email_verified:
-        return jsonify({"message": "Please verify your email before logging in."}), 403
-        
-    is_first_login = bool(user_obj.first_login)
-    user_obj.last_login = get_ist_time()
-    db.session.commit()
+        if not user_obj:
+            return jsonify({"message": "Account not found. Please register first."}), 404
+            
+        if user_obj.is_blocked:
+            return jsonify({"message": "Your account has been suspended by the administrator."}), 403
+            
+        # Check login rate limit & account lock status BEFORE password verification
+        is_locked, attempt_record = UserAttempt.check_and_get_lock(user_obj.id)
+        if is_locked:
+            db.session.commit()
+            lock_msg = "Too many failed login attempts. Please try again after 15 minutes."
+            if attempt_record and attempt_record.reason == "FORGOT_PASSWORD_OTP_LIMIT":
+                lock_msg = "Too many OTP requests. Please try after 15 minutes."
+            return jsonify({
+                "message": lock_msg,
+                "error_code": "ACCOUNT_TEMPORARILY_LOCKED"
+            }), 429
+
+        if not UserModel.verify_password(user_obj.password, mobile):
+            is_now_locked = UserAttempt.record_failed_attempt(user_obj.id, attempt_record)
+            if is_now_locked:
+                return jsonify({
+                    "message": "Too many failed login attempts. Please try again after 15 minutes.",
+                    "error_code": "ACCOUNT_TEMPORARILY_LOCKED"
+                }), 429
+            return jsonify({"message": "Incorrect password. Please try again."}), 401
+            
+        # Password is correct! Reset failed attempts counter.
+        UserAttempt.record_successful_login(user_obj.id, attempt_record)
+
+        if not user_obj.email_verified:
+            return jsonify({"message": "Please verify your email before logging in."}), 403
+            
+        is_first_login = bool(user_obj.first_login)
+        user_obj.last_login = get_ist_time()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print("User login database transaction failed:", e)
+        return jsonify({"message": "An error occurred during login."}), 500
     user = user_obj.to_dict()
 
     # Generate JWT Token
@@ -647,6 +696,15 @@ def forgot_password():
             
         current_app.logger.info(f"[FORGOT PASSWORD LOG] Matched User ID: {user_obj.id} | Matched Email: '{user_obj.email}' | Name: '{user_obj.name}'")
         print(f"[FORGOT PASSWORD LOG] Matched User ID: {user_obj.id} | Matched Email: '{user_obj.email}' | Name: '{user_obj.name}'")
+
+        # Step 4.5: Check Forgot Password OTP Rate Limit & Account Block
+        is_allowed, is_blocked, block_msg = UserAttempt.check_and_record_otp_request(user_obj.id)
+        if not is_allowed:
+            current_app.logger.warning(f"[FORGOT PASSWORD RATE LIMIT] User ID {user_obj.id} blocked/rate limited: {block_msg}")
+            return jsonify({
+                "success": False,
+                "message": block_msg or "Too many OTP requests. Please try after 15 minutes."
+            }), 429
 
         # Step 5: OTP Generation & Storage
         try:
@@ -832,6 +890,14 @@ def resend_reset_otp():
     
     if not user_obj:
         return jsonify({"message": "Account not found."}), 404
+        
+    # Check Forgot Password OTP Rate Limit & Account Block
+    is_allowed, is_blocked, block_msg = UserAttempt.check_and_record_otp_request(user_obj.id)
+    if not is_allowed:
+        return jsonify({
+            "success": False,
+            "message": block_msg or "Too many OTP requests. Please try after 15 minutes."
+        }), 429
         
     otp_record = OTPVerification.query.filter_by(email=user_obj.email).first()
     if not otp_record:

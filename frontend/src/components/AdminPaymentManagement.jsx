@@ -454,8 +454,8 @@ export const AdminPaymentManagement = ({ onNavigateToOrder, onNavigateToCustomer
               {loading ? (
                 <tr>
                   <td colSpan="8" className="py-12 text-center text-slate-400">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#3F1D5A] dark:text-[#D4A75F] mb-2" />
-                    Loading transactions data...
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#D4A75F] mb-2" />
+                    Loading...
                   </td>
                 </tr>
               ) : payments.length === 0 ? (
@@ -581,8 +581,8 @@ export const AdminPaymentManagement = ({ onNavigateToOrder, onNavigateToCustomer
 
               {detailsLoading ? (
                 <div className="py-20 text-center text-slate-400">
-                  <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#3F1D5A] dark:text-[#D4A75F] mb-3" />
-                  Loading detailed transaction breakdown...
+                  <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#D4A75F] mb-3" />
+                  Loading...
                 </div>
               ) : txDetails ? (
                 <div className="space-y-6 text-xs">

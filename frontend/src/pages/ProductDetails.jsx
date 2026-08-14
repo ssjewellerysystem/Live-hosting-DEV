@@ -1658,7 +1658,7 @@ export const ProductDetails = ({ productId }) => {
                  {/* Core Product Info */}
                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                     <FileText className="h-4 w-4 text-emerald-500" />
+                     <FileText className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                      Core Information
                    </h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
@@ -1698,7 +1698,7 @@ export const ProductDetails = ({ productId }) => {
                  {/* Pricing & Profitability */}
                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                     <Tag className="h-4 w-4 text-emerald-500" />
+                     <Tag className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                      Pricing & Profitability
                    </h3>
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1747,7 +1747,7 @@ export const ProductDetails = ({ productId }) => {
                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                       <Package className="h-4 w-4 text-emerald-500" />
+                       <Package className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                        Inventory Management
                      </h3>
                      <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full ${editStock > 10 ? 'bg-emerald-50 text-emerald-600' : editStock > 0 ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}>
@@ -1757,7 +1757,7 @@ export const ProductDetails = ({ productId }) => {
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                      <div>
                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Adjust Stock Level</label>
-                       <div className="flex items-center gap-3">
+                       <div className="flex items-center gap-3 flex-wrap">
                          <button onClick={handleDecrementStock} className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg cursor-pointer transition-colors text-slate-600">
                            <Minus className="h-4 w-4" />
                          </button>
@@ -1771,7 +1771,7 @@ export const ProductDetails = ({ productId }) => {
                          <button onClick={handleIncrementStock} className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg cursor-pointer transition-colors text-slate-600">
                            <Plus className="h-4 w-4" />
                          </button>
-                         <button onClick={handleSaveStock} disabled={savingStock} className="ml-auto px-4 py-2 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-bold rounded-lg hover:opacity-90 transition-opacity cursor-pointer">
+                         <button onClick={handleSaveStock} disabled={savingStock} className="px-4 py-2 bg-[#5B1E7A] text-white text-xs font-bold rounded-lg border border-[#5B1E7A] dark:border-[#C084FC]/50 shadow-sm transition-opacity cursor-pointer disabled:opacity-50">
                            {savingStock ? '...' : 'Update'}
                          </button>
                        </div>
@@ -1797,7 +1797,7 @@ export const ProductDetails = ({ productId }) => {
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                     <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                         <span>Dynamic Variants Management</span>
                       </div>
                       {savingVariants && <span className="text-[10px] text-slate-400 animate-pulse font-normal">Saving...</span>}

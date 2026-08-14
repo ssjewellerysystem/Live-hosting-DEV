@@ -35,7 +35,7 @@ def admin_login():
     # 1. Search admins table via AdminModel
     admin_record = AdminModel.query.filter(
         (AdminModel.username == admin_identifier) | 
-        (func.lower(AdminModel.username) == admin_identifier.lower())
+        (AdminModel.username == admin_identifier.lower())
     ).first()
 
     admin_id_str = None
@@ -206,6 +206,7 @@ def get_users_complete():
     new_users_count = 0
     blocked_count = 0
     active_count = 0
+    inactive_count = 0
     
     now = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
     current_year = now.year
@@ -220,10 +221,13 @@ def get_users_complete():
             if u_date.year == current_year and u_date.month == current_month:
                 new_users_count += 1
                 
-        if user.is_blocked:
+        computed_status = user.calculate_status(now=now)
+        if computed_status == "Blocked":
             blocked_count += 1
-        else:
+        elif computed_status == "Active":
             active_count += 1
+        else:
+            inactive_count += 1
             
         addr = user.address
         addr_dict = {
@@ -238,11 +242,10 @@ def get_users_complete():
         orders = sorted(user.orders, key=lambda o: o.created_at or datetime.datetime.min, reverse=True)
         orders_list = []
         user_spent = 0.0
-        last_order_date = None
         
-        if orders:
-            last_order_date = format_iso_datetime(orders[0].created_at)
-            
+        qualifying_orders = [o for o in orders if str(o.order_status or '').lower() not in ['cancelled', 'failed', 'rejected']]
+        last_order_date = format_iso_datetime(qualifying_orders[0].created_at) if qualifying_orders else None
+        
         for o in orders:
             is_cancelled = (o.order_status == 'Cancelled')
             amt = float(o.total_amount)
@@ -280,6 +283,7 @@ def get_users_complete():
             "email": user.email,
             "address": addr_dict,
             "created_at": format_iso_datetime(user.created_at),
+            "status": computed_status,
             "is_blocked": bool(user.is_blocked),
             "is_admin": bool(user.is_admin),
             "total_orders": len(orders),
@@ -294,6 +298,7 @@ def get_users_complete():
             "total_users": len(users),
             "new_users_this_month": new_users_count,
             "active_users": active_count,
+            "inactive_users": inactive_count,
             "blocked_users": blocked_count,
             "total_revenue": round(total_revenue, 2)
         }
@@ -373,20 +378,33 @@ def delete_user_route(id):
 def toggle_user_block(id):
     data = request.get_json() or {}
     is_blocked = data.get("is_blocked", False)
-    success = UserModel.toggle_block_user(id, is_blocked)
-    if not success:
-        return jsonify({"message": "Failed to update block status."}), 500
-    action = "blocked" if is_blocked else "unblocked"
-    
-    # Audit Log
-    from backend.utils.audit import log_admin_action
-    action_type = "User Blocked" if is_blocked else "User Unblocked"
     user = UserModel.query.get(id)
-    user_desc = f"{user.username} (Email: {user.email})" if user else f"User ID: {id}"
-    db_uid = int(id) if str(id).isdigit() else None
-    log_admin_action(action_type, "User Management", f"{action.capitalize()} user '{user_desc}'", user_id=db_uid)
-    
-    return jsonify({"message": f"User successfully {action}!", "success": True}), 200
+    if not user:
+        return jsonify({"message": "User not found."}), 404
+        
+    try:
+        user.is_blocked = is_blocked
+        computed_status = user.calculate_status()
+        db.session.commit()
+        
+        action = "blocked" if is_blocked else "unblocked"
+        
+        # Audit Log
+        try:
+            from backend.utils.audit import log_admin_action
+            action_type = "User Blocked" if is_blocked else "User Unblocked"
+            user_name = getattr(user, 'full_name', None) or getattr(user, 'name', None) or f"User ID: {id}"
+            user_desc = f"{user_name} (Email: {getattr(user, 'email', 'N/A')})" if user else f"User ID: {id}"
+            db_uid = int(id) if str(id).isdigit() else None
+            log_admin_action(action_type, "User Management", f"{action.capitalize()} user '{user_desc}'", user_id=db_uid)
+        except Exception as audit_err:
+            logging.error(f"[TOGGLE BLOCK AUDIT WARN] Audit log warning: {audit_err}")
+            
+        return jsonify({"message": f"User successfully {action}!", "success": True, "status": computed_status}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"[TOGGLE BLOCK ERROR] Error toggling block for user ID {id}: {e}", exc_info=True)
+        return jsonify({"message": f"Failed to toggle block status: {str(e)}", "success": False}), 500
 
 @admin_bp.route('/users/<id>', methods=['GET'])
 @admin_required
@@ -439,6 +457,7 @@ def get_user_details(id):
         })
         
     user_dict = user.to_dict()
+    user_dict["status"] = user.calculate_status()
     user_dict["total_orders"] = len(orders)
     user_dict["total_spent"] = round(total_spent, 2)
     user_dict["audit_logs"] = audit_list
@@ -461,7 +480,7 @@ def update_user_status(id):
         
     data = request.get_json() or {}
     is_blocked = data.get("is_blocked", False)
-    reason = data.get("reason", "").strip()
+    reason = str(data.get("reason", "")).strip()
     
     if not reason:
         return jsonify({"message": "Reason for status update is required."}), 400
@@ -475,35 +494,89 @@ def update_user_status(id):
     if token:
         try:
             payload = jwt.decode(token, Config.get_jwt_secret(), algorithms=["HS256"])
-            admin_id = payload.get("user_id") or "admin"
+            admin_id = str(payload.get("user_id") or payload.get("admin_id") or "admin")
         except Exception:
             pass
+
+    try:
+        # Update user block status in memory
+        user.is_blocked = is_blocked
+        computed_status = user.calculate_status()
+        
+        # Write status audit log record
+        audit_log = UserStatusAuditLog(
+            user_id=user_id,
+            admin_id=str(admin_id),
+            status_changed_to=computed_status,
+            reason=reason
+        )
+        db.session.add(audit_log)
+        
+        # Single atomic commit for both user update & status audit record
+        db.session.commit()
+
+        # General Admin Audit Trail (safely wrapped)
+        try:
+            from backend.utils.audit import log_admin_action
+            action_type = "User Blocked" if is_blocked else "User Unblocked"
+            user_name = getattr(user, 'full_name', None) or getattr(user, 'name', None) or f"User ID: {user_id}"
+            user_desc = f"{user_name} (Email: {getattr(user, 'email', 'N/A')})"
+            log_admin_action(action_type, "User Management", f"{computed_status} user '{user_desc}'. Reason: {reason}", user_id=int(user_id))
+        except Exception as audit_err:
+            logging.error(f"[ADMIN STATUS LOG WARN] Audit log warning: {audit_err}")
             
-    # Update block status
-    user.is_blocked = is_blocked
+        return jsonify({
+            "message": f"User status successfully updated to {computed_status} and logged.",
+            "success": True,
+            "is_blocked": is_blocked,
+            "status": computed_status,
+            "account_status": computed_status
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"[ADMIN STATUS ERROR] Error updating user status for ID {id}: {e}", exc_info=True)
+        return jsonify({"message": f"Failed to update user status: {str(e)}", "success": False}), 500
+
+
+@admin_bp.route('/orders/<order_identifier>/items', methods=['GET'])
+@admin_required
+def get_admin_order_items(order_identifier):
+    """
+    Retrieves order items for a specific order using its unique Order ID (e.g. 'SS-798456') or DB ID.
+    """
+    from backend.models.order import OrderModel
+    from backend.utils.timezone import format_iso_datetime
     
-    # Write audit log
-    status_str = "Blocked" if is_blocked else "Active"
-    audit_log = UserStatusAuditLog(
-        user_id=user_id,
-        admin_id=admin_id,
-        status_changed_to=status_str,
-        reason=reason
-    )
-    db.session.add(audit_log)
-    db.session.commit()
-    
-    # General Audit Log
-    from backend.utils.audit import log_admin_action
-    action_type = "User Blocked" if is_blocked else "User Unblocked"
-    user_desc = f"{user.username} (Email: {user.email})"
-    log_admin_action(action_type, "User Management", f"{status_str} user '{user_desc}'. Reason: {reason}", user_id=int(user_id))
-    
+    order = None
+    if str(order_identifier).isdigit():
+        order = OrderModel.query.get(int(order_identifier))
+    if not order:
+        order = OrderModel.query.filter_by(order_id=str(order_identifier)).first()
+        
+    if not order:
+        return jsonify({"message": "Order not found.", "success": False}), 404
+        
+    item_list = []
+    for it in order.items:
+        item_list.append({
+            "id": str(it.id),
+            "product_id": str(it.product_id) if it.product_id else "",
+            "name": it.name,
+            "price": float(it.price),
+            "quantity": int(it.quantity),
+            "image": it.image or "",
+            "total_item_price": round(float(it.price) * int(it.quantity), 2)
+        })
+        
     return jsonify({
-        "message": f"User status successfully updated to {status_str} and logged.",
         "success": True,
-        "is_blocked": is_blocked,
-        "account_status": status_str
+        "order_id": order.order_id,
+        "db_id": str(order.id),
+        "total_amount": float(order.total_amount),
+        "order_status": order.order_status,
+        "created_at": format_iso_datetime(order.created_at),
+        "items": item_list
     }), 200
 
 

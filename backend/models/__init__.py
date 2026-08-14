@@ -15,5 +15,9 @@ from backend.models.transaction import TransactionModel
 from backend.models.email_log import EmailLog
 from backend.models.category_banner import CategoryBanner
 from backend.models.collection_banner import CollectionBanner
+from backend.models.user_attempt import UserAttempt
+from backend.models.user_login_attempt import UserLoginAttempt
+from backend.models.lookbook import LookbookModel
+
 
 

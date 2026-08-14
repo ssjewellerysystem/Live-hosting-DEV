@@ -329,11 +329,10 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
 
       {/* Alert Notification */}
       {msg.text && (
-        <div className={`p-4 rounded-2xl text-xs font-bold ${
-          msg.type === 'success'
+        <div className={`p-4 rounded-2xl text-xs font-bold ${msg.type === 'success'
             ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
             : 'bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400'
-        }`}>
+          }`}>
           {msg.text}
         </div>
       )}
@@ -342,11 +341,10 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
       <form
         ref={formRef}
         onSubmit={handleSubmit}
-        className={`bg-slate-50/70 dark:bg-slate-950/40 border transition-all duration-500 rounded-2xl p-5 space-y-5 ${
-          formHighlight
+        className={`bg-slate-50/70 dark:bg-slate-950/40 border transition-all duration-500 rounded-2xl p-5 space-y-5 ${formHighlight
             ? 'border-[#D4A75F] ring-2 ring-[#D4A75F]/30 shadow-lg'
             : 'border-slate-200/80 dark:border-slate-800/80'
-        }`}
+          }`}
       >
 
         <h5 className="text-xs font-bold uppercase tracking-wider text-[#D4A75F]">
@@ -369,11 +367,10 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
                     setImageSourceMode('upload');
                     setUrlValidationError('');
                   }}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    imageSourceMode === 'upload'
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${imageSourceMode === 'upload'
                       ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
                       : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
+                    }`}
                 >
                   <Upload className="h-3.5 w-3.5" />
                   <span>Upload Image</span>
@@ -385,11 +382,10 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
                     setImageSourceMode('url');
                     if (imageUrlInput) handleUrlInputChange(imageUrlInput);
                   }}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    imageSourceMode === 'url'
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${imageSourceMode === 'url'
                       ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
                       : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
+                    }`}
                 >
                   <LinkIcon className="h-3.5 w-3.5" />
                   <span>Image URL</span>
@@ -454,9 +450,8 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
                     placeholder="https://example.com/banner.webp or https://res.cloudinary.com/..."
                     value={imageUrlInput}
                     onChange={(e) => handleUrlInputChange(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-xs font-medium focus:outline-none ${
-                      urlValidationError ? 'border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-[#D4A75F]'
-                    }`}
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-xs font-medium focus:outline-none ${urlValidationError ? 'border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-[#D4A75F]'
+                      }`}
                   />
                   {urlValidationError && (
                     <p className="text-[10px] font-semibold text-red-500 mt-1">{urlValidationError}</p>
@@ -600,13 +595,12 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
                 <button
                   type="button"
                   onClick={() => setIsActive(!isActive)}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer ${
-                    isActive ? 'bg-emerald-500 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
-                  }`}
+                  className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer ${isActive ? 'bg-emerald-600 dark:bg-emerald-600 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+                    }`}
                 >
-                  <div className="w-4 h-4 rounded-full bg-white shadow-md transform transition-transform" />
+                  <div className="w-4 h-4 rounded-full bg-[#F8FAFC] shadow-md transform transition-transform" />
                 </button>
-                <span className={`text-xs font-bold ${isActive ? 'text-emerald-500' : 'text-slate-400'}`}>
+                <span className={`text-xs font-bold ${isActive ? 'text-emerald-500 dark:text-[#E8F5E9]' : 'text-slate-400'}`}>
                   {isActive ? 'ON' : 'OFF'}
                 </span>
               </div>
@@ -653,7 +647,7 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
       {/* Existing Category Banners List */}
       <div className="space-y-4 pt-4">
         <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          Active Category Banners in Database ({banners.length})
+          Active Category Banners ({banners.length})
         </h5>
 
         {loading ? (
@@ -678,11 +672,10 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
                     </span>
                     <button
                       onClick={() => handleToggleStatus(b)}
-                      className={`px-2 py-0.5 rounded-full text-[9px] font-bold cursor-pointer transition-all ${
-                        b.is_active
-                          ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-bold cursor-pointer transition-all ${b.is_active
+                          ? 'bg-emerald-500/15 text-emerald-500 dark:text-[#86EFAC] border border-emerald-500/35'
                           : 'bg-slate-500/15 text-slate-400 border border-slate-500/30'
-                      }`}
+                        }`}
                     >
                       {b.is_active ? 'ACTIVE' : 'INACTIVE'}
                     </button>

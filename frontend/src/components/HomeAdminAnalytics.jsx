@@ -90,8 +90,8 @@ export const HomeAdminAnalytics = ({
               {usersAnalytics?.active_users ?? 0}
             </span>
           </div>
-          <div className="bg-emerald-500/10 p-2 sm:p-3 rounded-xl text-emerald-500 flex-shrink-0 shrink-0 flex items-center justify-center">
-            <Check className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+          <div className="bg-[#DCFCE7] dark:bg-[#163B2A] p-2 sm:p-3 rounded-xl flex-shrink-0 shrink-0 flex items-center justify-center">
+            <Check className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-[#16A34A] dark:text-[#86EFAC]" />
           </div>
         </div>
 
@@ -124,7 +124,7 @@ export const HomeAdminAnalytics = ({
       <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm mt-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-emerald-500" />
+            <Clock className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
             <span>Audit Logs</span>
             <span className="audit-logs-count-badge">
               {generalAuditLogs.length} total
@@ -209,7 +209,7 @@ export const HomeAdminAnalytics = ({
                     const { date, time } = formatDateTime(log.created_at);
 
                     return (
-                      <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-955/20 transition-all border-b border-slate-100 dark:border-slate-800/50">
+                      <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-transparent transition-all border-b border-slate-100 dark:border-slate-800/50">
                         <td className="py-3.5 pr-4 text-slate-500 admin-timestamp-text whitespace-nowrap">
                           {date} <span className="text-[10px] text-slate-400 font-normal">{time}</span>
                         </td>
@@ -229,7 +229,7 @@ export const HomeAdminAnalytics = ({
                         </td>
                         <td className="py-3.5 pl-4">
                           <span className={log.status === 'Success'
-                            ? 'status-badge-success'
+                            ? 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase bg-[#22C55E] text-[#FFFFFF] border border-[#16A34A] shadow-sm'
                             : 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase bg-rose-100 text-rose-700 dark:bg-rose-955/40 dark:text-rose-455'
                           }>
                             {log.status}

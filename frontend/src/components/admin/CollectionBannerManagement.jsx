@@ -613,12 +613,12 @@ export const CollectionBannerManagement = ({ collections = [] }) => {
                   type="button"
                   onClick={() => setIsActive(!isActive)}
                   className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer ${
-                    isActive ? 'bg-emerald-500 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+                    isActive ? 'bg-emerald-600 dark:bg-emerald-600 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
                   }`}
                 >
-                  <div className="w-4 h-4 rounded-full bg-white shadow-md transform transition-transform" />
+                  <div className="w-4 h-4 rounded-full bg-[#F8FAFC] shadow-md transform transition-transform" />
                 </button>
-                <span className={`text-xs font-bold ${isActive ? 'text-emerald-500' : 'text-slate-400'}`}>
+                <span className={`text-xs font-bold ${isActive ? 'text-emerald-500 dark:text-[#E8F5E9]' : 'text-slate-400'}`}>
                   {isActive ? 'ON' : 'OFF'}
                 </span>
               </div>
@@ -690,7 +690,7 @@ export const CollectionBannerManagement = ({ collections = [] }) => {
                       onClick={() => handleToggleStatus(b)}
                       className={`px-2 py-0.5 rounded-full text-[9px] font-bold cursor-pointer transition-all ${
                         b.is_active
-                          ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                          ? 'bg-emerald-500/15 text-emerald-500 dark:text-[#86EFAC] border border-emerald-500/35'
                           : 'bg-slate-500/15 text-slate-400 border border-slate-500/30'
                       }`}
                     >

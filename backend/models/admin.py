@@ -2,12 +2,13 @@ from backend.extensions import db
 from datetime import datetime
 import pytz
 from backend.utils.timezone import format_iso_datetime, get_ist_time
+from backend.utils.security import EncryptedString
 
 class AdminModel(db.Model):
     __tablename__ = 'admins'
     
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), unique=True, nullable=False)
+    username = db.Column(EncryptedString(255), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
 

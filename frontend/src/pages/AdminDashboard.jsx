@@ -12,6 +12,7 @@ import { MaintenanceButton } from '../components/admin/MaintenanceButton';
 import { formatPrice } from '../utils/priceFormatter';
 import { translateCategory } from '../utils/categoryTranslations';
 import { TrackingInfoModal } from '../components/admin/TrackingInfoModal';
+import { OrderItemsModal } from '../components/admin/OrderItemsModal';
 
 const AnalyticsTab = lazy(() => import('../components/admin/AnalyticsTab').then(m => ({ default: m.AnalyticsTab })));
 const ProductManagementTab = lazy(() => import('../components/admin/ProductManagementTab').then(m => ({ default: m.ProductManagementTab })));
@@ -23,7 +24,7 @@ const TabLoadingFallback = () => (
   <div className="w-full min-h-[300px] flex items-center justify-center">
     <div className="flex flex-col items-center gap-3">
       <div className="w-10 h-10 border-4 border-[#D4A75F] border-t-transparent rounded-full animate-spin"></div>
-      <p className="text-xs text-slate-400 font-medium">Loading panel...</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Loading...</p>
     </div>
   </div>
 );
@@ -447,10 +448,13 @@ export const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/admin/users`);
-      setUsers(res.data);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE_URL}/admin/users-complete`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setUsers(res.data.users || res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch users:", err);
     }
   };
 
@@ -517,25 +521,54 @@ export const AdminDashboard = () => {
     }
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.put(`${API_BASE_URL}/admin/users/${statusModalUser.id || statusModalUser._id}/status`, {
-        is_blocked: statusModalNewBlockedState,
+      const targetId = statusModalUser.id || statusModalUser._id;
+      const newBlockedState = statusModalNewBlockedState;
+
+      const res = await axios.put(`${API_BASE_URL}/admin/users/${targetId}/status`, {
+        is_blocked: newBlockedState,
         reason: statusReason
       }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
-      alert(res.data.message || "User status successfully updated.");
+
+      const updatedStatus = res.data.status || res.data.account_status || (newBlockedState ? "Blocked" : "Active");
+
+      // 1. Immediately update users list in state for instant UI reflection
+      setUsers(prevUsers => (prevUsers || []).map(u => {
+        if (String(u.id || u._id) === String(targetId)) {
+          return {
+            ...u,
+            is_blocked: newBlockedState,
+            status: updatedStatus
+          };
+        }
+        return u;
+      }));
+
+      // 2. Immediately update selectedUserDetails state if currently selected
+      if (selectedUserDetails && String(selectedUserDetails.id || selectedUserDetails._id) === String(targetId)) {
+        setSelectedUserDetails(prev => prev ? ({
+          ...prev,
+          is_blocked: newBlockedState,
+          status: updatedStatus
+        }) : null);
+      }
+
+      // 3. Close status modal and clear form input immediately
       setStatusModalOpen(false);
       setStatusReason('');
-      
-      const currentId = selectedUserDetails?.id || selectedUserDetails?._id;
-      const targetId = statusModalUser.id || statusModalUser._id;
-      if (selectedUserDetails && String(currentId) === String(targetId)) {
+
+      // 4. Notify admin of successful status update
+      alert(res.data.message || "User status successfully updated.");
+
+      // 5. Re-fetch user details and users list from server to sync all data & audit logs
+      if (targetId) {
         fetchUserDetails(targetId);
       }
-      
       fetchUsers();
-      fetchAuditLogs();
+      if (typeof fetchAuditLogs === 'function') {
+        fetchAuditLogs();
+      }
     } catch (err) {
       console.error("Failed to update user status:", err);
       alert(err.response?.data?.message || "Failed to update user status.");
@@ -1202,7 +1235,7 @@ export const AdminDashboard = () => {
             <button
               type="button"
               onClick={addAdditionalSlot}
-              className="text-[10px] font-black text-emerald-500 hover:text-emerald-605 flex items-center gap-1"
+              className="text-[10px] font-black text-emerald-500 dark:text-[#C084FC] hover:text-emerald-600 dark:hover:text-[#D8B4FE] flex items-center gap-1"
             >
               <Plus className="h-3 w-3" />
               <span>Add Additional Image</span>
@@ -1518,8 +1551,8 @@ export const AdminDashboard = () => {
         {/* Loading Spinner */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
-            <p className="text-slate-500 dark:text-slate-400 mt-4 text-sm font-semibold">Aggregating database statistics...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D4A75F]"></div>
+            <p className="text-slate-500 dark:text-slate-400 mt-4 text-sm font-semibold">Loading...</p>
           </div>
         ) : (
           <>
@@ -1532,7 +1565,7 @@ export const AdminDashboard = () => {
                   <span className="text-2xl font-black block mt-1 price-amount">₹{formatPrice(stats.total_sales ?? 0)}</span>
                 </div>
                 <div className="bg-emerald-500/10 p-3 rounded-xl text-emerald-500">
-                  <BarChart3 className="h-6 w-6" />
+                  <BarChart3 className="h-6 w-6 dark:text-[#C084FC]" />
                 </div>
               </div>
 
@@ -2121,7 +2154,7 @@ export const AdminDashboard = () => {
                     className="w-full flex justify-between items-center px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-250 dark:border-slate-800 font-bold hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-all text-xs"
                   >
                     <span className="flex items-center gap-2">
-                      <Image className="h-4 w-4 text-emerald-500" />
+                      <Image className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                       <span>Manage Product Images</span>
                     </span>
                     <span className="text-[10px] text-slate-400 font-semibold">
@@ -2164,7 +2197,7 @@ export const AdminDashboard = () => {
             {/* Sticky Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-slate-150 dark:border-slate-850">
               <div className="flex items-center gap-2">
-                <Plus className="h-5 w-5 text-emerald-500" />
+                <Plus className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
                 <h3 className="text-sm font-extrabold text-slate-850 dark:text-slate-100">Add New Product</h3>
               </div>
               <div className="flex items-center gap-4">
@@ -2408,7 +2441,7 @@ export const AdminDashboard = () => {
                     className="w-full flex justify-between items-center px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-250 dark:border-slate-800 font-bold hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-all text-xs"
                   >
                     <span className="flex items-center gap-2">
-                      <Image className="h-4 w-4 text-emerald-500" />
+                      <Image className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                       <span>Manage Product Images</span>
                     </span>
                     <span className="text-[10px] text-slate-400 font-semibold">
@@ -2452,7 +2485,7 @@ export const AdminDashboard = () => {
             {/* Modal Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900 z-10">
               <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5 text-emerald-500" />
+                <ShoppingBag className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
                 <span>Order Details - #{selectedOrder.order_id}</span>
               </h3>
               <button
@@ -2567,7 +2600,7 @@ export const AdminDashboard = () => {
               </div>
 
               {/* Shipment Information Card */}
-              <div className="bg-slate-50/70 dark:bg-slate-955 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3 text-xs">
+              <div className="bg-slate-50/70 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3 text-xs">
                 <div className="flex justify-between items-center border-b border-slate-200/60 dark:border-slate-800 pb-2">
                   <h4 className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                     <Truck className="h-4 w-4 text-[#5B1E7A] dark:text-[#D4A75F]" />
@@ -2619,9 +2652,9 @@ export const AdminDashboard = () => {
               </div>
 
               {/* Fulfillment & Live Order Tracking updates */}
-              <div className="bg-slate-50/50 dark:bg-slate-955/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-4 text-xs">
+              <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-4 text-xs">
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-850">
-                  <RefreshCw className="h-4 w-4 text-emerald-500 animate-spin-slow" />
+                  <RefreshCw className="h-4 w-4 text-emerald-500 dark:text-[#C084FC] animate-spin-slow" />
                   <span>Update Shipment & Tracking Timeline</span>
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px]">
@@ -3047,7 +3080,7 @@ export const AdminDashboard = () => {
               <X className="h-5 w-5" />
             </button>
             <h3 className="text-base font-bold mb-2 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-emerald-500" />
+              <BarChart3 className="h-5 w-5 text-emerald-500 dark:text-[#D4A75F]" />
               <span>Product Sales & Performance Analytics</span>
             </h3>
             <p className="text-xs text-slate-400 mb-4">{selectedAnalyticsProduct.name}</p>
@@ -3138,6 +3171,14 @@ export const AdminDashboard = () => {
         initialTrackingUrl={trackingModalConfig.initialUrl}
         initialTrackingId={trackingModalConfig.initialId}
         isEditing={trackingModalConfig.isEditing}
+      />
+
+      {/* Purchased Order Items Modal */}
+      <OrderItemsModal
+        isOpen={!!viewingOrderItems}
+        onClose={() => setViewingOrderItems(null)}
+        orderId={typeof viewingOrderItems === 'string' ? viewingOrderItems : (viewingOrderItems?.order_id || viewingOrderItems?.id)}
+        initialOrder={typeof viewingOrderItems === 'object' ? viewingOrderItems : null}
       />
 
       {/* Toast Alert */}

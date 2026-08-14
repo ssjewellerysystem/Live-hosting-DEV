@@ -68,11 +68,11 @@ export const MaintenanceModal = ({ isOpen, onClose, isCurrentlyOn, onConfirm, lo
                 <span>Payment APIs will be blocked</span>
               </li>
               <li className="flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 font-bold">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-300 shrink-0" />
                 <span>Product browsing remains available</span>
               </li>
               <li className="flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 font-bold">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-300 shrink-0" />
                 <span>Admin panel remains fully accessible</span>
               </li>
             </ul>

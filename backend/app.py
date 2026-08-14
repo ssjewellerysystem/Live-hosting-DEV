@@ -44,10 +44,10 @@ from backend.routes.banners import banners_bp
 from backend.routes.category_banners import category_banners_bp
 from backend.routes.collection_banners import collection_banners_bp
 from backend.routes.collections import collections_bp
-from backend.routes.gold_rate import gold_rate_bp
 from backend.routes.maintenance import maintenance_bp
 from backend.routes.high_demand import high_demand_bp
 from backend.routes.payments import payments_bp
+from backend.routes.lookbook import lookbook_bp
 from backend.middleware.maintenance import check_maintenance_mode
 
 # Run startup environment validation
@@ -150,9 +150,10 @@ app.register_blueprint(banners_bp, url_prefix='/api/banners')
 app.register_blueprint(category_banners_bp, url_prefix='/api/category-banners')
 app.register_blueprint(collection_banners_bp, url_prefix='/api/collection-banners')
 app.register_blueprint(collections_bp, url_prefix='/api/collections')
-app.register_blueprint(gold_rate_bp, url_prefix='/api/gold-rate')
 app.register_blueprint(maintenance_bp, url_prefix='/api/maintenance')
 app.register_blueprint(high_demand_bp, url_prefix='/api/high-demand')
+app.register_blueprint(lookbook_bp, url_prefix='/api/lookbook')
+app.register_blueprint(lookbook_bp, url_prefix='/api/lookbooks', name='lookbooks')
 
 def print_registered_routes(app_instance):
     """Prints all registered routes at app startup for production route visibility."""
@@ -347,63 +348,6 @@ def seed_database():
             print("[SEED] Successfully seeded coupons.")
         else:
             print("[SEED] Coupons already exist. Skipping seed.")
-            
-
-
-        # Seed Collections
-        from backend.models.collection import CollectionModel
-        if CollectionModel.query.count() == 0:
-            default_collections = [
-                {
-                    "name": "Wedding Wear",
-                    "slug": "wedding-wear",
-                    "description": "Regal Heritage Kundan bridal sets and royal elegance",
-                    "thumbnail_image": None,
-                    "display_order": 1
-                },
-                {
-                    "name": "Daily Wear",
-                    "slug": "daily-wear",
-                    "description": "Versatile Chic Bangles and daily gold bands",
-                    "thumbnail_image": None,
-                    "display_order": 2
-                },
-                {
-                    "name": "Office Wear",
-                    "slug": "office-wear",
-                    "description": "Minimalistic Luxury Studs and sleek executive items",
-                    "thumbnail_image": None,
-                    "display_order": 3
-                },
-                {
-                    "name": "Date Night",
-                    "slug": "date-night",
-                    "description": "Elegance & Layered Statements under candlelit tables",
-                    "thumbnail_image": None,
-                    "display_order": 4
-                },
-                {
-                    "name": "New Collection",
-                    "slug": "new-collection",
-                    "description": "Fresh Masterpieces & Diamond Solitaires",
-                    "thumbnail_image": None,
-                    "display_order": 5
-                }
-            ]
-            for c_data in default_collections:
-                coll = CollectionModel(
-                    name=c_data["name"],
-                    slug=c_data["slug"],
-                    description=c_data["description"],
-                    thumbnail_image=c_data["thumbnail_image"],
-                    display_order=c_data["display_order"],
-                    is_active=True
-                )
-                db.session.add(coll)
-            db.session.commit()
-            print("[SEED] Successfully seeded default collections.")
-        else:
-            print("[SEED] Collections already exist. Skipping seed.")
     except Exception as e:
         print("[SEED] Error seeding database:", e)
 
@@ -424,11 +368,6 @@ with app.app_context():
     except Exception as err:
         print("[APP] Scheduler will start after DB is ready:", err)
 
-    try:
-        from backend.utils.gold_rate_scheduler import start_gold_rate_scheduler
-        start_gold_rate_scheduler(app)
-    except Exception as err:
-        print("[APP] Gold rate scheduler error:", err)
 
     # API Route Discovery Logger: Print registered routes during startup
     print("\n" + "=" * 60)

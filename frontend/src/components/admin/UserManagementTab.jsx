@@ -1,5 +1,6 @@
 import React from 'react';
-import { Users, Search, Calendar, Shield, X, Clock, ShoppingBag, DollarSign, MapPin, Eye } from 'lucide-react';
+import { Users, Search, Calendar, Shield, X, Clock, ShoppingBag, DollarSign, MapPin, Eye, ArrowUpDown, ArrowUp, Lock, Unlock } from 'lucide-react';
+import { sortUsersByStatus } from '../../utils/statusSorter';
 
 export const UserManagementTab = ({
   users,
@@ -14,6 +15,8 @@ export const UserManagementTab = ({
   setViewingOrderItems,
   handleOpenStatusModal
 }) => {
+  const [statusSortMode, setStatusSortMode] = React.useState(0);
+
   const filteredUsers = users.filter(u => {
     const query = userSearchQuery.toLowerCase();
     return (
@@ -24,13 +27,17 @@ export const UserManagementTab = ({
     );
   });
 
+  const displayUsers = React.useMemo(() => {
+    return sortUsersByStatus(filteredUsers, statusSortMode);
+  }, [filteredUsers, statusSortMode]);
+
   return (
     <div className="space-y-6">
       {/* Search and stats count row */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <div className="bg-emerald-500/10 p-2.5 rounded-xl text-emerald-500">
-            <Users className="h-5 w-5" />
+            <Users className="h-5 w-5 dark:text-[#C084FC]" />
           </div>
           <div>
             <h4 className="text-sm font-extrabold text-slate-800 dark:text-white">Customer Management Panel</h4>
@@ -51,72 +58,94 @@ export const UserManagementTab = ({
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Left Column: Users Table */}
-        <div className="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[700px]">
+        <div className="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm overflow-x-auto">
+          <table className="w-full text-left text-xs min-w-[540px] sm:min-w-full table-auto">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 GFM-table-header uppercase font-bold">
-                <th className="py-3 px-2">User ID</th>
-                <th className="py-3 px-2">Full Name</th>
-                <th className="py-3 px-2">Email</th>
-                <th className="py-3 px-2">Mobile</th>
-                <th className="py-3 px-2">Address</th>
-                <th className="py-3 px-2">Registered</th>
-                <th className="py-3 px-2">Last Login</th>
-                <th className="py-3 px-2 text-right">Status</th>
+              <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 GFM-table-header uppercase font-bold text-[11px] sm:text-xs">
+                <th className="py-3 px-2 sm:px-3 font-bold text-slate-500 dark:text-slate-400 min-w-[110px] max-w-[160px]">NAME</th>
+                <th className="py-3 px-2 sm:px-3 font-bold text-slate-500 dark:text-slate-400 min-w-[130px] max-w-[200px]">EMAIL</th>
+                <th className="py-3 px-2 sm:px-3 font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap w-auto">MOBILE</th>
+                <th className="py-3 px-2 sm:px-3 font-bold text-slate-500 dark:text-slate-400 min-w-[120px]">ADDRESS</th>
+                <th className="py-3 px-2 sm:px-3 text-right font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setStatusSortMode(prev => (prev + 1) % 4)}
+                    title={
+                      statusSortMode === 1
+                        ? "Status Order: Active → Inactive → Blocked (Click for Inactive → Active → Blocked)"
+                        : statusSortMode === 2
+                        ? "Status Order: Inactive → Active → Blocked (Click for Blocked → Active → Inactive)"
+                        : statusSortMode === 3
+                        ? "Status Order: Blocked → Active → Inactive (Click to reset default order)"
+                        : "Status Order: Default / Unsorted (Click to sort Active → Inactive → Blocked)"
+                    }
+                    aria-label={
+                      statusSortMode === 1
+                        ? "Status sort: Active first. Click for Inactive first."
+                        : statusSortMode === 2
+                        ? "Status sort: Inactive first. Click for Blocked first."
+                        : statusSortMode === 3
+                        ? "Status sort: Blocked first. Click to reset."
+                        : "Status sort: default order. Click to sort Active first."
+                    }
+                    className="inline-flex items-center gap-1.5 ml-auto font-bold cursor-pointer hover:text-slate-800 dark:hover:text-slate-100 transition-colors select-none text-right group"
+                  >
+                    <span>STATUS</span>
+                    {statusSortMode === 0 ? (
+                      <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-500 transition-colors shrink-0" />
+                    ) : (
+                      <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 transition-colors shrink-0" />
+                    )}
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
-              {filteredUsers.length === 0 ? (
+              {displayUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-slate-450 italic">
+                  <td colSpan="5" className="py-8 text-center text-slate-455 italic">
                     No users found matching your search.
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map(u => (
+                displayUsers.map(u => (
                   <tr 
                     key={u.id || u._id} 
                     onClick={() => fetchUserDetails(u.id || u._id)}
-                    className={`hover:bg-slate-50/70 dark:hover:bg-slate-850/40 cursor-pointer transition-colors ${
+                    className={`hover:bg-slate-50/70 dark:hover:bg-transparent cursor-pointer transition-colors ${
                       String(selectedUserDetails?.id || selectedUserDetails?._id) === String(u.id || u._id)
                         ? 'bg-emerald-500/5 dark:bg-emerald-500/10 border-l-4 border-l-emerald-500'
                         : ''
                     }`}
                   >
-                    <td className="py-3.5 px-2 font-mono text-[10px] text-slate-450">
-                      {(u.id || u._id || '').toString().slice(-6).toUpperCase()}
+                    <td className="py-3.5 px-2 sm:px-3 font-bold text-slate-800 dark:text-slate-100 min-w-[110px] max-w-[160px]">
+                      <div className="truncate" title={u.name || "N/A"}>
+                        {u.name || "N/A"}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 font-normal truncate" title={`ID: ${u.id || u._id}`}>
+                        ID: {(u.id || u._id || '').toString().slice(-6).toUpperCase()}
+                      </div>
                     </td>
-                    <td className="py-3.5 px-2 font-bold text-slate-800 dark:text-slate-100">
-                      {u.name || "N/A"}
+                    <td className="py-3.5 px-2 sm:px-3 text-slate-550 dark:text-slate-355 min-w-[130px] max-w-[200px]">
+                      <div className="truncate font-medium" title={u.email}>
+                        {u.email}
+                      </div>
                     </td>
-                    <td className="py-3.5 px-2 text-slate-550 dark:text-slate-355">
-                      {u.email}
-                    </td>
-                    <td className="py-3.5 px-2 font-mono text-slate-555 dark:text-slate-350">
+                    <td className="py-3.5 px-2 sm:px-3 font-mono text-slate-555 dark:text-slate-350 whitespace-nowrap w-auto max-w-[130px] truncate" title={u.mobile || "N/A"}>
                       {u.mobile || "N/A"}
                     </td>
-                    <td className="py-3.5 px-2 text-slate-400 max-w-[120px] truncate" title={formatAddress(u.address)}>
+                    <td className="py-3.5 px-2 sm:px-3 text-slate-400 max-w-[140px] sm:max-w-[220px] truncate" title={formatAddress(u.address)}>
                       {formatAddress(u.address)}
                     </td>
-                    <td className="py-3.5 px-2 text-slate-400 admin-datetime-text">
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : "N/A"}
-                    </td>
-                    <td className="py-3.5 px-2 text-slate-400 admin-datetime-text">
-                      {u.last_login ? new Date(u.last_login).toLocaleDateString() : "N/A"}
-                    </td>
-                    <td className="py-3.5 px-2 text-right">
-                      <span className={`px-[12px] py-[4px] rounded-full text-[10px] font-semibold border shadow-sm ${
-                        (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'active'
-                          ? 'status-badge-active'
-                          : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'inactive'
-                          ? 'bg-[#6B7280] text-[#FFFFFF] border-[#4B5563]'
-                          : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'suspended'
-                          ? 'bg-[#EF4444] text-[#FFFFFF] border-[#DC2626]'
-                          : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'pending verification'
-                          ? 'bg-[#F59E0B] text-[#FFFFFF] border-[#D97706]'
-                          : 'bg-[#B91C1C] text-[#FFFFFF] border-[#991B1B]'
+                    <td className="py-3.5 px-2 sm:px-3 text-right whitespace-nowrap w-auto">
+                      <span className={`inline-flex items-center px-[12px] py-[4px] rounded-full text-[10px] font-semibold border shadow-sm ${
+                        (u.status || (u.is_blocked ? "Blocked" : "Inactive")).toLowerCase() === 'active'
+                          ? 'bg-[#22C55E] text-[#FFFFFF] border-[#16A34A]'
+                          : (u.status || (u.is_blocked ? "Blocked" : "Inactive")).toLowerCase() === 'inactive'
+                          ? 'bg-[#F97316] text-[#FFFFFF] border-[#EA580C]'
+                          : 'bg-[#EF4444] text-[#FFFFFF] border-[#DC2626]'
                       }`}>
-                        {u.status || (u.is_blocked ? "Blocked" : "Active")}
+                        {u.status || (u.is_blocked ? "Blocked" : "Inactive")}
                       </span>
                     </td>
                   </tr>
@@ -133,7 +162,7 @@ export const UserManagementTab = ({
               {/* Header info */}
               <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-500 font-black text-lg">
+                  <div className="w-12 h-12 bg-emerald-500/10 dark:bg-purple-900/40 rounded-2xl flex items-center justify-center text-emerald-500 dark:text-[#D8B4FE] font-black text-lg">
                     {selectedUserDetails.name ? selectedUserDetails.name.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <div>
@@ -161,35 +190,35 @@ export const UserManagementTab = ({
                 <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-2xl border border-slate-105 dark:border-slate-850">
                   <span className="text-[10px] text-slate-400 font-bold block mb-1">Joined Date</span>
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 dark:text-[#C084FC]" />
                     {selectedUserDetails.created_at ? new Date(selectedUserDetails.created_at).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-2xl border border-slate-105 dark:border-slate-850">
                   <span className="text-[10px] text-slate-400 font-bold block mb-1">Role</span>
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Shield className="h-3.5 w-3.5 text-slate-400" />
+                    <Shield className="h-3.5 w-3.5 text-slate-400 dark:text-[#C084FC]" />
                     {selectedUserDetails.is_admin ? 'Admin' : 'Customer'}
                   </span>
                 </div>
                 <div className="bg-slate-55 dark:bg-slate-955 p-3 rounded-2xl border border-slate-105 dark:border-slate-850 col-span-2">
                   <span className="text-[10px] text-slate-400 font-bold block mb-1">Last Login</span>
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-slate-400" />
+                    <Clock className="h-3.5 w-3.5 text-slate-400 dark:text-[#C084FC]" />
                     {selectedUserDetails.last_login ? new Date(selectedUserDetails.last_login).toLocaleString() : 'N/A'}
                   </span>
                 </div>
                 <div className="bg-slate-55 dark:bg-slate-955 p-3 rounded-2xl border border-slate-105 dark:border-slate-850">
                   <span className="text-[10px] text-slate-400 font-bold block mb-1">Total Orders</span>
                   <span className="stats-value-highlight flex items-center gap-1.5">
-                    <ShoppingBag className="h-3.5 w-3.5" />
+                    <ShoppingBag className="h-3.5 w-3.5 dark:text-[#C084FC]" />
                     {selectedUserDetails.total_orders || 0}
                   </span>
                 </div>
                 <div className="bg-slate-55 dark:bg-slate-955 p-3 rounded-2xl border border-slate-105 dark:border-slate-850">
                   <span className="text-[10px] text-slate-400 font-bold block mb-1">Total Spent</span>
                   <span className="stats-value-highlight flex items-center gap-1.5 price-amount">
-                    <DollarSign className="h-3.5 w-3.5" />
+                    <DollarSign className="h-3.5 w-3.5 dark:text-[#C084FC]" />
                     ₹{formatPrice(selectedUserDetails.total_spent || 0)}
                   </span>
                 </div>
@@ -198,11 +227,40 @@ export const UserManagementTab = ({
               {/* Address */}
               <div className="bg-slate-50 dark:bg-slate-955 p-4 rounded-2xl border border-slate-105 dark:border-slate-850 space-y-1.5">
                 <span className="text-[10px] text-slate-400 font-bold block">Delivery Address</span>
-                <div className="flex items-start gap-2 text-xs text-slate-705 dark:text-slate-350">
-                  <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 text-xs text-slate-705 dark:text-[#F5F5F5]">
+                  <MapPin className="h-4 w-4 text-slate-400 dark:text-[#C084FC] shrink-0 mt-0.5" />
                   <span>{formatAddress(selectedUserDetails.address)}</span>
                 </div>
               </div>
+
+              {/* Status Control Button */}
+              {typeof handleOpenStatusModal === 'function' && (
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex flex-col gap-3">
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Status Control</h4>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleOpenStatusModal(selectedUserDetails, !selectedUserDetails.is_blocked)}
+                      className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold transition-all text-xs border cursor-pointer text-white ${
+                        selectedUserDetails.is_blocked
+                          ? 'bg-emerald-500 hover:bg-emerald-600 border-emerald-600'
+                          : 'bg-rose-500 hover:bg-rose-600 border-rose-600'
+                      }`}
+                    >
+                      {selectedUserDetails.is_blocked ? (
+                        <>
+                          <Unlock className="h-4 w-4" />
+                          <span>Unblock User</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-4 w-4" />
+                          <span>Block User</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Status History (Audit Trail) */}
               {selectedUserDetails.audit_logs && selectedUserDetails.audit_logs.length > 0 && (
@@ -214,14 +272,10 @@ export const UserManagementTab = ({
                         <div className="flex justify-between items-center">
                           <span className={`px-[12px] py-[4px] rounded-full text-[10px] font-semibold border shadow-sm ${
                             (log.status_changed_to || '').toLowerCase() === 'active'
-                              ? 'status-badge-active'
+                              ? 'bg-[#16A34A] text-[#FFFFFF] border-[#15803D]'
                               : (log.status_changed_to || '').toLowerCase() === 'inactive'
-                              ? 'bg-[#6B7280] text-[#FFFFFF] border-[#4B5563]'
-                              : (log.status_changed_to || '').toLowerCase() === 'suspended'
-                              ? 'bg-[#EF4444] text-[#FFFFFF] border-[#DC2626]'
-                              : (log.status_changed_to || '').toLowerCase() === 'pending verification'
-                              ? 'bg-[#F59E0B] text-[#FFFFFF] border-[#D97706]'
-                              : 'bg-[#B91C1C] text-[#FFFFFF] border-[#991B1B]'
+                              ? 'bg-[#EA580C] text-[#FFFFFF] border-[#C2410C]'
+                              : 'bg-[#DC2626] text-[#FFFFFF] border-[#B91C1C]'
                           }`}>
                             {log.status_changed_to}
                           </span>
@@ -272,7 +326,7 @@ export const UserManagementTab = ({
                           </div>
                         </div>
                         <button
-                          onClick={() => setViewingOrderItems(order.items)}
+                          onClick={() => setViewingOrderItems(order)}
                           className="w-full py-1.5 px-3 bg-white dark:bg-slate-950 border border-slate-155 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-850 rounded-xl transition-all font-bold text-[10px] flex items-center justify-center gap-1.5 cursor-pointer text-slate-655 dark:text-slate-300"
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -290,7 +344,7 @@ export const UserManagementTab = ({
           ) : (
             <div className="flex flex-col items-center justify-center text-center py-12 px-4 h-[300px]">
               <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-500 mb-4 animate-bounce">
-                <Users className="h-8 w-8" />
+                <Users className="h-8 w-8 dark:text-[#C084FC]" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">No User Selected</h4>
               <p className="text-xs text-slate-450 max-w-[200px]">

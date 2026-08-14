@@ -8,6 +8,7 @@ class SupportModel(db.Model):
     __tablename__ = 'support_messages'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     name = db.Column(EncryptedString(255), nullable=False)
     email = db.Column(EncryptedString(255), nullable=False)
 
@@ -15,10 +16,13 @@ class SupportModel(db.Model):
     status = db.Column(db.String(50), default='Pending')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Kolkata')))
 
+    user = db.relationship('UserModel', foreign_keys=[user_id])
+
     def to_dict(self):
         return {
             "id": str(self.id),
             "_id": str(self.id),
+            "user_id": str(self.user_id) if self.user_id else None,
             "name": self.name,
             "email": self.email,
             "message": self.message,
@@ -28,9 +32,10 @@ class SupportModel(db.Model):
         }
 
     @staticmethod
-    def create_message(name, email, message):
+    def create_message(name, email, message, user_id=None):
         try:
             msg = SupportModel(
+                user_id=user_id,
                 name=name,
                 email=email,
                 message=message,

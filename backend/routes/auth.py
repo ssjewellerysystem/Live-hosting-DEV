@@ -1108,7 +1108,7 @@ def checkout_login_route():
 # Import token middleware for subsequent routes
 from backend.middleware.auth import token_required
 
-def add_user_notification(user_id, title, message):
+def add_user_notification(user_id, title, message, notif_type="general", ticket_id=None, original_message=None):
     try:
         uid = int(user_id)
         user = UserModel.query.get(uid)
@@ -1127,6 +1127,9 @@ def add_user_notification(user_id, title, message):
                     "id": str(uuid.uuid4()),
                     "title": title,
                     "message": message,
+                    "type": notif_type,
+                    "ticket_id": ticket_id,
+                    "original_message": original_message,
                     "read": False,
                     "created_at": format_iso_datetime(get_ist_time())
                 }

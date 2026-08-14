@@ -57,11 +57,13 @@ export const Support = () => {
     setSuccessMsg('');
 
     try {
+      const token = localStorage.getItem('token');
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       const response = await axios.post(`${API_BASE_URL}/support`, {
         name,
         email,
         message
-      });
+      }, config);
       setSuccessMsg(response.data.message);
       setName('');
       setEmail('');

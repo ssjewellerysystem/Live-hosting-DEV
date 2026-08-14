@@ -977,27 +977,23 @@ export const Navbar = () => {
                     <AnimatePresence>
                       {notificationsOpen && (
                         <motion.div
-                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                          className="absolute right-0 sm:right-4 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-white dark:bg-slate-900 border border-[#F2E8D9] dark:border-slate-850 rounded-2xl shadow-xl z-50 overflow-hidden origin-top-right"
+                                   className="absolute right-0 sm:right-4 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-white dark:bg-slate-900 border border-[#F2E8D9] dark:border-slate-850 rounded-2xl shadow-xl z-50 overflow-hidden origin-top-right mobile-notification-dropdown"
                         >
                           <div className="px-3 py-2.5 bg-white dark:bg-slate-900 border-b border-[#F2E8D9]/50 dark:border-slate-800/80 flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-[10px] sm:text-xs text-slate-850 dark:text-slate-100 uppercase tracking-wide">{t('navbar.notifications')}</span>
+                              <span className="font-bold text-[10px] sm:text-xs text-slate-800 dark:text-slate-100 uppercase tracking-wide notif-header-title">{t('navbar.notifications')}</span>
                               {unreadCount > 0 && (
-                                <span className="bg-[#D4A75F] text-white text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                                <span className="bg-[#D4A75F] text-white text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full notif-unread-count">
                                   {unreadCount}
                                 </span>
                               )}
                             </div>
                             <div className="flex gap-2 text-[9px] sm:text-[10px] font-extrabold">
-                              <button onClick={handleMarkAllAsRead} className="text-[#D4A75F] hover:underline cursor-pointer bg-transparent border-none">
+                              <button onClick={handleMarkAllAsRead} className="text-[#D4A75F] hover:underline cursor-pointer bg-transparent border-none notif-mark-all-btn">
                                 {t('navbar.mark_all_read')}
                               </button>
-                              <span className="text-slate-300 dark:text-slate-700">|</span>
-                              <button onClick={handleClearRead} className="bg-transparent border-none cursor-pointer text-slate-500 hover:text-rose-500 dark:text-slate-400 hover:underline">
+                              <span className="text-slate-300 dark:text-slate-700 notif-divider">|</span>
+                              <button onClick={handleClearRead} className="bg-transparent border-none cursor-pointer text-slate-500 hover:text-rose-500 dark:text-slate-400 hover:underline notif-clear-read-btn">
                                 {t('navbar.clear_read')}
                               </button>
                             </div>
@@ -1007,7 +1003,7 @@ export const Navbar = () => {
                             {displayedNotifications.length === 0 ? (
                               <div className="py-6 text-center text-slate-400 dark:text-slate-555">
                                 <Bell className="h-6 w-6 mx-auto opacity-30 mb-1.5 animate-bounce" />
-                                <p className="text-[10px] sm:text-xs font-semibold">{t('navbar.no_notifications')}</p>
+                                <p className="text-[10px] sm:text-xs font-semibold notif-empty-text">{t('navbar.no_notifications')}</p>
                               </div>
                             ) : (
                               displayedNotifications.map((n) => {
@@ -1017,7 +1013,7 @@ export const Navbar = () => {
                                     switch (notif.type) {
                                       case 'SUPPORT_TICKET':
                                         return {
-                                          bg: 'bg-indigo-555/10 text-indigo-500 dark:bg-indigo-500/20',
+                                          bg: 'bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20',
                                           icon: <MessageSquare className="h-3.5 w-3.5" />
                                         };
                                       case 'BUY_REQUEST':
@@ -1096,7 +1092,7 @@ export const Navbar = () => {
                                   <div
                                     key={n.id}
                                     onClick={handleNotificationClick}
-                                    className={`p-2.5 flex gap-2 items-start transition-colors cursor-pointer text-left ${isUnread ? 'bg-[#D4A75F]/5 dark:bg-[#D4A75F]/5 font-semibold' : 'hover:bg-slate-50 dark:hover:bg-slate-850/50'
+                                    className={`p-2.5 flex gap-2 items-start transition-colors cursor-pointer text-left ${isUnread ? 'bg-[#D4A75F]/5 dark:bg-[#D4A75F]/5 font-semibold notif-item-unread' : 'hover:bg-slate-50 dark:hover:bg-slate-850/50 notif-item-read'
                                       }`}
                                   >
                                     <div className={`p-1.5 rounded-lg flex-shrink-0 ${styles.bg}`}>
@@ -1104,17 +1100,17 @@ export const Navbar = () => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-baseline justify-between gap-1">
-                                        <p className={`text-[11px] font-bold truncate ${isUnread ? 'text-slate-850 dark:text-slate-105' : 'text-slate-550 dark:text-slate-450'}`}>{n.title}</p>
-                                        <span className="text-[8px] font-semibold text-slate-450 dark:text-slate-555 flex-shrink-0 flex items-center gap-0.5"><Clock className="w-2 h-2" />{formatTimeAgo(n.created_at)}</span>
+                                        <p className={`text-[11px] font-bold truncate ${isUnread ? 'text-slate-800 dark:text-slate-100 notif-title-unread' : 'text-slate-700 dark:text-slate-300 notif-title-read'}`}>{n.title}</p>
+                                        <span className="text-[8px] font-semibold text-slate-500 dark:text-slate-400 flex-shrink-0 flex items-center gap-0.5 notif-time"><Clock className="w-2 h-2" />{formatTimeAgo(n.created_at)}</span>
                                       </div>
-                                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{n.description || n.message}</p>
+                                      <p className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed break-words notif-desc">{n.description || n.message}</p>
                                       <div className="flex items-center justify-between mt-2">
                                         <div />
                                         <div>
                                           {isUnread ? (
-                                            <button onClick={(e) => handleMarkAsRead(n.id, e)} className="text-[8px] font-extrabold text-white bg-[#D4A75F] hover:bg-[#BF934B] px-1.5 py-0.5 rounded transition-colors cursor-pointer border-none">Mark as read</button>
+                                            <button onClick={(e) => handleMarkAsRead(n.id, e)} className="text-[8px] font-extrabold text-white bg-[#D4A75F] hover:bg-[#BF934B] px-1.5 py-0.5 rounded transition-colors cursor-pointer border-none notif-mark-read-action-btn">Mark as read</button>
                                           ) : (
-                                            <span className="text-[8px] font-extrabold text-[#D4A75F] flex items-center gap-0.5 bg-[#D4A75F]/10 dark:bg-[#D4A75F]/15 px-1 py-0.5 rounded"><Check className="h-2.5 w-2.5" /><span>Read</span></span>
+                                            <span className="text-[8px] font-extrabold text-[#D4A75F] flex items-center gap-0.5 bg-[#D4A75F]/10 dark:bg-[#D4A75F]/15 px-1 py-0.5 rounded notif-read-badge"><Check className="h-2.5 w-2.5" /><span>Read</span></span>
                                           )}
                                         </div>
                                       </div>
@@ -1132,7 +1128,7 @@ export const Navbar = () => {
                                   setNotificationsOpen(false);
                                   navigate('/admin?tab=notifications');
                                 }}
-                                className="text-[10px] font-bold text-[#D4A75F] hover:underline cursor-pointer block w-full py-1 border-none bg-transparent"
+                                className="text-[10px] font-bold text-[#D4A75F] hover:underline cursor-pointer block w-full py-1 border-none bg-transparent notif-view-all-btn"
                               >
                                 View all notifications
                               </button>

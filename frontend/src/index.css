@@ -600,19 +600,30 @@ html:not(.dark) .border-slate-300 {
   color: #FFFFFF !important;
 }
 
-.status-badge-success, .status-badge-active {
+.status-badge-success {
   background-color: #166534 !important;
   border: 1px solid #15803D !important;
   color: #FFFFFF !important;
-}
-
-.status-badge-success {
   font-weight: 700 !important;
   min-width: 72px !important;
 }
 
-.status-badge-success:hover, .status-badge-active:hover {
-  background-color: #14532D !important;
+.status-badge-active {
+  background-color: #16A34A !important;
+  border: 1px solid #15803D !important;
+  color: #FFFFFF !important;
+}
+
+.status-badge-inactive {
+  background-color: #EA580C !important;
+  border: 1px solid #C2410C !important;
+  color: #FFFFFF !important;
+}
+
+.status-badge-blocked {
+  background-color: #DC2626 !important;
+  border: 1px solid #B91C1C !important;
+  color: #FFFFFF !important;
 }
 
 .stats-value-highlight {
@@ -641,6 +652,116 @@ html:not(.dark) .border-slate-300 {
   .mobile-navbar-mockup select,
   .mobile-navbar-mockup svg {
     color: #ffffff !important;
+  }
+}
+
+/* ==========================================================================
+   MOBILE LIGHT MODE NOTIFICATION DROPDOWN UI FIX
+   ========================================================================== */
+@media (max-width: 1023px) {
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown {
+    background-color: #FFFFFF !important;
+    border-color: #F2E8D9 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown span,
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown a,
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown button,
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown select,
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown p {
+    color: inherit !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown svg {
+    color: inherit !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-header-title {
+    color: #1E293B !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-unread-count {
+    background-color: #D4A75F !important;
+    color: #FFFFFF !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-mark-all-btn {
+    color: #B88C46 !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-mark-all-btn:hover {
+    color: #8C672B !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-clear-read-btn {
+    color: #64748B !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-clear-read-btn:hover {
+    color: #E11D48 !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-divider {
+    color: #CBD5E1 !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-empty-text {
+    color: #64748B !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-title-unread {
+    color: #0F172A !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-title-read {
+    color: #334155 !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-time {
+    color: #64748B !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-desc {
+    color: #475569 !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-mark-read-action-btn {
+    background-color: #3F1D5A !important;
+    color: #FFFFFF !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-mark-read-action-btn:hover {
+    background-color: #D4A75F !important;
+    color: #FFFFFF !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-read-badge {
+    background-color: rgba(212, 167, 95, 0.15) !important;
+    color: #967133 !important;
+    border: 1px solid rgba(212, 167, 95, 0.3) !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-read-badge span,
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-read-badge svg {
+    color: #967133 !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-view-all-btn {
+    color: #B88C46 !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-item-unread {
+    background-color: rgba(212, 167, 95, 0.08) !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-item-read {
+    background-color: #FFFFFF !important;
+  }
+
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-item-read:hover,
+  html:not(.dark) .mobile-navbar-mockup .mobile-notification-dropdown .notif-item-read:active {
+    background-color: #F8FAFC !important;
   }
 }
 
@@ -732,15 +853,4 @@ html.dark .secondary-text {
   opacity: 1 !important;
 }
 
-/* ==========================================================================
-   GOLD & SILVER CALCULATOR SECTION HEADINGS (HIGH CONTRAST IN LIGHT MODE)
-   ========================================================================== */
-html:not(.dark) .calculator-section-label,
-html:not(.dark) .calc-section-heading {
-  color: #FFFFFF !important;
-}
 
-.dark .calculator-section-label,
-.dark .calc-section-heading {
-  color: #cbd5e1;
-}

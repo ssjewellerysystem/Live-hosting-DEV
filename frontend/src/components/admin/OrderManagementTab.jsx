@@ -71,7 +71,7 @@ export const OrderManagementTab = ({
                 };
 
                 return (
-                  <tr key={o._id} className="hover:bg-slate-50/70 dark:hover:bg-slate-850/30 transition-colors align-middle">
+                  <tr key={o._id} className="hover:bg-slate-50/70 dark:hover:bg-transparent transition-colors align-middle">
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-800 dark:text-slate-100 text-center whitespace-nowrap">
                       {o.order_id}
                     </td>

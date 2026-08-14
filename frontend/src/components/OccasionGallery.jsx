@@ -378,6 +378,8 @@ export const OccasionGallery = ({ items: propItems, activeCollection, onCollecti
     }
   };
 
+  if (!items || items.length === 0) return null;
+
   return (
     <section className="relative w-full overflow-hidden py-16 bg-transparent transition-colors duration-300">
       

@@ -10,7 +10,7 @@ export const SupportTicketsTab = ({
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
       <h3 className="text-base font-bold mb-4 flex items-center gap-2">
-        <MessageSquare className="h-5 w-5 text-emerald-500" />
+        <MessageSquare className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
         <span>Customer Support Messages ({messages.length})</span>
       </h3>
 

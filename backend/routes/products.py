@@ -136,14 +136,7 @@ def get_all_collections():
         return jsonify([c.to_dict() for c in collections]), 200
     except Exception as e:
         print("Error fetching collections:", e)
-        fallback = [
-            {"id": "1", "_id": "1", "name": "Wedding Wear", "title": "Wedding Wear", "slug": "wedding-wear", "description": "Regal Heritage Kundan", "image": None, "image_url": None},
-            {"id": "2", "_id": "2", "name": "Daily Wear", "title": "Daily Wear", "slug": "daily-wear", "description": "Versatile Chic Bangles", "image": None, "image_url": None},
-            {"id": "3", "_id": "3", "name": "Office Wear", "title": "Office Wear", "slug": "office-wear", "description": "Minimalistic Luxury Studs", "image": None, "image_url": None},
-            {"id": "4", "_id": "4", "name": "Date Night", "title": "Date Night", "slug": "date-night", "description": "Elegance & Layered Statements", "image": None, "image_url": None},
-            {"id": "5", "_id": "5", "name": "New Collection", "title": "New Collection", "slug": "new-collection", "description": "Fresh Masterpieces & Solitaires", "image": None, "image_url": None}
-        ]
-        return jsonify(fallback), 200
+        return jsonify([]), 200
 
 @products_bp.route('/<id>', methods=['GET'])
 def get_product(id):

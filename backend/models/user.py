@@ -1,9 +1,59 @@
 import bcrypt
 from datetime import datetime
 import pytz
+from dateutil.relativedelta import relativedelta
 from backend.extensions import db
 from backend.utils.timezone import format_iso_datetime
 from backend.utils.security import EncryptedString
+
+
+def compute_customer_status(is_blocked, orders, now=None):
+    """
+    Computes customer status based on strict business rules:
+    1. Priority 1: BLOCKED > ACTIVE/INACTIVE
+       If admin manually blocked customer -> 'Blocked'
+    2. Priority 2: Check latest qualifying purchase (non-cancelled, non-failed)
+       - If latest qualifying purchase is within last 3 months -> 'Active'
+       - If latest qualifying purchase is older than 3 months or customer has no qualifying purchase -> 'Inactive'
+    
+    Registration date and last login DO NOT influence status calculation.
+    """
+    if is_blocked:
+        return "Blocked"
+        
+    if now is None:
+        now = datetime.now(pytz.timezone('Asia/Kolkata'))
+        
+    latest_qualifying_date = None
+    
+    for o in orders:
+        st = str(getattr(o, 'order_status', '') or '').strip().lower()
+        if st in ['cancelled', 'failed', 'rejected']:
+            continue
+            
+        tx = getattr(o, 'transaction', None)
+        if tx and str(getattr(tx, 'status', '') or '').strip().lower() in ['failed', 'rejected']:
+            continue
+            
+        order_date = getattr(o, 'created_at', None)
+        if order_date:
+            if latest_qualifying_date is None or order_date > latest_qualifying_date:
+                latest_qualifying_date = order_date
+                
+    if not latest_qualifying_date:
+        return "Inactive"
+        
+    if latest_qualifying_date.tzinfo is None:
+        latest_qualifying_date = pytz.timezone('Asia/Kolkata').localize(latest_qualifying_date)
+    if now.tzinfo is None:
+        now = pytz.timezone('Asia/Kolkata').localize(now)
+        
+    three_months_ago = now - relativedelta(months=3)
+    
+    if latest_qualifying_date >= three_months_ago:
+        return "Active"
+    else:
+        return "Inactive"
 
 
 class DeliveryAddress(db.Model):
@@ -102,6 +152,13 @@ class UserModel(db.Model):
         self.full_name = value
 
     @property
+    def username(self):
+        return self.full_name or self.email
+    @username.setter
+    def username(self, value):
+        self.full_name = value
+
+    @property
     def password(self):
         return self.password_hash
     @password.setter
@@ -146,6 +203,9 @@ class UserModel(db.Model):
                 a.is_default = False
             value.is_default = True
             self.addresses.append(value)
+
+    def calculate_status(self, now=None):
+        return compute_customer_status(self.is_blocked, self.orders, now=now)
 
     def to_dict(self):
         # Address
@@ -235,6 +295,7 @@ class UserModel(db.Model):
             "cart": cart_list,
             "saved_for_later": saved_list,
             "notifications": self.notifications or [],
+            "status": self.calculate_status(),
             "is_blocked": bool(self.is_blocked),
             "is_admin": bool(self.is_admin),
             "is_verified": bool(self.is_verified),
@@ -502,7 +563,8 @@ class UserModel(db.Model):
         try:
             from sqlalchemy.orm import selectinload
             query = UserModel.query.options(
-                selectinload(UserModel.addresses)
+                selectinload(UserModel.addresses),
+                selectinload(UserModel.orders)
             ).order_by(UserModel.id.desc())
 
             def serialize_user(u):
@@ -528,6 +590,7 @@ class UserModel(db.Model):
                     "email": u.email,
                     "mobile": u.mobile or "",
                     "address": addr_dict,
+                    "status": u.calculate_status(),
                     "is_blocked": bool(u.is_blocked),
                     "is_admin": bool(u.is_admin),
                     "is_verified": bool(u.is_verified),

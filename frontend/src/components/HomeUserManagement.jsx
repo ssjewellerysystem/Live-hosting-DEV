@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Calendar, Check, Lock, DollarSign, Search, Plus, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Calendar, Check, Lock, DollarSign, Search, Plus, Eye, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp } from 'lucide-react';
 
 const formatDateTime = (isoString) => {
   if (!isoString) return { date: 'N/A', time: 'N/A' };
@@ -49,7 +49,9 @@ export const HomeUserManagement = ({
   indexOfLastItem,
   filteredUsers,
   totalPages,
-  userPage
+  userPage,
+  userStatusSortMode = 0,
+  setUserStatusSortMode
 }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -86,8 +88,8 @@ export const HomeUserManagement = ({
               {usersAnalytics?.active_users ?? 0}
             </span>
           </div>
-          <div className="bg-emerald-500/10 p-2 sm:p-3 rounded-xl text-emerald-500 flex-shrink-0 shrink-0 flex items-center justify-center">
-            <Check className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+          <div className="bg-[#DCFCE7] dark:bg-[#163B2A] p-2 sm:p-3 rounded-xl flex-shrink-0 shrink-0 flex items-center justify-center">
+            <Check className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-[#16A34A] dark:text-[#86EFAC]" />
           </div>
         </div>
 
@@ -184,7 +186,38 @@ export const HomeUserManagement = ({
                 <th className="py-4 px-6 font-bold text-center">Total Spending</th>
                 <th className="py-4 px-6 font-bold text-center">Pending Orders</th>
                 <th className="py-4 px-6 font-bold text-center">Delivered Orders</th>
-                <th className="py-4 px-6 font-bold">Account Status</th>
+                <th className="py-4 px-6 font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setUserStatusSortMode && setUserStatusSortMode(prev => (prev + 1) % 4)}
+                    title={
+                      userStatusSortMode === 1
+                        ? "Status Order: Active → Inactive → Blocked (Click for Inactive → Active → Blocked)"
+                        : userStatusSortMode === 2
+                        ? "Status Order: Inactive → Active → Blocked (Click for Blocked → Active → Inactive)"
+                        : userStatusSortMode === 3
+                        ? "Status Order: Blocked → Active → Inactive (Click to reset default order)"
+                        : "Status Order: Default / Unsorted (Click to sort Active → Inactive → Blocked)"
+                    }
+                    aria-label={
+                      userStatusSortMode === 1
+                        ? "Status sort: Active first. Click for Inactive first."
+                        : userStatusSortMode === 2
+                        ? "Status sort: Inactive first. Click for Blocked first."
+                        : userStatusSortMode === 3
+                        ? "Status sort: Blocked first. Click to reset."
+                        : "Status sort: default order. Click to sort Active first."
+                    }
+                    className="inline-flex items-center gap-1.5 font-bold cursor-pointer hover:text-slate-800 dark:hover:text-slate-100 transition-colors select-none group uppercase tracking-wider"
+                  >
+                    <span>Account Status</span>
+                    {userStatusSortMode === 0 ? (
+                      <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-500 transition-colors shrink-0" />
+                    ) : (
+                      <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 transition-colors shrink-0" />
+                    )}
+                  </button>
+                </th>
                 <th className="py-4 px-6 font-bold text-center">Actions</th>
               </tr>
             </thead>
@@ -246,22 +279,18 @@ export const HomeUserManagement = ({
                       <td className="py-4 px-6 text-center font-bold text-amber-500">
                         {pendingOrdersCount}
                       </td>
-                      <td className="py-4 px-6 text-center font-bold text-emerald-500">
+                      <td className="py-4 px-6 text-center font-bold text-[#86EFAC]">
                         {deliveredOrdersCount}
                       </td>
                       <td className="py-4 px-6">
                         <span className={`inline-flex items-center px-[12px] py-[4px] rounded-full text-[10px] font-semibold border shadow-sm ${
-                          (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'active'
+                          (u.status || (u.is_blocked ? "Blocked" : "Inactive")).toLowerCase() === 'active'
                             ? 'bg-[#22C55E] text-[#FFFFFF] border-[#16A34A]'
-                            : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'inactive'
-                            ? 'bg-[#6B7280] text-[#FFFFFF] border-[#4B5563]'
-                            : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'suspended'
-                            ? 'bg-[#EF4444] text-[#FFFFFF] border-[#DC2626]'
-                            : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'pending verification'
-                            ? 'bg-[#F59E0B] text-[#FFFFFF] border-[#D97706]'
-                            : 'bg-[#B91C1C] text-[#FFFFFF] border-[#991B1B]'
+                            : (u.status || (u.is_blocked ? "Blocked" : "Inactive")).toLowerCase() === 'inactive'
+                            ? 'bg-[#F97316] text-[#FFFFFF] border-[#EA580C]'
+                            : 'bg-[#EF4444] text-[#FFFFFF] border-[#DC2626]'
                         }`}>
-                          {u.status || (u.is_blocked ? "Blocked" : "Active")}
+                          {u.status || (u.is_blocked ? "Blocked" : "Inactive")}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-center">

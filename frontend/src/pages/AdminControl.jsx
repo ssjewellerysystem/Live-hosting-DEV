@@ -5,7 +5,7 @@ import {
   BarChart3, Plus, Edit2, Trash2, CheckCircle2, ShieldAlert, User,
   ArrowUpRight, Users, ShoppingBag, Package, MessageSquare, AlertCircle, Upload, Eye, X,
   AlertTriangle, Check, RefreshCw, Calendar, DollarSign, Clock, MapPin, Lock, Unlock, Shield, Search, Image,
-  Settings, Globe, Link as LinkIcon, Sparkles, Truck, ExternalLink
+  Settings, Globe, Link as LinkIcon, Sparkles, Truck, ExternalLink, ArrowUpDown, ArrowUp
 } from 'lucide-react';
 import { AuthContext, API_BASE_URL, SERVER_BASE_URL } from '../context/AuthContext';
 import { HighDemandButton } from '../components/admin/HighDemandButton';
@@ -13,6 +13,8 @@ import { MaintenanceButton } from '../components/admin/MaintenanceButton';
 import { formatPrice } from '../utils/priceFormatter';
 import { translateCategory } from '../utils/categoryTranslations';
 import { TrackingInfoModal } from '../components/admin/TrackingInfoModal';
+import { OrderItemsModal } from '../components/admin/OrderItemsModal';
+import { sortUsersByStatus } from '../utils/statusSorter';
 import { CategoryBannerManagement } from '../components/admin/CategoryBannerManagement';
 import { CollectionBannerManagement } from '../components/admin/CollectionBannerManagement';
 
@@ -133,7 +135,6 @@ export const AdminControl = () => {
     owner_bio_2: "",
     owner_quote: "",
     video_showcase_url: "",
-    luxury_gallery_items: [],
     owner_stats: [
       { label: 'Years of Craft', value: 25, suffix: '+' },
       { label: 'Unique Designs', value: 1200, suffix: '+' },
@@ -149,6 +150,13 @@ export const AdminControl = () => {
   const [homepageUpdating, setHomepageUpdating] = useState(false);
   const [homepageError, setHomepageError] = useState('');
   const [homepageSuccess, setHomepageSuccess] = useState('');
+
+  // Lookbook / Featured Luxury Gallery Cards state
+  const [lookbooks, setLookbooks] = useState([]);
+  const [loadingLookbooks, setLoadingLookbooks] = useState(false);
+  const [lookbookSuccess, setLookbookSuccess] = useState(null);
+  const [lookbookError, setLookbookError] = useState(null);
+  const [savingLookbooks, setSavingLookbooks] = useState(false);
 
   // Category config states
   const [adminCategories, setAdminCategories] = useState([]);
@@ -226,6 +234,7 @@ export const AdminControl = () => {
   const [statusReason, setStatusReason] = useState('');
   const [viewingOrderItems, setViewingOrderItems] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userStatusSortMode, setUserStatusSortMode] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -746,7 +755,6 @@ export const AdminControl = () => {
           return defaultVal;
         };
 
-        const galleryItems = safeParseJSON(response.data.luxury_gallery_items, []);
         const statsItems = safeParseJSON(response.data.owner_stats, [
           { label: 'Years of Craft', value: 25, suffix: '+' },
           { label: 'Unique Designs', value: 1200, suffix: '+' },
@@ -784,7 +792,6 @@ export const AdminControl = () => {
           owner_bio_2: response.data.owner_bio_2 || "",
           owner_quote: response.data.owner_quote || "",
           video_showcase_url: response.data.video_showcase_url || "/golden-stage.mp4",
-          luxury_gallery_items: Array.isArray(galleryItems) ? galleryItems : [],
           owner_stats: Array.isArray(statsItems) ? statsItems : [],
           owner_badges: Array.isArray(badgesItems) ? badgesItems : [],
           occasion_items_en: Array.isArray(occasionEn) ? occasionEn : [],
@@ -828,6 +835,169 @@ export const AdminControl = () => {
       console.error("Error fetching collections:", err);
     }
   };
+
+  const fetchLookbooks = async () => {
+    setLoadingLookbooks(true);
+    setLookbookError(null);
+    try {
+      const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE_URL}/lookbook/all`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setLookbooks(res.data || []);
+    } catch (err) {
+      console.error("Error fetching lookbooks:", err);
+      try {
+        const res = await axios.get(`${API_BASE_URL}/lookbook`);
+        setLookbooks(res.data || []);
+      } catch (e) {
+        setLookbookError("Failed to fetch lookbooks from database.");
+      }
+    } finally {
+      setLoadingLookbooks(false);
+    }
+  };
+
+  const handleAddLookbookCard = () => {
+    const newCard = {
+      id: `temp_${Date.now()}`,
+      title: 'New Luxury Piece',
+      tag: 'Featured',
+      image: '',
+      image_url: '',
+      description: 'Insert item description details here.',
+      link: '/?category=Necklaces',
+      display_order: lookbooks.length + 1,
+      is_active: true,
+      isNew: true
+    };
+    setLookbooks(prev => [...prev, newCard]);
+  };
+
+  const handleUpdateLookbookCardField = (id, field, value) => {
+    setLookbooks(prev => prev.map(card => {
+      if (card.id === id) {
+        return { ...card, [field]: value };
+      }
+      return card;
+    }));
+  };
+
+  const handleUploadLookbookImage = async (file, cardId) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      const response = await axios.post(`${API_BASE_URL}/products/upload`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      if (response.data && response.data.url) {
+        let uploadedUrl = response.data.url;
+        if (uploadedUrl.startsWith('/static/')) {
+          uploadedUrl = `${SERVER_BASE_URL}${uploadedUrl}`;
+        }
+        setLookbooks(prev => prev.map(card => {
+          if (card.id === cardId) {
+            return { ...card, image: uploadedUrl, image_url: uploadedUrl };
+          }
+          return card;
+        }));
+      }
+    } catch (err) {
+      console.error("Error uploading lookbook image:", err);
+      alert("Failed to upload image.");
+    }
+  };
+
+  const handleSaveLookbookCard = async (card) => {
+    setLookbookError(null);
+    setLookbookSuccess(null);
+    try {
+      const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const payload = {
+        title: card.title || 'Featured Piece',
+        tag: card.tag || 'Featured',
+        image: card.image || card.image_url || '',
+        description: card.description || '',
+        link: card.link || '',
+        display_order: parseInt(card.display_order || 0),
+        is_active: card.is_active !== false
+      };
+
+      if (card.isNew || String(card.id).startsWith('temp_')) {
+        await axios.post(`${API_BASE_URL}/lookbook`, payload, { headers });
+        setLookbookSuccess("Lookbook card created successfully in database!");
+      } else {
+        await axios.put(`${API_BASE_URL}/lookbook/${card.id}`, payload, { headers });
+        setLookbookSuccess("Lookbook card updated successfully in database!");
+      }
+      await fetchLookbooks();
+    } catch (err) {
+      console.error("Error saving lookbook card:", err);
+      setLookbookError(err.response?.data?.message || "Failed to save lookbook card.");
+    }
+  };
+
+  const handleSaveAllLookbookCards = async () => {
+    setSavingLookbooks(true);
+    setLookbookError(null);
+    setLookbookSuccess(null);
+    try {
+      const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      for (let i = 0; i < lookbooks.length; i++) {
+        const card = lookbooks[i];
+        const payload = {
+          title: card.title || 'Featured Piece',
+          tag: card.tag || 'Featured',
+          image: card.image || card.image_url || '',
+          description: card.description || '',
+          link: card.link || '',
+          display_order: i + 1,
+          is_active: card.is_active !== false
+        };
+        if (card.isNew || String(card.id).startsWith('temp_')) {
+          await axios.post(`${API_BASE_URL}/lookbook`, payload, { headers });
+        } else {
+          await axios.put(`${API_BASE_URL}/lookbook/${card.id}`, payload, { headers });
+        }
+      }
+      setLookbookSuccess("All Featured Luxury Gallery cards saved successfully in database!");
+      await fetchLookbooks();
+    } catch (err) {
+      console.error("Error saving all lookbook cards:", err);
+      setLookbookError(err.response?.data?.message || "Failed to save lookbook cards.");
+    } finally {
+      setSavingLookbooks(false);
+    }
+  };
+
+  const handleDeleteLookbookCard = async (cardId) => {
+    if (!window.confirm("Are you sure you want to delete this Lookbook card?")) return;
+
+    if (String(cardId).startsWith('temp_')) {
+      setLookbooks(prev => prev.filter(c => c.id !== cardId));
+      return;
+    }
+
+    setLookbookError(null);
+    setLookbookSuccess(null);
+    try {
+      const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      await axios.delete(`${API_BASE_URL}/lookbook/${cardId}`, { headers });
+      setLookbookSuccess("Lookbook card deleted successfully from database!");
+      setLookbooks(prev => prev.filter(c => c.id !== cardId));
+    } catch (err) {
+      console.error("Error deleting lookbook card:", err);
+      setLookbookError(err.response?.data?.message || "Failed to delete lookbook card.");
+    }
+  };
+
 
   const handleOpenAddCollection = () => {
     setEditingCollection(null);
@@ -934,7 +1104,6 @@ export const AdminControl = () => {
       const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
       const payload = {
         ...homepageSettings,
-        luxury_gallery_items: JSON.stringify(homepageSettings.luxury_gallery_items),
         owner_stats: JSON.stringify(homepageSettings.owner_stats),
         owner_badges: JSON.stringify(homepageSettings.owner_badges),
         occasion_items_en: JSON.stringify(homepageSettings.occasion_items_en),
@@ -1036,13 +1205,6 @@ export const AdminControl = () => {
               ...prev,
               occasion_items_hi: updatedItems
             }));
-          } else {
-            const updatedItems = [...homepageSettings.luxury_gallery_items];
-            updatedItems[galleryIndex].image = uploadedUrl;
-            setHomepageSettings(prev => ({
-              ...prev,
-              luxury_gallery_items: updatedItems
-            }));
           }
         } else if (targetField === 'category') {
           setCategoryForm(prev => ({ ...prev, image_url: uploadedUrl }));
@@ -1099,6 +1261,7 @@ export const AdminControl = () => {
         fetchHomepageSettings();
         fetchAdminCategories();
         fetchCollections();
+        fetchLookbooks();
       }
     }
   }, [isAdmin, activeTab, activeConfigSubTab]);
@@ -1106,10 +1269,13 @@ export const AdminControl = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/admin/users`);
-      setUsers(res.data);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE_URL}/admin/users-complete`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setUsers(res.data.users || res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch users:", err);
     }
   };
 
@@ -1176,25 +1342,54 @@ export const AdminControl = () => {
     }
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.put(`${API_BASE_URL}/admin/users/${statusModalUser.id || statusModalUser._id}/status`, {
-        is_blocked: statusModalNewBlockedState,
+      const targetId = statusModalUser.id || statusModalUser._id;
+      const newBlockedState = statusModalNewBlockedState;
+
+      const res = await axios.put(`${API_BASE_URL}/admin/users/${targetId}/status`, {
+        is_blocked: newBlockedState,
         reason: statusReason
       }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      alert(res.data.message || "User status successfully updated.");
+      const updatedStatus = res.data.status || res.data.account_status || (newBlockedState ? "Blocked" : "Active");
+
+      // 1. Immediately update users list in state for instant UI reflection
+      setUsers(prevUsers => (prevUsers || []).map(u => {
+        if (String(u.id || u._id) === String(targetId)) {
+          return {
+            ...u,
+            is_blocked: newBlockedState,
+            status: updatedStatus
+          };
+        }
+        return u;
+      }));
+
+      // 2. Immediately update selectedUserDetails state if currently selected
+      if (selectedUserDetails && String(selectedUserDetails.id || selectedUserDetails._id) === String(targetId)) {
+        setSelectedUserDetails(prev => prev ? ({
+          ...prev,
+          is_blocked: newBlockedState,
+          status: updatedStatus
+        }) : null);
+      }
+
+      // 3. Close status modal and clear form input immediately
       setStatusModalOpen(false);
       setStatusReason('');
 
-      const currentId = selectedUserDetails?.id || selectedUserDetails?._id;
-      const targetId = statusModalUser.id || statusModalUser._id;
-      if (selectedUserDetails && String(currentId) === String(targetId)) {
+      // 4. Notify admin of successful status update
+      alert(res.data.message || "User status successfully updated.");
+
+      // 5. Re-fetch user details and users list from server to sync all data & audit logs
+      if (targetId) {
         fetchUserDetails(targetId);
       }
-
       fetchUsers();
-      fetchAuditLogs();
+      if (typeof fetchAuditLogs === 'function') {
+        fetchAuditLogs();
+      }
     } catch (err) {
       console.error("Failed to update user status:", err);
       alert(err.response?.data?.message || "Failed to update user status.");
@@ -1237,7 +1432,7 @@ export const AdminControl = () => {
           {/* Owner Configuration (Settings form) */}
           <div className="lg:col-span-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200/40 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
             <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-              <Settings className="h-4 w-4 text-emerald-500" />
+              <Settings className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
               <span>Owner & Email Configuration</span>
             </h4>
 
@@ -1307,7 +1502,7 @@ export const AdminControl = () => {
           <div className="lg:col-span-7 bg-slate-50 dark:bg-slate-900/50 border border-slate-200/40 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
             <div>
               <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-emerald-500" />
+                <Calendar className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                 <span>Manual Trigger & Testing</span>
               </h4>
               <p className="text-xs text-slate-400 mb-6">
@@ -1379,7 +1574,7 @@ export const AdminControl = () => {
         <div className="border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 bg-white dark:bg-slate-900/50">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-emerald-500" />
+              <Clock className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
               <span>Report Execution & Logging History</span>
             </h4>
             <button
@@ -1454,13 +1649,15 @@ export const AdminControl = () => {
       );
     });
 
+    const displayUsers = sortUsersByStatus(filteredUsers, userStatusSortMode);
+
     return (
       <div className="space-y-6">
         {/* Search and stats count row */}
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-500/10 p-2.5 rounded-xl text-emerald-500">
-              <Users className="h-5 w-5" />
+              <Users className="h-5 w-5 dark:text-[#C084FC]" />
             </div>
             <div>
               <h4 className="text-sm font-extrabold text-slate-800 dark:text-white">Customer Management Panel</h4>
@@ -1481,68 +1678,92 @@ export const AdminControl = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Left Column: Users Table */}
-          <div className="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[700px]">
+          <div className="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[540px] sm:min-w-full table-auto">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 GFM-table-header uppercase font-bold">
-                  <th className="py-3 px-2">User ID</th>
-                  <th className="py-3 px-2">Full Name</th>
-                  <th className="py-3 px-2">Email</th>
-                  <th className="py-3 px-2">Mobile</th>
-                  <th className="py-3 px-2">Address</th>
-                  <th className="py-3 px-2">Registered</th>
-                  <th className="py-3 px-2">Last Login</th>
-                  <th className="py-3 px-2 text-right">Status</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 GFM-table-header uppercase font-bold text-[11px] sm:text-xs">
+                  <th className="py-3 px-2 sm:px-3 font-bold text-slate-500 dark:text-slate-400 min-w-[110px] max-w-[160px]">NAME</th>
+                  <th className="py-3 px-2 sm:px-3 font-bold text-slate-500 dark:text-slate-400 min-w-[130px] max-w-[200px]">EMAIL</th>
+                  <th className="py-3 px-2 sm:px-3 font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap w-auto">MOBILE</th>
+                  <th className="py-3 px-2 sm:px-3 font-bold text-slate-500 dark:text-slate-400 min-w-[120px]">ADDRESS</th>
+                  <th className="py-3 px-2 sm:px-3 text-right font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap w-auto">
+                    <button
+                      type="button"
+                      onClick={() => setUserStatusSortMode(prev => (prev + 1) % 4)}
+                      title={
+                        userStatusSortMode === 1
+                          ? "Status Order: Active → Inactive → Blocked (Click for Inactive → Active → Blocked)"
+                          : userStatusSortMode === 2
+                          ? "Status Order: Inactive → Active → Blocked (Click for Blocked → Active → Inactive)"
+                          : userStatusSortMode === 3
+                          ? "Status Order: Blocked → Active → Inactive (Click to reset default order)"
+                          : "Status Order: Default / Unsorted (Click to sort Active → Inactive → Blocked)"
+                      }
+                      aria-label={
+                        userStatusSortMode === 1
+                          ? "Status sort: Active first. Click for Inactive first."
+                          : userStatusSortMode === 2
+                          ? "Status sort: Inactive first. Click for Blocked first."
+                          : userStatusSortMode === 3
+                          ? "Status sort: Blocked first. Click to reset."
+                          : "Status sort: default order. Click to sort Active first."
+                      }
+                      className="inline-flex items-center gap-1.5 ml-auto font-bold cursor-pointer hover:text-slate-800 dark:hover:text-slate-100 transition-colors select-none text-right group"
+                    >
+                      <span>STATUS</span>
+                      {userStatusSortMode === 0 ? (
+                        <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-500 transition-colors shrink-0" />
+                      ) : (
+                        <ArrowUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 transition-colors shrink-0" />
+                      )}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
-                {filteredUsers.length === 0 ? (
+                {displayUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="py-8 text-center text-slate-450 italic">
+                    <td colSpan="5" className="py-8 text-center text-slate-450 italic">
                       No users found matching your search.
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map(u => (
+                  displayUsers.map(u => (
                     <tr
                       key={u.id || u._id}
                       onClick={() => fetchUserDetails(u.id || u._id)}
-                      className={`hover:bg-slate-50/70 dark:hover:bg-slate-850/40 cursor-pointer transition-colors ${String(selectedUserDetails?.id || selectedUserDetails?._id) === String(u.id || u._id)
+                      className={`hover:bg-slate-50/70 dark:hover:bg-transparent cursor-pointer transition-colors ${String(selectedUserDetails?.id || selectedUserDetails?._id) === String(u.id || u._id)
                           ? 'bg-emerald-500/5 dark:bg-emerald-500/10 border-l-4 border-l-emerald-500'
                           : ''
                         }`}
                     >
-                      <td className="py-3.5 px-2 font-mono text-[10px] text-slate-450">
-                        {(u.id || u._id || '').toString().slice(-6).toUpperCase()}
+                      <td className="py-3.5 px-2 sm:px-3 font-bold text-slate-800 dark:text-slate-100 min-w-[110px] max-w-[160px]">
+                        <div className="truncate" title={u.name || "N/A"}>
+                          {u.name || "N/A"}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400 font-normal truncate" title={`ID: ${u.id || u._id}`}>
+                          ID: {(u.id || u._id || '').toString().slice(-6).toUpperCase()}
+                        </div>
                       </td>
-                      <td className="py-3.5 px-2 font-bold text-slate-800 dark:text-slate-100">
-                        {u.name || "N/A"}
+                      <td className="py-3.5 px-2 sm:px-3 text-slate-550 dark:text-slate-355 min-w-[130px] max-w-[200px]">
+                        <div className="truncate font-medium" title={u.email}>
+                          {u.email}
+                        </div>
                       </td>
-                      <td className="py-3.5 px-2 text-slate-550 dark:text-slate-350">
-                        {u.email}
-                      </td>
-                      <td className="py-3.5 px-2 font-mono text-slate-550 dark:text-slate-350">
+                      <td className="py-3.5 px-2 sm:px-3 font-mono text-slate-555 dark:text-slate-350 whitespace-nowrap w-auto max-w-[130px] truncate" title={u.mobile || "N/A"}>
                         {u.mobile || "N/A"}
                       </td>
-                      <td className="py-3.5 px-2 text-slate-400 max-w-[120px] truncate" title={formatAddress(u.address)}>
+                      <td className="py-3.5 px-2 sm:px-3 text-slate-400 max-w-[140px] sm:max-w-[220px] truncate" title={formatAddress(u.address)}>
                         {formatAddress(u.address)}
                       </td>
-                      <td className="py-3.5 px-2 text-slate-400 admin-datetime-text">
-                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : "N/A"}
-                      </td>
-                      <td className="py-3.5 px-2 text-slate-400 admin-datetime-text">
-                        {u.last_login ? new Date(u.last_login).toLocaleDateString() : "N/A"}
-                      </td>
-                      <td className="py-3.5 px-2 text-right">
-                        <span className={`px-[12px] py-[4px] rounded-full text-[10px] font-semibold border shadow-sm ${(u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'active'
-                            ? 'status-badge-active'
+                      <td className="py-3.5 px-2 sm:px-3 text-right whitespace-nowrap w-auto">
+                        <span className={`px-[12px] py-[4px] rounded-full text-[10px] font-bold border shadow-sm ${(u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'active'
+                            ? 'bg-[#DCFCE7] text-[#166534] border-[#BBF7D0] dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800/60'
                             : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'inactive'
-                              ? 'bg-[#6B7280] text-[#FFFFFF] border-[#4B5563]'
-                              : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'suspended'
-                                ? 'bg-[#EF4444] text-[#FFFFFF] border-[#DC2626]'
-                                : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'pending verification'
-                                  ? 'bg-[#F59E0B] text-[#FFFFFF] border-[#D97706]'
-                                  : 'bg-[#B91C1C] text-[#FFFFFF] border-[#991B1B]'
+                              ? 'bg-[#FFEDD5] text-[#9A3412] border-[#FED7AA] dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800/60'
+                              : (u.status || (u.is_blocked ? "Blocked" : "Active")).toLowerCase() === 'pending verification'
+                                ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/60'
+                                : 'bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5] dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800/60'
                           }`}>
                           {u.status || (u.is_blocked ? "Blocked" : "Active")}
                         </span>
@@ -1626,7 +1847,7 @@ export const AdminControl = () => {
                 {/* Address */}
                 <div className="bg-slate-50 dark:bg-slate-955 p-4 rounded-2xl border border-slate-100 dark:border-slate-850 space-y-1.5">
                   <span className="text-[10px] text-slate-400 font-bold block">Delivery Address</span>
-                  <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-350">
+                  <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-[#F5F5F5]">
                     <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
                     <span>{formatAddress(selectedUserDetails.address)}</span>
                   </div>
@@ -1724,7 +1945,7 @@ export const AdminControl = () => {
                             </div>
                           </div>
                           <button
-                            onClick={() => setViewingOrderItems(order.items)}
+                            onClick={() => setViewingOrderItems(order)}
                             className="w-full py-1.5 px-3 bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-850 rounded-xl transition-all font-bold text-[10px] flex items-center justify-center gap-1.5 cursor-pointer text-slate-600 dark:text-slate-300"
                           >
                             <Eye className="h-3.5 w-3.5" />
@@ -1742,7 +1963,7 @@ export const AdminControl = () => {
             ) : (
               <div className="flex flex-col items-center justify-center text-center py-12 px-4 h-[300px]">
                 <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-500 mb-4 animate-bounce">
-                  <Users className="h-8 w-8" />
+                  <Users className="h-8 w-8 dark:text-[#C084FC]" />
                 </div>
                 <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">No User Selected</h4>
                 <p className="text-xs text-slate-450 max-w-[200px]">
@@ -2133,7 +2354,7 @@ export const AdminControl = () => {
             <button
               type="button"
               onClick={addAdditionalSlot}
-              className="text-[10px] font-black text-emerald-500 hover:text-emerald-605 flex items-center gap-1"
+              className="text-[10px] font-black text-emerald-500 dark:text-[#C084FC] hover:text-emerald-600 dark:hover:text-[#D8B4FE] flex items-center gap-1"
             >
               <Plus className="h-3 w-3" />
               <span>Add Additional Image</span>
@@ -2425,15 +2646,14 @@ export const AdminControl = () => {
     if (homepageLoading || adminCategoriesLoading) {
       return (
         <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl">
-          <RefreshCw className="h-8 w-8 text-emerald-500 animate-spin" />
-          <p className="text-slate-500 mt-4 text-xs font-bold uppercase tracking-wider">Loading Homepage Settings...</p>
+          <RefreshCw className="h-8 w-8 text-[#D4A75F] animate-spin" />
+          <p className="text-slate-500 dark:text-slate-400 mt-4 text-xs font-bold uppercase tracking-wider">Loading...</p>
         </div>
       );
     }
 
     const safeCategories = Array.isArray(adminCategories) ? adminCategories : [];
     const safeCollections = Array.isArray(collectionsList) ? collectionsList : [];
-    const safeGalleryItems = Array.isArray(homepageSettings?.luxury_gallery_items) ? homepageSettings.luxury_gallery_items : [];
     const safeOwnersList = Array.isArray(homepageSettings?.owners_list) ? homepageSettings.owners_list : [];
 
     return (
@@ -2657,6 +2877,166 @@ export const AdminControl = () => {
           )}
         </div>
 
+        {/* FEATURED LUXURY GALLERY CARDS MANAGEMENT */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-850">
+            <div>
+              <h4 className="text-lg font-bold text-slate-850 dark:text-slate-100 flex items-center gap-2">
+                <span>Featured Luxury Gallery Cards</span>
+                <span className="px-2.5 py-0.5 text-xs font-bold bg-[#D4A75F]/15 text-[#D4A75F] border border-[#D4A75F]/30 rounded-full">
+                  {lookbooks.length}
+                </span>
+              </h4>
+              <p className="text-xs text-slate-400 mt-1">Configure the featured 3D parallax cards displayed on the customer home page.</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddLookbookCard}
+              className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/25 dark:bg-[#7E22CE]/15 dark:hover:bg-[#7E22CE]/30 dark:text-[#D8B4FE] dark:hover:text-[#E9D5FF] dark:border-[#A855F7]/40 dark:hover:border-[#C084FC]/60 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Card</span>
+            </button>
+          </div>
+
+          {lookbookSuccess && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-xl text-xs font-semibold">
+              {lookbookSuccess}
+            </div>
+          )}
+          {lookbookError && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 p-3 rounded-xl text-xs font-semibold">
+              {lookbookError}
+            </div>
+          )}
+
+          {loadingLookbooks ? (
+            <div className="flex justify-center items-center py-12">
+              <RefreshCw className="h-6 w-6 text-[#D4A75F] animate-spin" />
+              <span className="ml-2 text-xs text-slate-400">Loading gallery cards from database...</span>
+            </div>
+          ) : lookbooks.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-xs sm:text-sm font-medium border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+              No luxury gallery cards added yet. Click "+ Add Card" to create one.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {lookbooks.map((card, idx) => (
+                <div key={card.id || idx} className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-950/20 space-y-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-850">
+                    <span className="text-xs font-bold tracking-widest text-[#D4A75F] uppercase">Card #{idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteLookbookCard(card.id)}
+                      className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer"
+                      title="Delete Card"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-850">
+                    {card?.image || card?.image_url ? (
+                      <>
+                        <img src={card.image || card.image_url} alt={card.title || 'Luxury Item'} className="w-full h-full object-cover" />
+                        <label className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
+                          <span className="bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1">
+                            <Upload className="h-3 w-3" /> Change
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                handleUploadLookbookImage(e.target.files[0], card.id);
+                              }
+                            }}
+                          />
+                        </label>
+                      </>
+                    ) : (
+                      <label className="cursor-pointer flex flex-col items-center justify-center text-slate-400 p-4">
+                        <Upload className="h-6 w-6 mb-1" />
+                        <span className="text-[10px] font-bold">Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleUploadLookbookImage(e.target.files[0], card.id);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={card?.title || ''}
+                        onChange={(e) => handleUpdateLookbookCardField(card.id, 'title', e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Description</label>
+                      <textarea
+                        rows={3}
+                        value={card?.description || ''}
+                        onChange={(e) => handleUpdateLookbookCardField(card.id, 'description', e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-800 dark:text-slate-100 resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Redirection Link</label>
+                      <input
+                        type="text"
+                        value={card?.link || ''}
+                        onChange={(e) => handleUpdateLookbookCardField(card.id, 'link', e.target.value)}
+                        placeholder="/?category=Necklaces"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleSaveLookbookCard(card)}
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        <span>Save Card</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {lookbooks.length > 0 && (
+            <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-850">
+              <button
+                type="button"
+                onClick={handleSaveAllLookbookCards}
+                disabled={savingLookbooks}
+                className="flex items-center gap-1.5 px-5 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+              >
+                {savingLookbooks ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                <span>Save All Lookbook Cards</span>
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* SECTION 2: FOUNDER / OWNER SHOWCASE */}
         <form onSubmit={handleSaveHomepageSettings} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-850">
@@ -2691,7 +3071,7 @@ export const AdminControl = () => {
                 }));
                 setActiveOwnerIdx(safeOwnersList.length);
               }}
-              className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/25 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/25 dark:bg-[#7E22CE]/15 dark:hover:bg-[#7E22CE]/30 dark:text-[#D8B4FE] dark:hover:text-[#E9D5FF] dark:border-[#A855F7]/40 dark:hover:border-[#C084FC]/60 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Add Owner</span>
@@ -3033,161 +3413,6 @@ export const AdminControl = () => {
           </div>
         </form>
 
-        {/* SECTION 4: LUXURY GALLERY CARDS */}
-        <form onSubmit={handleSaveHomepageSettings} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h4 className="text-lg font-bold text-slate-850 dark:text-slate-100">Featured Luxury Gallery Cards</h4>
-              <p className="text-xs text-slate-400">Configure the featured 3D parallax cards displayed on the customer home page.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const newCard = {
-                  id: Date.now(),
-                  title: "New Luxury Piece",
-                  tag: "Special Edition",
-                  image: "/luxury_solitaire_ring.png",
-                  description: "Insert item description details here.",
-                  link: "/?category=Rings"
-                };
-                setHomepageSettings(prev => ({
-                  ...prev,
-                  luxury_gallery_items: [...safeGalleryItems, newCard]
-                }));
-              }}
-              className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/25 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add Card</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {safeGalleryItems.map((card, idx) => (
-              <div key={card?.id || idx} className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-950/20 space-y-4">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-850">
-                  <span className="text-xs font-bold tracking-widest text-[#D4A75F] uppercase">Card #{idx + 1}</span>
-                  {safeGalleryItems.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm("Are you sure you want to delete this card?")) {
-                          const updated = safeGalleryItems.filter((_, i) => i !== idx);
-                          setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
-                        }
-                      }}
-                      className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="relative w-full h-40 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-850">
-                  {card?.image ? (
-                    <>
-                      <img src={card.image} alt={card.title || 'Luxury Item'} className="w-full h-full object-cover" />
-                      <label className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
-                        <span className="bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1">
-                          <Upload className="h-3 w-3" /> Change
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              handleUploadMediaFile(e.target.files[0], null, idx);
-                            }
-                          }}
-                        />
-                      </label>
-                    </>
-                  ) : (
-                    <label className="cursor-pointer flex flex-col items-center justify-center text-slate-400 p-4">
-                      <Upload className="h-6 w-6 mb-1" />
-                      <span className="text-[10px] font-bold">Upload Image</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleUploadMediaFile(e.target.files[0], null, idx);
-                          }
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Title</label>
-                    <input
-                      type="text"
-                      value={card?.title || ''}
-                      onChange={(e) => {
-                        const updated = [...safeGalleryItems];
-                        if (updated[idx]) {
-                          updated[idx] = { ...updated[idx], title: e.target.value };
-                          setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Description</label>
-                    <textarea
-                      rows={3}
-                      value={card?.description || ''}
-                      onChange={(e) => {
-                        const updated = [...safeGalleryItems];
-                        if (updated[idx]) {
-                          updated[idx] = { ...updated[idx], description: e.target.value };
-                          setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Redirection Link</label>
-                    <input
-                      type="text"
-                      value={card?.link || ''}
-                      onChange={(e) => {
-                        const updated = [...safeGalleryItems];
-                        if (updated[idx]) {
-                          updated[idx] = { ...updated[idx], link: e.target.value };
-                          setHomepageSettings(prev => ({ ...prev, luxury_gallery_items: updated }));
-                        }
-                      }}
-                      placeholder="/?category=Necklaces"
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-850">
-            <button
-              type="submit"
-              disabled={homepageUpdating}
-              className="flex items-center gap-1.5 px-5 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-            >
-              {homepageUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              <span>Save Luxury Cards</span>
-            </button>
-          </div>
-        </form>
-
         {/* SECTION 5: CATEGORY BANNER MANAGEMENT */}
         <CategoryBannerManagement categories={safeCategories} />
 
@@ -3242,8 +3467,8 @@ export const AdminControl = () => {
         {/* Loading Spinner */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
-            <p className="text-slate-500 dark:text-slate-400 mt-4 text-sm font-semibold">Aggregating database statistics...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D4A75F]"></div>
+            <p className="text-slate-500 dark:text-slate-400 mt-4 text-sm font-semibold">Loading...</p>
           </div>
         ) : (
           <>
@@ -3256,7 +3481,7 @@ export const AdminControl = () => {
                   <span className="text-2xl font-black block mt-1 price-amount">₹{formatPrice(stats.total_sales ?? 0)}</span>
                 </div>
                 <div className="bg-emerald-500/10 p-3 rounded-xl text-emerald-500">
-                  <BarChart3 className="h-6 w-6" />
+                  <BarChart3 className="h-6 w-6 dark:text-[#C084FC]" />
                 </div>
               </div>
 
@@ -3368,8 +3593,8 @@ export const AdminControl = () => {
                 {/* Upper row: Extra Insight Cards & Refresh */}
                 <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800">
                   <div className="flex items-center gap-3">
-                    <div className="bg-emerald-500/10 p-2.5 rounded-xl text-emerald-500">
-                      <BarChart3 className="h-5 w-5" />
+                    <div className="bg-emerald-500/10 dark:bg-[#A855F7]/12 p-2.5 rounded-xl text-emerald-500 dark:text-[#C084FC]">
+                      <BarChart3 className="h-5 w-5 dark:text-[#C084FC]" />
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">eCommerce Health & Status</h4>
@@ -3390,7 +3615,7 @@ export const AdminControl = () => {
                   {/* Category Value Distribution SVG Bar Chart */}
                   <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                     <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-                      <Package className="h-4 w-4 text-emerald-500" />
+                      <Package className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                       <span>Category Stock Value Distribution (Price × Stock)</span>
                     </h3>
 
@@ -3452,7 +3677,7 @@ export const AdminControl = () => {
                   {/* Order Status Breakdown Chart */}
                   <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                     <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-                      <ShoppingBag className="h-4 w-4 text-emerald-500" />
+                      <ShoppingBag className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                       <span>Order Fulfillment Status Breakdown</span>
                     </h3>
 
@@ -3524,7 +3749,7 @@ export const AdminControl = () => {
                     {/* Admin Analytics Summary Cards */}
                     <div>
                       <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-emerald-500" />
+                        <BarChart3 className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
                         <span>Admin Analytics Summary Cards</span>
                       </h2>
                       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch">
@@ -3546,8 +3771,9 @@ export const AdminControl = () => {
                           {
                             label: "Active Customers",
                             val: overviewAnalytics.summary_cards?.active_customers ?? 0,
-                            color: "text-emerald-500",
-                            bgColor: "bg-emerald-500/10",
+                            color: "text-emerald-500 dark:text-[#E9D5FF]",
+                            iconColor: "text-[#16A34A] dark:text-[#86EFAC]",
+                            bgColor: "bg-[#DCFCE7] dark:bg-[#163B2A]",
                             icon: CheckCircle2
                           },
                           {
@@ -3582,7 +3808,7 @@ export const AdminControl = () => {
                                   {card.val}
                                 </span>
                               </div>
-                              <div className={`${card.bgColor} p-2 sm:p-2.5 rounded-xl ${card.color} flex-shrink-0 shrink-0 flex items-center justify-center`}>
+                              <div className={`${card.bgColor} p-2 sm:p-2.5 rounded-xl ${card.iconColor || card.color} flex-shrink-0 shrink-0 flex items-center justify-center`}>
                                 <IconComponent className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                               </div>
                             </div>
@@ -3595,7 +3821,7 @@ export const AdminControl = () => {
                     <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm mt-8">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                         <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                          <Clock className="h-5 w-5 text-emerald-500" />
+                          <Clock className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
                           <span>Audit Logs</span>
                           <span className="audit-logs-count-badge">
                             {generalAuditLogs.length} total
@@ -3611,7 +3837,7 @@ export const AdminControl = () => {
                               placeholder="Search logs..."
                               value={auditSearch}
                               onChange={(e) => setAuditSearch(e.target.value)}
-                              className="pl-9 pr-4 py-2 w-full text-sm bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 dark:text-slate-200"
+                              className="pl-9 pr-4 py-2 w-full text-sm bg-slate-50 dark:bg-slate-955/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 dark:text-slate-200"
                             />
                           </div>
 
@@ -3619,7 +3845,7 @@ export const AdminControl = () => {
                           <select
                             value={auditActionType}
                             onChange={(e) => setAuditActionType(e.target.value)}
-                            className="px-3 py-2 text-sm bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 dark:text-slate-200"
+                            className="px-3 py-2 text-sm bg-slate-50 dark:bg-slate-955/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 dark:text-slate-200"
                           >
                             <option value="">All Action Types</option>
                             {ACTION_TYPES.map(type => (
@@ -3631,7 +3857,7 @@ export const AdminControl = () => {
                           <select
                             value={auditStatus}
                             onChange={(e) => setAuditStatus(e.target.value)}
-                            className="px-3 py-2 text-sm bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 dark:text-slate-200"
+                            className="px-3 py-2 text-sm bg-slate-50 dark:bg-slate-955/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 dark:text-slate-200"
                           >
                             <option value="">All Statuses</option>
                             <option value="Success">Success</option>
@@ -3668,17 +3894,17 @@ export const AdminControl = () => {
                                   let actionBadgeColor = "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
                                   const type = log.action_type || "";
                                   if (type.includes("Added") || type.includes("Unblocked")) {
-                                    actionBadgeColor = "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-450";
+                                    actionBadgeColor = "bg-emerald-50 text-emerald-600 dark:bg-emerald-955/30 dark:text-emerald-450";
                                   } else if (type.includes("Deleted") || type.includes("Blocked") || type.includes("Cancelled")) {
-                                    actionBadgeColor = "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-455";
+                                    actionBadgeColor = "bg-rose-50 text-rose-600 dark:bg-rose-955/30 dark:text-rose-455";
                                   } else if (type.includes("Updated") || type.includes("Changed") || type.includes("Status")) {
-                                    actionBadgeColor = "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-455";
+                                    actionBadgeColor = "bg-amber-50 text-amber-600 dark:bg-amber-955/30 dark:text-amber-455";
                                   } else if (type.includes("Login") || type.includes("Logout")) {
-                                    actionBadgeColor = "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-450";
+                                    actionBadgeColor = "bg-blue-50 text-blue-600 dark:bg-blue-955/30 dark:text-blue-450";
                                   }
 
                                   return (
-                                    <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-955/20 transition-all border-b border-slate-100 dark:border-slate-800/50">
+                                    <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-transparent transition-all border-b border-slate-100 dark:border-slate-800/50">
                                       <td className="py-3.5 pr-4 text-slate-500 admin-timestamp-text whitespace-nowrap">
                                         {log.created_at}
                                       </td>
@@ -3698,8 +3924,8 @@ export const AdminControl = () => {
                                       </td>
                                       <td className="py-3.5 pl-4">
                                         <span className={log.status === 'Success'
-                                          ? 'status-badge-success'
-                                          : 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-455'
+                                          ? 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase bg-[#22C55E] text-[#FFFFFF] border border-[#16A34A] shadow-sm'
+                                          : 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase bg-rose-100 text-rose-700 dark:bg-rose-955/40 dark:text-rose-455'
                                         }>
                                           {log.status}
                                         </span>
@@ -3784,7 +4010,7 @@ export const AdminControl = () => {
                                   setEditProductImages(initEditImages(p));
                                   setIsEditImagesOpen(false);
                                 }}
-                                className="block text-[10px] font-black text-emerald-500 hover:text-emerald-600 mt-2 hover:underline"
+                                className="block text-[10px] font-black text-emerald-500 hover:text-emerald-600 dark:text-[#C084FC] dark:hover:text-[#E9D5FF] mt-2 hover:underline"
                               >
                                 Restock Item
                               </button>
@@ -4080,7 +4306,7 @@ export const AdminControl = () => {
                         };
 
                         return (
-                          <tr key={o._id} className="hover:bg-slate-50/70 dark:hover:bg-slate-850/30 transition-colors align-middle">
+                          <tr key={o._id} className="hover:bg-slate-50/70 dark:hover:bg-transparent transition-colors align-middle">
                             <td className="py-3.5 px-4 font-mono font-bold text-slate-800 dark:text-slate-100 text-center whitespace-nowrap">
                               {o.order_id}
                             </td>
@@ -4146,7 +4372,7 @@ export const AdminControl = () => {
             {activeTab === 'support' && (
               <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                 <h3 className="text-base font-bold mb-4 flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-emerald-500" />
+                  <MessageSquare className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
                   <span>Customer Support Messages ({messages.length})</span>
                 </h3>
 
@@ -4183,7 +4409,7 @@ export const AdminControl = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-4 mb-6 gap-4">
                   <div>
                     <h3 className="text-base font-bold flex items-center gap-2 text-slate-800 dark:text-white">
-                      <Settings className="h-5 w-5 text-emerald-500" />
+                      <Settings className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
                       <span>Site Configuration</span>
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">Manage carousel banners, FAQs, and support links shown across the website.</p>
@@ -4826,7 +5052,7 @@ export const AdminControl = () => {
                       className="w-full flex justify-between items-center px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-250 dark:border-slate-800 font-bold hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-all text-xs"
                     >
                       <span className="flex items-center gap-2">
-                        <Image className="h-4 w-4 text-emerald-500" />
+                        <Image className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                         <span>Manage Product Images</span>
                       </span>
                       <span className="text-[10px] text-slate-400 font-semibold">
@@ -4869,7 +5095,7 @@ export const AdminControl = () => {
               {/* Sticky Header */}
               <div className="flex justify-between items-center px-6 py-4 border-b border-slate-150 dark:border-slate-850">
                 <div className="flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-emerald-500" />
+                  <Plus className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
                   <h3 className="text-sm font-extrabold text-slate-850 dark:text-slate-100">Add New Product</h3>
                 </div>
                 <div className="flex items-center gap-4">
@@ -5112,7 +5338,7 @@ export const AdminControl = () => {
                       className="w-full flex justify-between items-center px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-250 dark:border-slate-800 font-bold hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-all text-xs"
                     >
                       <span className="flex items-center gap-2">
-                        <Image className="h-4 w-4 text-emerald-500" />
+                        <Image className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                         <span>Manage Product Images</span>
                       </span>
                       <span className="text-[10px] text-slate-400 font-semibold">
@@ -5156,7 +5382,7 @@ export const AdminControl = () => {
               {/* Modal Header */}
               <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900 z-10">
                 <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <ShoppingBag className="h-5 w-5 text-emerald-500" />
+                  <ShoppingBag className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
                   <span>Order Details - #{selectedOrder.order_id}</span>
                 </h3>
                 <button
@@ -5271,7 +5497,7 @@ export const AdminControl = () => {
                 </div>
 
                 {/* Shipment Information Card */}
-                <div className="bg-slate-50/70 dark:bg-slate-955 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3 text-xs">
+                <div className="bg-slate-50/70 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3 text-xs">
                   <div className="flex justify-between items-center border-b border-slate-200/60 dark:border-slate-800 pb-2">
                     <h4 className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                       <Truck className="h-4 w-4 text-[#5B1E7A] dark:text-[#D4A75F]" />
@@ -5323,9 +5549,9 @@ export const AdminControl = () => {
                 </div>
 
                 {/* Fulfillment & Live Order Tracking updates */}
-                <div className="bg-slate-50/50 dark:bg-slate-955/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-4 text-xs">
+                <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-4 text-xs">
                   <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-850">
-                    <RefreshCw className="h-4 w-4 text-emerald-500 animate-spin-slow" />
+                    <RefreshCw className="h-4 w-4 text-emerald-500 dark:text-[#C084FC] animate-spin-slow" />
                     <span>Update Shipment & Tracking Timeline</span>
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px]">
@@ -5677,7 +5903,7 @@ export const AdminControl = () => {
                 <X className="h-5 w-5" />
               </button>
               <h3 className="text-base font-bold mb-2 flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-emerald-500" />
+                <BarChart3 className="h-5 w-5 text-emerald-500 dark:text-[#D4A75F]" />
                 <span>Product Sales & Performance Analytics</span>
               </h3>
               <p className="text-xs text-slate-400 mb-4">{selectedAnalyticsProduct.name}</p>
@@ -5883,7 +6109,7 @@ export const AdminControl = () => {
                 <X className="h-5 w-5" />
               </button>
               <h3 className="text-sm font-bold text-slate-850 dark:text-slate-100 flex items-center gap-2 mb-4">
-                <Image className="h-4 w-4 text-emerald-500" />
+                <Image className="h-4 w-4 text-emerald-500 dark:text-[#C084FC]" />
                 <span>{editingBannerId ? 'Edit Banner Slide' : 'Add New Banner Slide'}</span>
               </h3>
 
@@ -6390,6 +6616,14 @@ export const AdminControl = () => {
           initialTrackingUrl={trackingModalConfig.initialUrl}
           initialTrackingId={trackingModalConfig.initialId}
           isEditing={trackingModalConfig.isEditing}
+        />
+
+        {/* Purchased Order Items Modal */}
+        <OrderItemsModal
+          isOpen={!!viewingOrderItems}
+          onClose={() => setViewingOrderItems(null)}
+          orderId={typeof viewingOrderItems === 'string' ? viewingOrderItems : (viewingOrderItems?.order_id || viewingOrderItems?.id)}
+          initialOrder={typeof viewingOrderItems === 'object' ? viewingOrderItems : null}
         />
 
         {/* Toast Alert */}

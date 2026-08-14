@@ -17,6 +17,7 @@ import { OrderItemsModal } from '../components/admin/OrderItemsModal';
 import { sortUsersByStatus } from '../utils/statusSorter';
 import { CategoryBannerManagement } from '../components/admin/CategoryBannerManagement';
 import { CollectionBannerManagement } from '../components/admin/CollectionBannerManagement';
+import { SupportTicketsTab } from '../components/admin/SupportTicketsTab';
 
 
 const AdminPaymentManagement = React.lazy(() => import('../components/AdminPaymentManagement').then(m => ({ default: m.AdminPaymentManagement })));
@@ -4370,35 +4371,7 @@ export const AdminControl = () => {
 
             {/* TAB CONTENT: SUPPORT TICKETS */}
             {activeTab === 'support' && (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                <h3 className="text-base font-bold mb-4 flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-emerald-500 dark:text-[#C084FC]" />
-                  <span>Customer Support Messages ({messages.length})</span>
-                </h3>
-
-                {messages.length === 0 ? (
-                  <p className="text-slate-400 italic text-xs py-6 text-center">No contact support messages registered.</p>
-                ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-850 space-y-4">
-                    {messages.map((m, idx) => (
-                      <div key={m._id || idx} className="pt-4 first:pt-0 text-xs">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-bold text-sm text-slate-800 dark:text-slate-100">{m.name}</p>
-                            <p className="text-slate-450">{m.email}</p>
-                          </div>
-                          <span className="text-[10px] text-slate-400">
-                            {m.created_at ? new Date(m.created_at).toLocaleString() : "Recently"}
-                          </span>
-                        </div>
-                        <p className="text-slate-655 dark:text-slate-300 mt-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-150 dark:border-slate-850 leading-relaxed font-sans select-all">
-                          {m.message}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <SupportTicketsTab messages={messages} fetchMessages={fetchMessages} />
             )}
 
             {/* TAB CONTENT: SITE CONFIGURATION */}

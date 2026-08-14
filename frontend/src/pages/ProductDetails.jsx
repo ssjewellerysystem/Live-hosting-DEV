@@ -2015,7 +2015,7 @@ export const ProductDetails = ({ productId }) => {
                             <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/40">
                               <td className="px-6 py-3 text-slate-500 dark:text-white text-xs admin-timestamp-text">{new Date(log.created_at).toLocaleString()}</td>
                               <td className="px-6 py-3 capitalize font-semibold text-slate-700 dark:text-slate-300 text-xs">{log.change_type.replace('_', ' ')}</td>
-                              <td className={`px-6 py-3 text-right font-bold text-xs ${log.change_amount > 0 ? 'text-emerald-500' : log.change_amount < 0 ? 'text-rose-500' : 'text-slate-400'}`}>
+                              <td className={`px-6 py-3 text-right font-bold text-xs ${log.change_amount > 0 ? 'text-emerald-500 dark:text-emerald-400' : log.change_amount < 0 ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400 dark:text-slate-400'}`}>
                                 {log.change_amount > 0 ? `+${log.change_amount}` : log.change_amount}
                               </td>
                               <td className="px-6 py-3 text-right font-black text-slate-900 dark:text-white text-xs">{log.new_stock}</td>

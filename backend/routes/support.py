@@ -46,18 +46,31 @@ def submit_contact_form():
     
     if not all([name, email, message]):
         return jsonify({"message": "Please provide your name, email, and message."}), 400
-        
-    msg = SupportModel.create_message(name, email, message)
 
-    try:
-        from backend.models.admin import add_admin_notification
-        add_admin_notification(
-            title="Support Ticket Created",
-            message=f"Ticket #SUP-{msg['id']} submitted by {name}",
-            type="SUPPORT_TICKET"
-        )
-    except Exception as ex:
-        print(f"Error adding admin notification: {ex}")
+    # Determine user_id if user is authenticated or by email lookup
+    user_id = None
+    auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+    if auth_header:
+        try:
+            token = auth_header.split(" ")[1] if auth_header.startswith("Bearer ") else auth_header
+            from backend.middleware.auth import decode_jwt_token
+            decoded_data, err = decode_jwt_token(token)
+            if decoded_data and isinstance(decoded_data, dict):
+                uid_val = decoded_data.get("user_id") or decoded_data.get("id")
+                if uid_val and str(uid_val).isdigit():
+                    user_id = int(uid_val)
+        except Exception:
+            pass
+
+    if not user_id and email:
+        from backend.models.user import UserModel
+        user_obj = UserModel.query.filter(
+            (UserModel.email == email) | (UserModel.email == email.lower())
+        ).first()
+        if user_obj:
+            user_id = user_obj.id
+
+    msg = SupportModel.create_message(name, email, message, user_id=user_id)
 
     return jsonify({
         "message": "Thank you! Your support message has been submitted. Our team will contact you shortly.",
@@ -68,7 +81,8 @@ def submit_contact_form():
 @support_bp.route('/<int:ticket_id>/reply', methods=['POST'])
 def reply_to_ticket(ticket_id):
     from backend.models.support import SupportModel, SupportReplyModel
-    from backend.models.admin import add_admin_notification
+    from backend.models.user import UserModel
+    from backend.routes.auth import add_user_notification
     from backend.extensions import db
     
     try:
@@ -89,18 +103,49 @@ def reply_to_ticket(ticket_id):
             message=message
         )
         db.session.add(reply)
+        
+        # Check if caller is admin via Authorization header or sender name
+        caller_is_admin = False
+        auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+        if auth_header:
+            try:
+                token = auth_header.split(" ")[1] if auth_header.startswith("Bearer ") else auth_header
+                from backend.middleware.auth import decode_jwt_token, is_admin_role
+                decoded_data, err = decode_jwt_token(token)
+                if decoded_data and is_admin_role(decoded_data):
+                    caller_is_admin = True
+            except Exception:
+                pass
+
+        is_admin_reply = caller_is_admin or (sender in ["Admin Support", "Admin"]) or ("admin" in str(sender).lower())
+        
+        if is_admin_reply:
+            ticket.status = "Replied"
+            
         db.session.commit()
         
-        # Trigger Admin Notification
-        try:
-            if sender != "Admin Support" and sender != "Admin":
-                add_admin_notification(
-                    title="Support Ticket Created",
-                    message=f"Ticket #SUP-{ticket.id} submitted by {sender}",
-                    type="SUPPORT_TICKET"
+        # Trigger Notifications: Notify ticket owner ONLY if admin replied
+        if is_admin_reply:
+            recipient_user = None
+            if ticket.user_id:
+                recipient_user = UserModel.query.get(int(ticket.user_id))
+            if not recipient_user and ticket.email:
+                recipient_user = UserModel.query.filter(
+                    (UserModel.email == ticket.email) | (UserModel.email == ticket.email.lower())
+                ).first()
+                if recipient_user:
+                    ticket.user_id = recipient_user.id
+                    db.session.commit()
+                    
+            if recipient_user:
+                add_user_notification(
+                    user_id=recipient_user.id,
+                    title="Support Ticket Reply",
+                    message=message,
+                    notif_type="support_ticket_reply",
+                    ticket_id=ticket.id,
+                    original_message=ticket.message
                 )
-        except Exception as ex:
-            print("Failed to add admin notification:", ex)
         
         return jsonify({
             "message": "Reply submitted successfully!",
@@ -115,12 +160,26 @@ def reply_to_ticket(ticket_id):
 @support_bp.route('/my-tickets', methods=['GET'])
 @token_required
 def get_my_tickets(current_user):
+    user_id = current_user.get("_id") or current_user.get("id")
     email = current_user.get("email")
-    if not email:
+    if not user_id and not email:
         return jsonify([]), 200
     
     from sqlalchemy.orm import selectinload
-    query = SupportModel.query.options(selectinload(SupportModel.replies)).filter(SupportModel.email == email).order_by(SupportModel.created_at.desc())
+    from sqlalchemy import or_
+    
+    conditions = []
+    if user_id and str(user_id).isdigit():
+        conditions.append(SupportModel.user_id == int(user_id))
+    if email:
+        conditions.append(SupportModel.email == email)
+        conditions.append(SupportModel.email == email.lower())
+        
+    if not conditions:
+        return jsonify([]), 200
+
+    query = SupportModel.query.options(selectinload(SupportModel.replies)).filter(or_(*conditions)).order_by(SupportModel.created_at.desc())
+    
     page_arg = request.args.get('page')
     limit_arg = request.args.get('limit') or request.args.get('page_size')
     if page_arg or limit_arg or request.args.get('paginate') == 'true':

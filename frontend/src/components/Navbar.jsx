@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, Search, ShoppingCart, Heart, ClipboardList, Sun, Moon, LogIn, LogOut, Shield, Menu, X, User, Globe, Settings, Bell, Check, Trash2, Clock, AlertTriangle, DollarSign, MessageSquare, Home, Sparkles, Info, Mail, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Search, ShoppingCart, Heart, ClipboardList, Sun, Moon, LogIn, LogOut, Shield, Menu, X, User, Globe, Settings, Bell, Check, Trash2, Clock, AlertTriangle, DollarSign, MessageSquare, Home, Sparkles, Info, Mail, ChevronRight, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
@@ -100,6 +100,7 @@ export const Navbar = () => {
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [selectedNotification, setSelectedNotification] = useState(null);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const [mobileAboutOpen, setMobileAboutOpen] = useState(false);
   const [mobileContactOpen, setMobileContactOpen] = useState(false);
@@ -229,12 +230,7 @@ export const Navbar = () => {
     ? displayedNotifications.filter(n => n.status === 'unread').length
     : displayedNotifications.filter(n => !n.read).length;
 
-  // Automatically mark all notifications as read when the user opens the dropdown
-  useEffect(() => {
-    if (notificationsOpen && unreadCount > 0) {
-      handleMarkAllAsRead();
-    }
-  }, [notificationsOpen, unreadCount]);
+
 
   const handleLogoClick = (e) => {
     setMobileMenuOpen(false);
@@ -500,7 +496,7 @@ export const Navbar = () => {
                                   const title = (notif.title || '').toLowerCase();
                                   const msg = (notif.message || '').toLowerCase();
 
-                                  if (title.includes('support') || title.includes('ticket') || title.includes('reply') || msg.includes('support') || msg.includes('ticket')) {
+                                  if (title.includes('support') || title.includes('ticket') || title.includes('reply') || msg.includes('support') || msg.includes('ticket') || notif.type === 'support_ticket_reply') {
                                     return {
                                       bg: 'bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-300',
                                       icon: <MessageSquare className="w-4 h-4" />
@@ -542,14 +538,7 @@ export const Navbar = () => {
                                   if (!n.read) {
                                     handleMarkAsRead(n.id);
                                   }
-
-                                  if (title.includes('support') || title.includes('ticket') || title.includes('reply') || msg.includes('support') || msg.includes('ticket')) {
-                                    navigate('/support-center');
-                                  } else if (title.includes('buy request') || title.includes('request to buy') || msg.includes('buy request') || msg.includes('request to buy') || title.includes('request status')) {
-                                    navigate('/orders?tab=buy-requests');
-                                  } else {
-                                    navigate('/orders?tab=orders');
-                                  }
+                                  setSelectedNotification(n);
                                 }
                               };
                               return (
@@ -1036,7 +1025,7 @@ export const Navbar = () => {
                                     const title = (notif.title || '').toLowerCase();
                                     const msg = (notif.message || '').toLowerCase();
 
-                                    if (title.includes('support') || title.includes('ticket') || title.includes('reply') || msg.includes('support') || msg.includes('ticket')) {
+                                    if (title.includes('support') || title.includes('ticket') || title.includes('reply') || msg.includes('support') || msg.includes('ticket') || notif.type === 'support_ticket_reply') {
                                       return {
                                         bg: 'bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20',
                                         icon: <MessageSquare className="h-3.5 w-3.5" />
@@ -1072,20 +1061,10 @@ export const Navbar = () => {
                                       navigate('/admin?tab=products');
                                     }
                                   } else {
-                                    const title = (n.title || '').toLowerCase();
-                                    const msg = (n.message || '').toLowerCase();
-
                                     if (!n.read) {
                                       handleMarkAsRead(n.id);
                                     }
-
-                                    if (title.includes('support') || title.includes('ticket') || title.includes('reply') || msg.includes('support') || msg.includes('ticket')) {
-                                      navigate('/support-center');
-                                    } else if (title.includes('buy request') || title.includes('request to buy') || msg.includes('buy request') || msg.includes('request to buy') || title.includes('request status')) {
-                                      navigate('/orders?tab=buy-requests');
-                                    } else {
-                                      navigate('/orders?tab=orders');
-                                    }
+                                    setSelectedNotification(n);
                                   }
                                 };
                                 return (
@@ -1539,6 +1518,93 @@ export const Navbar = () => {
           </>
         )}
       </AnimatePresence>
+      {/* Notification Detail Modal */}
+      {selectedNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 text-left">
+            <button
+              onClick={() => setSelectedNotification(null)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-full transition-colors cursor-pointer border-none bg-transparent"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-2xl bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-300 flex-shrink-0">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                  {selectedNotification.title || "Support Ticket Reply"}
+                </h3>
+                <p className="text-[11px] font-medium text-slate-400 flex items-center gap-1 mt-0.5">
+                  <Clock className="w-3 h-3" />
+                  {formatTimeAgo(selectedNotification.created_at)}
+                </p>
+              </div>
+            </div>
+
+            {selectedNotification.original_message && (
+              <div className="mb-3 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl border border-slate-150 dark:border-slate-800">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">Your Question / Issue</span>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans select-all">
+                  {selectedNotification.original_message}
+                </p>
+              </div>
+            )}
+
+            <div className="mb-6 bg-indigo-50/70 dark:bg-indigo-950/40 p-4 rounded-2xl border border-indigo-200/60 dark:border-indigo-850">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block mb-1">
+                {selectedNotification.title?.includes("Support") || selectedNotification.type === "support_ticket_reply" ? "Admin Support Reply" : "Notification Details"}
+              </span>
+              <p className="text-xs font-medium text-slate-800 dark:text-slate-100 leading-relaxed font-sans whitespace-pre-wrap select-all">
+                {selectedNotification.message || selectedNotification.description}
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end items-center">
+              <button
+                onClick={() => setSelectedNotification(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer border-none bg-transparent"
+              >
+                Close
+              </button>
+              {(selectedNotification.title?.toLowerCase().includes('support') || selectedNotification.title?.toLowerCase().includes('ticket') || selectedNotification.type === 'support_ticket_reply' || selectedNotification.ticket_id) ? (
+                <button
+                  onClick={() => {
+                    const ticketId = selectedNotification.ticket_id;
+                    setSelectedNotification(null);
+                    setNotificationsOpen(false);
+                    navigate(ticketId ? `/support-center?ticket_id=${ticketId}` : '/support-center');
+                  }}
+                  className="px-5 py-2 text-xs font-bold bg-[#3F1D5A] hover:bg-[#D4A75F] text-white rounded-xl shadow-md transition-all cursor-pointer border-none flex items-center gap-1.5 active:scale-95"
+                >
+                  <span>Open Ticket Center</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSelectedNotification(null);
+                    setNotificationsOpen(false);
+                    const title = (selectedNotification.title || '').toLowerCase();
+                    const msg = (selectedNotification.message || '').toLowerCase();
+                    if (title.includes('buy request') || title.includes('request to buy') || msg.includes('buy request')) {
+                      navigate('/orders?tab=buy-requests');
+                    } else {
+                      navigate('/orders?tab=orders');
+                    }
+                  }}
+                  className="px-5 py-2 text-xs font-bold bg-[#3F1D5A] hover:bg-[#D4A75F] text-white rounded-xl shadow-md transition-all cursor-pointer border-none flex items-center gap-1.5 active:scale-95"
+                >
+                  <span>View Details</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

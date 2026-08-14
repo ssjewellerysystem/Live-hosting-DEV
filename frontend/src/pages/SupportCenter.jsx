@@ -31,8 +31,13 @@ export const SupportCenter = () => {
       const response = await axiosInstance.get(`${API_BASE_URL}/support/my-tickets`, config);
       setTickets(response.data);
       if (response.data.length > 0) {
-        if (selectedTicket) {
-          const updatedSelected = response.data.find(t => t.id === selectedTicket.id || t._id === selectedTicket._id);
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetId = urlParams.get('ticket_id');
+        if (targetId) {
+          const found = response.data.find(t => String(t.id || t._id) === String(targetId));
+          setSelectedTicket(found || response.data[0]);
+        } else if (selectedTicket) {
+          const updatedSelected = response.data.find(t => String(t.id || t._id) === String(selectedTicket.id || selectedTicket._id));
           setSelectedTicket(updatedSelected || response.data[0]);
         } else {
           setSelectedTicket(response.data[0]);
@@ -243,7 +248,7 @@ export const SupportCenter = () => {
 
                     {/* Replies mapping */}
                     {selectedTicket.replies && selectedTicket.replies.map((reply, idx) => {
-                      const isAdmin = reply.sender === "Admin Support";
+                      const isAdmin = reply.sender === "Admin Support" || reply.sender === "Admin" || (reply.sender && reply.sender.toLowerCase().includes("admin"));
                       return (
                         <div key={reply.id || idx} className={`flex gap-3 items-start ${isAdmin ? 'flex-row-reverse' : ''}`}>
                           <div className={`h-7 w-7 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${

@@ -31,8 +31,15 @@ IS_PRODUCTION = IS_PROD  # Backward compatibility alias
 def _normalize_origin(origin):
     """Normalize one exact browser origin without weakening it to a wildcard."""
     normalized = str(origin or "").strip().rstrip("/")
+    if not normalized:
+        return ""
     if normalized == "*":
         raise ValueError("Wildcard CORS origins are not allowed with credentials")
+    if not normalized.startswith("http://") and not normalized.startswith("https://"):
+        if normalized.startswith("localhost") or normalized.startswith("127.0.0.1"):
+            normalized = f"http://{normalized}"
+        else:
+            normalized = f"https://{normalized}"
     return normalized
 
 

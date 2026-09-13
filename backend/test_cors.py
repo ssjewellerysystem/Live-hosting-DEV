@@ -98,6 +98,14 @@ class CorsConfigurationTests(unittest.TestCase):
         self.assertIn("http://localhost:5173", resolved)
         self.assertIn("http://127.0.0.1:5173", resolved)
 
+    def test_origin_without_scheme_auto_adds_https(self):
+        origins = get_allowed_origins(
+            "dev.ssjewellry.com",
+            "www.ssjewellry.com",
+            "PROD",
+        )
+        self.assertEqual(origins, ["https://dev.ssjewellry.com", "https://www.ssjewellry.com"])
+
     def test_invalid_origin_is_not_allowed(self):
         response = self.production_client.get(
             "/api/test", headers={"Origin": "https://evil.example"}

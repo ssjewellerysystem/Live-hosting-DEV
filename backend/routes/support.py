@@ -4,6 +4,13 @@ from backend.middleware.auth import admin_required, token_required
 
 support_bp = Blueprint('support', __name__)
 
+ALLOWED_SUPPORT_URL_PREFIXES = ("https://", "http://", "mailto:", "tel:", "/")
+
+
+def _is_valid_support_url(url):
+    normalized = str(url or "").strip().lower()
+    return normalized.startswith(ALLOWED_SUPPORT_URL_PREFIXES) and not normalized.startswith("//")
+
 # List of beginner-friendly FAQs for initial seeding
 DEFAULT_FAQS = [
     {
@@ -40,9 +47,9 @@ def ensure_faqs_seeded():
 @support_bp.route('', methods=['POST'])
 def submit_contact_form():
     data = request.get_json() or {}
-    name = data.get("name")
-    email = data.get("email")
-    message = data.get("message")
+    name = str(data.get("name") or "").strip()
+    email = str(data.get("email") or "").strip().lower()
+    message = str(data.get("message") or "").strip()
     
     if not all([name, email, message]):
         return jsonify({"message": "Please provide your name, email, and message."}), 400
@@ -71,6 +78,8 @@ def submit_contact_form():
             user_id = user_obj.id
 
     msg = SupportModel.create_message(name, email, message, user_id=user_id)
+    if not msg:
+        return jsonify({"message": "We could not create your support ticket. Please try again."}), 500
 
     return jsonify({
         "message": "Thank you! Your support message has been submitted. Our team will contact you shortly.",
@@ -84,20 +93,25 @@ def reply_to_ticket(current_user, ticket_id):
     from backend.models.support import SupportModel, SupportReplyModel
     from backend.models.user import UserModel
     from backend.routes.auth import add_user_notification
+    from backend.utils.email_service import send_support_ticket_reply
     from backend.extensions import db
     
     try:
         ticket = SupportModel.query.with_for_update().get(ticket_id)
         if not ticket:
             return jsonify({"message": "Support ticket not found."}), 404
-        caller_id = int(current_user.get("id") or current_user.get("_id"))
+        caller_id_value = current_user.get("id") or current_user.get("_id")
+        if not caller_id_value or not str(caller_id_value).isdigit():
+            return jsonify({"message": "Invalid authenticated user."}), 401
+        caller_id = int(caller_id_value)
         caller_is_admin = bool(current_user.get("is_admin"))
         if not caller_is_admin and ticket.user_id != caller_id:
             return jsonify({"message": "Access denied."}), 403
             
         data = request.get_json() or {}
-        sender = data.get("sender") or ticket.name
-        message = data.get("message")
+        # Do not trust a client-provided sender label to impersonate support staff.
+        sender = "Admin Support" if caller_is_admin else (current_user.get("name") or ticket.name or "Customer")
+        message = str(data.get("message") or "").strip()
         
         if not message:
             return jsonify({"message": "Message is required."}), 400
@@ -111,8 +125,12 @@ def reply_to_ticket(current_user, ticket_id):
         
         is_admin_reply = caller_is_admin
         
+        email_delivery = {"success": False, "status": "not_applicable"}
         if is_admin_reply:
             ticket.status = "Replied"
+        else:
+            # A customer response needs support attention again.
+            ticket.status = "Pending"
             
         db.session.commit()
         
@@ -138,11 +156,26 @@ def reply_to_ticket(current_user, ticket_id):
                     ticket_id=ticket.id,
                     original_message=ticket.message
                 )
+
+            recipient_email = getattr(recipient_user, "email", None) if recipient_user else ticket.email
+            recipient_name = getattr(recipient_user, "full_name", None) if recipient_user else ticket.name
+            if recipient_email:
+                email_delivery = send_support_ticket_reply(
+                    recipient_email,
+                    recipient_name,
+                    ticket.id,
+                    ticket.message,
+                    message,
+                )
+            else:
+                email_delivery = {"success": False, "status": "no_recipient"}
         
         return jsonify({
             "message": "Reply submitted successfully!",
             "reply": reply.to_dict(),
-            "success": True
+            "success": True,
+            "email_sent": email_delivery.get("status") == "delivered" if is_admin_reply else False,
+            "email_status": email_delivery.get("status")
         }), 201
     except Exception as e:
         db.session.rollback()
@@ -153,7 +186,7 @@ def reply_to_ticket(current_user, ticket_id):
 @token_required
 def get_my_tickets(current_user):
     user_id = current_user.get("_id") or current_user.get("id")
-    email = current_user.get("email")
+    email = str(current_user.get("email") or "").strip().lower()
     if not user_id and not email:
         return jsonify([]), 200
     
@@ -302,20 +335,23 @@ def ensure_support_links_seeded():
 
 @support_bp.route('/links', methods=['GET'])
 def get_support_links():
-    ensure_support_links_seeded()
     links = SupportLinkModel.find_all()
-    return jsonify([link.to_dict() for link in links]), 200
+    response = jsonify([link.to_dict() for link in links])
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response, 200
 
 @support_bp.route('/links', methods=['POST'])
 @admin_required
 def add_support_link():
     data = request.get_json() or {}
-    title = data.get("title")
-    url = data.get("url")
-    icon = data.get("icon", "Phone")
+    title = str(data.get("title") or "").strip()
+    url = str(data.get("url") or "").strip()
+    icon = str(data.get("icon") or "Phone").strip()
     is_active = data.get("is_active", True)
     if not title or not url:
         return jsonify({"message": "Title and URL are required."}), 400
+    if not _is_valid_support_url(url):
+        return jsonify({"message": "Use a valid https://, http://, mailto:, tel:, or internal / link."}), 400
     link = SupportLinkModel.create_link(title, url, icon, is_active)
     if link:
         from backend.utils.audit import log_admin_action
@@ -327,12 +363,14 @@ def add_support_link():
 @admin_required
 def update_support_link(link_id):
     data = request.get_json() or {}
-    title = data.get("title")
-    url = data.get("url")
-    icon = data.get("icon")
+    title = str(data.get("title") or "").strip()
+    url = str(data.get("url") or "").strip()
+    icon = str(data.get("icon") or "").strip()
     is_active = data.get("is_active", True)
     if not title or not url or not icon:
         return jsonify({"message": "Title, URL, and Icon are required."}), 400
+    if not _is_valid_support_url(url):
+        return jsonify({"message": "Use a valid https://, http://, mailto:, tel:, or internal / link."}), 400
     link = SupportLinkModel.update_link(link_id, title, url, icon, is_active)
     if link:
         from backend.utils.audit import log_admin_action

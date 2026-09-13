@@ -8,7 +8,6 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from flask import Flask, jsonify, request
-from flask_cors import CORS
 from dotenv import load_dotenv
 
 # Load configuration first
@@ -32,7 +31,8 @@ builtins.print = safe_print
 
 import logging
 from backend.extensions import db, migrate, mail
-from backend.config import Config, validate_environment, FRONTEND_URL, get_allowed_origins
+from backend.config import Config, validate_environment, FRONTEND_URL
+from backend.cors import configure_cors
 from backend.models import TransactionModel
 from backend.routes.auth import auth_bp
 from backend.routes.products import products_bp
@@ -67,13 +67,11 @@ logging.basicConfig(level=log_level, format='%(asctime)s [%(levelname)s] %(name)
 app.logger.setLevel(log_level)
 
 # Enable CORS for frontend requests with exact environment-aware origins
-allowed_origins_list = get_allowed_origins()
-CORS(
-    app,
-    origins=allowed_origins_list,
-    supports_credentials=True,
-    allow_headers=['Content-Type', 'Authorization'],
-    methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+allowed_origins_list = configure_cors(app)
+app.logger.warning(
+    "[CORS] Environment=%s Allowed origins=%s",
+    Config.ENVIRONMENT,
+    allowed_origins_list,
 )
 
 import gzip
@@ -168,7 +166,7 @@ def root_send_otp():
     
     # Placeholder for MSG91 / real SMS service integration
     # When switching to production later, replace this print/email flow with actual MSG91 SDK call
-    if Config.IS_DEV:
+    if Config.EXPOSE_OTP_IN_RESPONSE:
         app.logger.debug("OTP generated for a development request")
     
     # If it is email, we can also email it (as in auth/send-otp)
@@ -195,7 +193,7 @@ def root_send_otp():
         "message": "OTP sent successfully! Please check your console or email.",
         "success": True
     }
-    if Config.IS_DEV and os.getenv("OTP_MODE", "development").lower() == "development":
+    if Config.EXPOSE_OTP_IN_RESPONSE:
         response_data["otp_debug"] = otp
     return jsonify(response_data), 200
 

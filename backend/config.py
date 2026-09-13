@@ -28,24 +28,32 @@ IS_QA = (ENVIRONMENT == "QA")
 IS_PROD = (ENVIRONMENT == "PROD")
 IS_PRODUCTION = IS_PROD  # Backward compatibility alias
 
-# Centralized Frontend URL
-FRONTEND_URL = (os.environ.get("FRONTEND_URL") or ("http://localhost:5173" if not IS_PROD else "")).rstrip('/')
+def _normalize_origin(origin):
+    """Normalize one exact browser origin without weakening it to a wildcard."""
+    normalized = str(origin or "").strip().rstrip("/")
+    if normalized == "*":
+        raise ValueError("Wildcard CORS origins are not allowed with credentials")
+    return normalized
 
-def get_allowed_origins():
+
+def get_allowed_origins(frontend_url=None, allowed_origins=None, environment=None):
     """
-    Returns list of exact allowed origins for CORS credentials matching across environments.
+    Build the ordered, de-duplicated list of exact credentialed CORS origins.
+
+    Optional arguments make the resolver independently testable. Normal application
+    startup reads FRONTEND_URL and ALLOWED_ORIGINS directly from the environment.
     """
     origins = []
-    frontend_env = os.environ.get("FRONTEND_URL", "")
-    allowed_env = os.environ.get("ALLOWED_ORIGINS", "")
-    
-    for url_str in [frontend_env, allowed_env]:
-        if url_str:
-            for part in url_str.split(','):
-                part = part.strip().rstrip('/')
-                if part and part not in origins:
-                    origins.append(part)
-                    
+    frontend_value = os.environ.get("FRONTEND_URL", "") if frontend_url is None else frontend_url
+    allowed_value = os.environ.get("ALLOWED_ORIGINS", "") if allowed_origins is None else allowed_origins
+
+    for configured_value in (frontend_value, allowed_value):
+        for candidate in str(configured_value or "").split(","):
+            origin = _normalize_origin(candidate)
+            if origin and origin not in origins:
+                origins.append(origin)
+
+    active_environment = str(environment or ENVIRONMENT).strip().upper()
     dev_defaults = [
         "http://localhost:5173",
         "http://localhost:3000",
@@ -54,12 +62,18 @@ def get_allowed_origins():
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5005"
     ]
-    if not IS_PROD:
-        for d in dev_defaults:
-            if d not in origins:
-                origins.append(d)
-            
+    if active_environment not in ("PROD", "PRODUCTION"):
+        for default_origin in dev_defaults:
+            if default_origin not in origins:
+                origins.append(default_origin)
+
     return origins
+
+
+# Centralized Frontend URL used for redirects and application links.
+FRONTEND_URL = _normalize_origin(
+    os.environ.get("FRONTEND_URL") or ("http://localhost:5173" if not IS_PROD else "")
+)
 
 
 # Dynamic Database URI resolution based on ENVIRONMENT
@@ -164,7 +178,12 @@ class Config:
     ENABLE_EMAIL_FORGOT_PASSWORD_OTP = _get_bool_env("ENABLE_EMAIL_FORGOT_PASSWORD_OTP", True)
     ENABLE_EMAIL_ORDER_CONFIRMATION = _get_bool_env("ENABLE_EMAIL_ORDER_CONFIRMATION", True)
     ENABLE_EMAIL_BUY_REQUEST_CONFIRMATION = _get_bool_env("ENABLE_EMAIL_BUY_REQUEST_CONFIRMATION", True)
-    ENABLE_EMAIL_REGISTRATION_OTP = _get_bool_env("ENABLE_EMAIL_REGISTRATION_OTP", False)
+    ENABLE_EMAIL_REGISTRATION_OTP = _get_bool_env("ENABLE_EMAIL_REGISTRATION_OTP", True)
+    # OTPs may only be returned by explicitly opted-in local development.
+    # A public Render DEV environment must leave this false and use SMTP.
+    EXPOSE_OTP_IN_RESPONSE = IS_DEV and _get_bool_env("EXPOSE_OTP_IN_RESPONSE", False)
+    ENABLE_MOBILE_OTP = _get_bool_env("ENABLE_MOBILE_OTP", False)
+    MOBILE_OTP_PROVIDER = (os.environ.get("MOBILE_OTP_PROVIDER") or "disabled").strip().lower()
     ENABLE_PUSH_NOTIFICATIONS = _get_bool_env("ENABLE_PUSH_NOTIFICATIONS", default_feature_flag)
     ENABLE_WEBHOOKS = _get_bool_env("ENABLE_WEBHOOKS", default_feature_flag)
     ENABLE_ANALYTICS = _get_bool_env("ENABLE_ANALYTICS", default_feature_flag)
@@ -198,11 +217,12 @@ class Config:
     SMTP_TLS = True
 
     # Sensitive SMTP Credentials (Runtime OS Environment Variables Only)
-    SMTP_EMAIL = os.environ.get("SMTP_EMAIL") or os.environ.get("MAIL_USERNAME") or os.environ.get("EMAIL_ADDRESS")
+    SMTP_EMAIL = os.environ.get("SMTP_EMAIL") or os.environ.get("MAIL_USERNAME") or os.environ.get("EMAIL_ADDRESS") or "ssjewellerysystem@gmail.com"
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD") or os.environ.get("MAIL_PASSWORD") or os.environ.get("EMAIL_APP_PASSWORD")
     SMTP_FROM = f"SSJewellery <{SMTP_EMAIL}>" if SMTP_EMAIL else None
 
-    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH", 16 * 1024 * 1024))
+    # Homepage showcase videos commonly exceed the old 16 MiB image-oriented cap.
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH", 100 * 1024 * 1024))
     REPORT_SCHEDULER_ENABLED = _get_bool_env("REPORT_SCHEDULER_ENABLED", False)
 
     # Flask-Mail Compatibility Configuration

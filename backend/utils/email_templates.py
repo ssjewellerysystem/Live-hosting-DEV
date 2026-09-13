@@ -1,3 +1,6 @@
+from html import escape
+
+
 def _get_base_template(content_html, preview_text="SSJewellery Notification"):
     """
     Renders the unified luxury HTML email wrapper for SSJewellery.
@@ -161,7 +164,7 @@ def get_forgot_password_otp_html(name, otp_code):
     <div class="otp-box">
         <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:bold;">Your Password Reset OTP</div>
         <div class="otp-code">{otp_code}</div>
-        <div style="font-size:12px;color:#dc2626;font-weight:bold;margin-top:6px;">⏱ Valid for 5 minutes</div>
+        <div style="font-size:12px;color:#dc2626;font-weight:bold;margin-top:6px;">Valid for 5 minutes</div>
     </div>
 
     <p style="background-color:#fffbeb;border-left:4px solid #D4A75F;padding:12px;font-size:12px;color:#92400e;border-radius:4px;">
@@ -308,14 +311,69 @@ def get_registration_otp_html(name, otp_code):
     content = f"""
     <h2 style="color:#3F1D5A;margin-top:0;">Welcome to SSJewellery!</h2>
     <p>{customer_greeting}</p>
-    <p>Thank you for creating an account with SSJewellery. Please enter the following One-Time Password (OTP) to complete your account registration:</p>
+    <p>Thank you for choosing SSJewellery. We are delighted to have you with us.:</p>
 
     <div class="otp-box">
-        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:bold;">Your Registration Verification OTP</div>
+        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:bold;">Please use this</div>
         <div class="otp-code">{otp_code}</div>
-        <div style="font-size:12px;color:#dc2626;font-weight:bold;margin-top:6px;">⏱ Valid for 5 minutes</div>
+        <div style="font-size:12px;color:#dc2626;font-weight:bold;margin-top:6px;">
+        
+        Valid for 5 minutes</div>
     </div>
 
-    <p style="font-size:12px;color:#64748b;">If you did not initiate this account creation, please ignore this email.</p>
+    <p style="font-size:12px;color:#64748b;"><p>If this was not requested by you, you can ignore this message.</p>.</p>
     """
-    return _get_base_template(content, preview_text=f"Welcome to SSJewellery! Your verification OTP: {otp_code}")
+    return _get_base_template(
+    content,
+    preview_text=f"Thank you for choosing SSJewellery: {otp_code}"
+)
+
+
+def get_order_status_update_html(name, order_id, status, message=None, tracking_id=None, tracking_url=None, delivery_date=None):
+    safe_name = escape(str(name or "Valued Customer"))
+    safe_order_id = escape(str(order_id or ""))
+    safe_status = escape(str(status or "Updated"))
+    safe_message = escape(str(message or ""))
+    safe_tracking_id = escape(str(tracking_id or ""))
+    safe_delivery_date = escape(str(delivery_date or ""))
+    raw_tracking_url = str(tracking_url or "").strip()
+    safe_tracking_url = escape(raw_tracking_url, quote=True)
+    tracking_button = ""
+    if raw_tracking_url.lower().startswith(("https://", "http://")):
+        tracking_button = f'<div style="text-align:center;"><a class="btn" href="{safe_tracking_url}">Track Your Order</a></div>'
+
+    content = f"""
+    <h2 style="color:#3F1D5A;margin-top:0;">Order Status Update</h2>
+    <p>Hello {safe_name},</p>
+    <p>Your SSJewellery order has a new delivery update.</p>
+    <div style="background:#fdfbf7;border:1px solid #D4A75F;border-radius:12px;padding:20px;margin:20px 0;">
+      <p><strong>Order ID:</strong> {safe_order_id}</p>
+      <p><strong>Current Status:</strong> <span style="color:#3F1D5A;font-weight:bold;">{safe_status}</span></p>
+      {f'<p><strong>Tracking ID:</strong> {safe_tracking_id}</p>' if safe_tracking_id else ''}
+      {f'<p><strong>Expected Delivery:</strong> {safe_delivery_date}</p>' if safe_delivery_date else ''}
+      {f'<p><strong>Update:</strong> {safe_message}</p>' if safe_message else ''}
+    </div>
+    {tracking_button}
+    <p style="margin-top:24px;color:#64748b;font-size:12px;">You can also sign in to your SSJewellery account to view the latest order timeline.</p>
+    """
+    return _get_base_template(content, preview_text=f"Order {safe_order_id} is now {safe_status}")
+
+
+def get_support_reply_html(name, ticket_id, original_message, reply_message):
+    safe_name = escape(str(name or "Valued Customer"))
+    safe_ticket_id = escape(str(ticket_id or ""))
+    safe_original = escape(str(original_message or ""))
+    safe_reply = escape(str(reply_message or ""))
+    content = f"""
+    <h2 style="color:#3F1D5A;margin-top:0;">Support Team Replied</h2>
+    <p>Hello {safe_name},</p>
+    <p>Our support team has replied to your ticket <strong>#{safe_ticket_id}</strong>.</p>
+    <div style="background:#f8fafc;border-left:4px solid #94a3b8;padding:14px;margin:18px 0;border-radius:6px;">
+      <strong>Your message</strong><br>{safe_original}
+    </div>
+    <div style="background:#fdfbf7;border:1px solid #D4A75F;padding:16px;margin:18px 0;border-radius:10px;">
+      <strong style="color:#3F1D5A;">Admin Support</strong><br>{safe_reply}
+    </div>
+    <p>Sign in and open the Support Ticket Center if you would like to continue the conversation.</p>
+    """
+    return _get_base_template(content, preview_text=f"New reply on support ticket #{safe_ticket_id}")

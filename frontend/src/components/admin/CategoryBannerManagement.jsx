@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Upload, Trash2, Edit3, Plus, RefreshCw, Check, Sparkles, Image as ImageIcon, Link as LinkIcon, AlertTriangle } from 'lucide-react';
-import { API_BASE_URL } from '../../context/AuthContext';
+import { API_BASE_URL, SERVER_BASE_URL } from '../../context/AuthContext';
 import { getCategoryBannerEndpoint } from '../CategoryBanner';
 
 export const CategoryBannerManagement = ({ categories = [] }) => {
@@ -32,7 +32,7 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
   const [displayOrder, setDisplayOrder] = useState(0);
 
 
-  const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+  const token = localStorage.getItem('bb_token') || localStorage.getItem('token') || localStorage.getItem('adminToken');
   const authHeaders = {
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
@@ -139,18 +139,18 @@ export const CategoryBannerManagement = ({ categories = [] }) => {
       const endpoint = getCategoryBannerEndpoint('/upload');
       const res = await axios.post(endpoint, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': token ? `Bearer ${token}` : '',
-          'X-Admin-Token': token || ''
+          'Authorization': token ? `Bearer ${token}` : ''
         }
       });
       if (res.data && res.data.url) {
-        setBannerImage(res.data.url);
+        const uploadedUrl = res.data.url.startsWith('/static/') ? `${SERVER_BASE_URL}${res.data.url}` : res.data.url;
+        setBannerImage(uploadedUrl);
         showMsg('success', 'Banner image uploaded successfully!');
       }
     } catch (err) {
       console.error("Error uploading banner image:", err);
-      showMsg('error', err.response?.data?.message || 'Failed to upload image.');
+      const detail = err.response?.data?.message || (err.code === 'ERR_NETWORK' ? 'Upload request was blocked or the backend is unreachable.' : err.message);
+      showMsg('error', detail || 'Failed to upload image.');
     } finally {
       setUploading(false);
     }

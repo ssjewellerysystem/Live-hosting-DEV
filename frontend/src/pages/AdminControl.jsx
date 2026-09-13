@@ -494,15 +494,17 @@ export const AdminControl = () => {
       const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
       const response = await axios.post(`${API_BASE_URL}/banners/upload`, formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
+          'Authorization': `Bearer ${token}`
         }
       });
-      setBannerForm(prev => ({ ...prev, image_url: response.data.image_url }));
+      let uploadedUrl = response.data?.image_url || response.data?.url;
+      if (!uploadedUrl) throw new Error('Upload completed without an image URL.');
+      if (uploadedUrl.startsWith('/static/')) uploadedUrl = `${SERVER_BASE_URL}${uploadedUrl}`;
+      setBannerForm(prev => ({ ...prev, image_url: uploadedUrl }));
       setBannerSuccess("Image uploaded successfully!");
     } catch (err) {
       console.error("Error uploading banner image:", err);
-      setBannerError(err.response?.data?.message || "Failed to upload banner image.");
+      setBannerError(err.response?.data?.message || err.message || "Failed to upload banner image.");
     } finally {
       setUploadingBannerImage(false);
     }
@@ -617,7 +619,8 @@ export const AdminControl = () => {
       }
       setIsSupportLinkModalOpen(false);
       setEditingSupportLinkId(null);
-      fetchSupportLinks();
+      await fetchSupportLinks();
+      window.dispatchEvent(new CustomEvent('support-links-updated'));
     } catch (err) {
       console.error("Error saving support link:", err);
       alert(err.response?.data?.message || "Failed to save support link.");
@@ -643,7 +646,8 @@ export const AdminControl = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       alert("Support link deleted successfully!");
-      fetchSupportLinks();
+      await fetchSupportLinks();
+      window.dispatchEvent(new CustomEvent('support-links-updated'));
     } catch (err) {
       console.error("Error deleting support link:", err);
       alert(err.response?.data?.message || "Failed to delete support link.");
@@ -1096,27 +1100,31 @@ export const AdminControl = () => {
     }
   };
 
+  const persistHomepageSettings = async (settings) => {
+      const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
+      const payload = {
+        ...settings,
+        owner_stats: JSON.stringify(settings.owner_stats),
+        owner_badges: JSON.stringify(settings.owner_badges),
+        occasion_items_en: JSON.stringify(settings.occasion_items_en),
+        occasion_items_hi: JSON.stringify(settings.occasion_items_hi),
+        owners_list: JSON.stringify(settings.owners_list)
+      };
+      return axios.post(`${API_BASE_URL}/admin/settings`, payload, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+  };
+
   const handleSaveHomepageSettings = async (e) => {
     e.preventDefault();
     setHomepageUpdating(true);
     setHomepageError('');
     setHomepageSuccess('');
     try {
-      const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
-      const payload = {
-        ...homepageSettings,
-        owner_stats: JSON.stringify(homepageSettings.owner_stats),
-        owner_badges: JSON.stringify(homepageSettings.owner_badges),
-        occasion_items_en: JSON.stringify(homepageSettings.occasion_items_en),
-        occasion_items_hi: JSON.stringify(homepageSettings.occasion_items_hi),
-        owners_list: JSON.stringify(homepageSettings.owners_list)
-      };
-      const response = await axios.post(`${API_BASE_URL}/admin/settings`, payload, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await persistHomepageSettings(homepageSettings);
       if (response.data.success) {
         setHomepageSuccess("Homepage settings updated successfully!");
         fetchHomepageSettings();
@@ -1176,10 +1184,12 @@ export const AdminControl = () => {
 
   const handleUploadMediaFile = async (file, targetField, galleryIndex = null) => {
     const formData = new FormData();
-    formData.append('image', file);
+    const isVideo = targetField === 'video_showcase_url';
+    formData.append(isVideo ? 'video' : 'image', file);
     try {
       const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
-      const response = await axios.post(`${API_BASE_URL}/products/upload`, formData, {
+      const uploadPath = isVideo ? 'upload-video' : 'upload';
+      const response = await axios.post(`${API_BASE_URL}/products/${uploadPath}`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -1218,13 +1228,16 @@ export const AdminControl = () => {
       }
     } catch (err) {
       console.error("Error uploading media file:", err);
-      alert("Failed to upload media file.");
+      alert(err.response?.data?.message || "Failed to upload media file.");
     }
   };
 
   const handleUploadOwnerPhoto = async (file, ownerIdx) => {
     const formData = new FormData();
     formData.append('image', file);
+    setHomepageUpdating(true);
+    setHomepageError('');
+    setHomepageSuccess('');
     try {
       const token = localStorage.getItem('bb_token') || localStorage.getItem('token');
       const response = await axios.post(`${API_BASE_URL}/products/upload`, formData, {
@@ -1240,16 +1253,27 @@ export const AdminControl = () => {
         }
         const updated = [...(homepageSettings.owners_list || [])];
         if (updated[ownerIdx]) {
-          updated[ownerIdx].image = uploadedUrl;
-          setHomepageSettings(prev => ({
-            ...prev,
+          updated[ownerIdx] = { ...updated[ownerIdx], image: uploadedUrl };
+          const nextSettings = {
+            ...homepageSettings,
             owners_list: updated
-          }));
+          };
+          setHomepageSettings(nextSettings);
+
+          const saveResponse = await persistHomepageSettings(nextSettings);
+          if (!saveResponse.data?.success) {
+            throw new Error(saveResponse.data?.message || "Photo uploaded but its setting could not be saved.");
+          }
+          setHomepageSuccess("Founder photo uploaded and saved successfully!");
         }
       }
     } catch (err) {
       console.error("Error uploading owner photo:", err);
-      alert("Failed to upload photo.");
+      const message = err.response?.data?.message || err.message || "Failed to upload photo.";
+      setHomepageError(message);
+      alert(message);
+    } finally {
+      setHomepageUpdating(false);
     }
   };
 
@@ -2600,7 +2624,10 @@ export const AdminControl = () => {
         payload.tracking_url = trackingPayload.tracking_url;
         payload.tracking_id = trackingPayload.tracking_id;
       }
-      await axios.put(`${API_BASE_URL}/orders/${orderId}/status`, payload);
+      const response = await axios.put(`${API_BASE_URL}/orders/${orderId}/status`, payload);
+      if (response.data?.email_sent === false) {
+        alert(`Order updated, but customer email was not delivered (${response.data.email_status || 'email failed'}). Check SMTP settings and email logs.`);
+      }
       fetchOrders();
       if (selectedOrder && String(selectedOrder._id || selectedOrder.id) === String(orderId)) {
         setSelectedOrder(prev => prev ? {
@@ -3409,7 +3436,7 @@ export const AdminControl = () => {
               className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-5 py-2.5 sm:py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
             >
               {homepageUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              <span>Save Video Showcase</span>
+              <span>Save Homepage Settings</span>
             </button>
           </div>
         </form>
